@@ -1,4 +1,4 @@
-const CACHE_NAME = "remu-tool-cache-v3";
+const CACHE_NAME = "remu-tool-cache-v4";
 const urlsToCache = [
   "./",
   "./index.html",
@@ -18,13 +18,35 @@ self.addEventListener("install", (event) => {
 self.addEventListener("activate", (event) => {
   event.waitUntil((async () => {
     const keys = await caches.keys();
-    await Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : Promise.resolve())));
+    await Promise.all(
+      keys
+        .filter((k) => k.startsWith("remu-tool-cache-") && k !== CACHE_NAME)
+        .map((k) => caches.delete(k))
+    );
     await self.clients.claim();
   })());
 });
 
 self.addEventListener("fetch", (event) => {
+  const req = event.request;
+
+  // HTML navigation: network-first, fallback to cache for offline.
+  if (req.mode === "navigate") {
+    event.respondWith((async () => {
+      try {
+        const fresh = await fetch(req);
+        const cache = await caches.open(CACHE_NAME);
+        cache.put("./index.html", fresh.clone());
+        return fresh;
+      } catch (e) {
+        return (await caches.match("./index.html")) || (await caches.match("./"));
+      }
+    })());
+    return;
+  }
+
+  // Static assets: cache-first, fallback network.
   event.respondWith(
-    caches.match(event.request).then((response) => response || fetch(event.request))
+    caches.match(req).then((response) => response || fetch(req))
   );
 });
