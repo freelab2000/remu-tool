@@ -513,7 +513,6 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 </style>
 <style>
-<style>
 /* === Paso a paso: tema oscuro (consistente con la app) === */
 #pasoIuscModal{ background:rgba(10,18,32,.98); color:rgba(255,255,255,.92); }
 #pasoIuscModal .paso-card{ background:rgba(255,255,255,.04); color:rgba(255,255,255,.92); border-color:rgba(255,255,255,.08); }
@@ -634,6 +633,82 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <script data-goatcounter="https://remu-tool.goatcounter.com/count"
         async src="//gc.zgo.at/count.js"></script>
 
+<link rel="manifest" href="manifest.json">
+
+<style>
+/* === Bono Vacaciones: calculadora integrada en ayuda lateral === */
+.vac-calc{
+  margin-top:16px;
+  padding:14px;
+  border:1px solid rgba(90,169,255,.22);
+  border-radius:14px;
+  background:rgba(255,255,255,.035);
+  display:grid;
+  gap:10px;
+}
+.vac-calc h3{margin:0 0 2px;color:#dfe7ff}
+.vac-field{
+  display:grid;
+  gap:6px;
+  color:#cfe0ff;
+  font-size:13px;
+}
+.vac-field input{
+  width:100%;
+  background:#0b1526;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--fg);
+  padding:10px 12px;
+  font:700 15px/1 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+  text-align:right;
+}
+.vac-result{
+  display:grid;
+  gap:8px;
+  margin-top:4px;
+}
+.vac-result > div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#0b1526;
+  border:1px solid rgba(255,255,255,.08);
+}
+.vac-result span{color:var(--muted);font-size:13px}
+.vac-result strong{color:#bbf7d0;font-size:16px;white-space:nowrap}
+.vac-apply{
+  margin-top:4px;
+  width:100%;
+  border:1px solid rgba(34,197,94,.35);
+  background:rgba(22,163,74,.16);
+  color:#dcfce7;
+  border-radius:999px;
+  padding:11px 14px;
+  font-weight:800;
+  cursor:pointer;
+}
+.vac-apply:hover{background:rgba(22,163,74,.24)}
+.vac-calc .formula{
+  margin:4px 0 0;
+  padding:9px 10px;
+  border-left:3px solid rgba(90,169,255,.45);
+  border-radius:8px;
+  background:rgba(90,169,255,.08);
+  color:#cfe0ff;
+  font-size:13px;
+}
+#vacAviso.warn{color:#fbbf24}
+@media (max-width:560px){
+  .vac-calc{padding:12px}
+  .vac-result > div{align-items:flex-start;flex-direction:column;gap:4px}
+  .vac-result strong{font-size:17px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -676,6 +751,13 @@ body{ line-height:1.5; letter-spacing:.1px; }
 &lt;b&gt;Base legal:&lt;/b&gt; Art. 41, Código del Trabajo." type="button">?</button>
 </div>
 <input data-key="haber.bono_prod" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+          Bono Vacaciones
+          <button aria-label="Ayuda" class="tip" data-help="#bono-vacaciones" data-tip="Bono establecido por convenio colectivo: 3,33% del mayor promedio entre últimos 3 meses íntegramente volados o últimos 12 meses, por cada día efectivo de vacaciones usado. Tope referencial: 15 días/año." type="button">?</button>
+</div>
+<input data-key="haber.bono_vacaciones" type="text" value="$0"/>
 </div>
 </div>
 </div>
@@ -980,12 +1062,12 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </ul>
 <h3>Límite anual</h3>
 <p>
-    El pago total anual no puede exceder el equivalente a <b>4,75 IMM</b>. Con el <b>IMM vigente 2025 = $529.000</b>, el tope legal anual es:
+    El pago total anual no puede exceder el equivalente a <b>4,75 IMM</b>. Con el <b>IMM vigente 2026 = $539.000</b>, el tope legal anual es:
   </p>
-<p class="kbd">4,75 × 529.000 = <b>$2.512.750</b></p>
+<p class="kbd">4,75 × 539.000 = <b>$2.560.250</b></p>
 <p>Este tope se divide entre 12 meses para obtener el máximo mensual permitido:</p>
-<p class="kbd">$2.512.750 ÷ 12 = <b>$209.396</b></p>
-<p>Por tanto, bajo la modalidad del <b>Artículo 50</b>, la gratificación mensual corresponde al <b>25 %</b> de la remuneración devengada, con un límite de <b>$209.396</b> mensuales.</p>
+<p class="kbd">$2.560.250 ÷ 12 = <b>$213.354</b></p>
+<p>Por tanto, bajo la modalidad del <b>Artículo 50</b>, la gratificación mensual corresponde al <b>25 %</b> de la remuneración devengada, con un límite de <b>$213.354</b> mensuales.</p>
 <h3>Fundamento legal</h3>
 <p><b>Código del Trabajo</b>, artículos <b>47 y 50</b>.</p>
 </section>
@@ -1024,6 +1106,48 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <p>Este componente constituye <b>remuneración imponible y tributable</b>, integrando la base de cálculo para cotizaciones previsionales y para el Impuesto Único de Segunda Categoría (IUSC).</p>
 <h3>Fundamento</h3>
 <p><b>Convenio Colectivo vigente</b>.</p>
+</section>
+<section class="help-section card anchor" id="bono-vacaciones">
+<h2>Bono Vacaciones</h2>
+<p>Beneficio establecido en el convenio colectivo. Corresponde al <b>3,33%</b> de la remuneración calculada sobre la base del <b>mayor valor</b> entre:</p>
+<ul>
+<li>el promedio de los últimos <b>3 meses volados íntegramente</b>, o</li>
+<li>el promedio de los <b>12 meses inmediatamente anteriores</b>.</li>
+</ul>
+<p>La base considerada incluye <b>Sueldo Base</b>, <b>Asignación de Antigüedad</b> y <b>Componente Variable</b>. Se paga por cada día efectivo de vacaciones utilizado, con un máximo de <b>15 días por año calendario</b>.</p>
+
+<div class="vac-calc">
+  <h3>Calculadora rápida</h3>
+  <p class="small muted">Ingresa ambos promedios y los días efectivos de vacaciones. La app usará automáticamente el mayor promedio.</p>
+
+  <label class="vac-field">
+    <span>Promedio últimos 3 meses</span>
+    <input id="vacProm3" inputmode="numeric" type="text" placeholder="$0"/>
+  </label>
+
+  <label class="vac-field">
+    <span>Promedio últimos 12 meses</span>
+    <input id="vacProm12" inputmode="numeric" type="text" placeholder="$0"/>
+  </label>
+
+  <label class="vac-field">
+    <span>Días efectivos de vacaciones</span>
+    <input id="vacDias" inputmode="numeric" type="number" min="0" max="15" step="1" placeholder="0"/>
+  </label>
+
+  <div class="vac-result">
+    <div><span>Mayor promedio utilizado</span><strong id="vacMayor">$0</strong></div>
+    <div><span>Bono vacaciones estimado</span><strong id="vacMonto">$0</strong></div>
+  </div>
+
+  <p class="formula">Fórmula: mayor promedio × 3,33% × días efectivos.</p>
+  <p class="small muted" id="vacAviso">Tope referencial: máximo 15 días pagados por año calendario.</p>
+
+  <button class="vac-apply" id="vacApply" type="button">Aplicar a liquidación</button>
+</div>
+
+<h3>Fundamento</h3>
+<p><b>Convenio Colectivo vigente</b>, cláusula de bono de vacaciones.</p>
 </section>
 <section class="help-section card anchor" id="cesantia">
 <h2>Seguro de Cesantía</h2>
@@ -1203,7 +1327,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
   const getVal = (el)=> parseCLP(el && el.value);
   const byKey  = (k)=> document.querySelector(`[data-key="${k}"]`);
 
-  function impRaw(){ return ["haber.sueldo_base","haber.gratificacion","haber.antiguedad","haber.bono_prod"].map(k => getVal(byKey(k))).reduce((a,b)=>a+b,0); }
+  function impRaw(){ return ["haber.sueldo_base","haber.gratificacion","haber.antiguedad","haber.bono_prod","haber.bono_vacaciones"].map(k => getVal(byKey(k))).reduce((a,b)=>a+b,0); }
   function ufCLP(){ const ufEl = $('#ufVal'); return ufEl ? parseCLP(ufEl.value) : 0; }
   function toggle(el, show){ if(!el) return; el.style.display = show ? '' : 'none'; }
 
@@ -1266,7 +1390,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 setVal($('#outImponible'), baseAFP);
 
 // Tributable (modelo empresa): parte desde Total Haberes (haberes imponibles declarados) y descuenta previsionales legales
-const totalHab = impRaw(); // suma de sueldo base, gratificación, antigüedad y bono productividad
+const totalHab = impRaw(); // suma de sueldo base, gratificación, antigüedad, bono productividad y bono vacaciones
 let trib = Math.max(0, totalHab - (afp10v + s7v + scv + tpv + cotAdv));
 
 // APV: si Régimen A, rebaja la base tributable; si B, no afecta.
@@ -2020,7 +2144,7 @@ function setIuscRetValue(monto){
 
   // Read sources
   function totalHaberes(){
-    const keys = ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod'];
+    const keys = ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones'];
     return keys.map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0);
   }
   function descuentosBaseSinIusc(){
@@ -2274,7 +2398,7 @@ function setIuscRetValue(monto){
   const byKey = (k)=> document.querySelector('[data-key=\"'+k+'\"]');
 
   // Data readers (no mutation)
-  function totalHaberes(){ return ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
+  function totalHaberes(){ return ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function descuentosLegales(){ return ['desc.afp10','desc.salud7','desc.cesantia','desc.trab_pesado','desc.com_afp'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function descuentosVarios(){ return ['desc.sind_uccl','desc.cot_adicional'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function apvForm(){ return parseCLP(byKey('desc.apv')?.value); }
@@ -2566,5 +2690,101 @@ function setIuscRetValue(monto){
     if (!ev.matches) closeSheet();
   });
 })();
-</script></body>
+</script>
+<script>
+/* === Bono Vacaciones: cálculo asistido + aplicación a Haberes === */
+(function(){
+  const fmtCLP = (n)=>'$' + Math.max(0, Math.round(Number(n)||0)).toLocaleString('es-CL');
+  const parseCLP = (s)=>{
+    const cleaned = String(s||'').replace(/[^0-9]/g,'');
+    const n = Number(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  };
+  const byId = (id)=>document.getElementById(id);
+  const byKey = (k)=>document.querySelector('[data-key="'+k+'"]');
+
+  function renderVacaciones(){
+    const p3El = byId('vacProm3');
+    const p12El = byId('vacProm12');
+    const dEl = byId('vacDias');
+    const mayorEl = byId('vacMayor');
+    const montoEl = byId('vacMonto');
+    const avisoEl = byId('vacAviso');
+    if(!p3El || !p12El || !dEl || !mayorEl || !montoEl) return;
+
+    const p3 = parseCLP(p3El.value);
+    const p12 = parseCLP(p12El.value);
+    const diasRaw = Number(dEl.value || 0);
+    const dias = Math.max(0, Math.min(15, Number.isFinite(diasRaw) ? diasRaw : 0));
+    const mayor = Math.max(p3, p12);
+    const monto = Math.round(mayor * 0.0333 * dias);
+
+    mayorEl.textContent = fmtCLP(mayor);
+    montoEl.textContent = fmtCLP(monto);
+
+    if(avisoEl){
+      if(diasRaw > 15){
+        avisoEl.textContent = 'Se aplicó tope de 15 días. El convenio indica máximo 15 días pagados por año calendario.';
+        avisoEl.classList.add('warn');
+      }else{
+        avisoEl.textContent = 'Tope referencial: máximo 15 días pagados por año calendario.';
+        avisoEl.classList.remove('warn');
+      }
+    }
+    return monto;
+  }
+
+  function formatMoneyField(el){
+    if(!el) return;
+    el.value = fmtCLP(parseCLP(el.value));
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    const p3El = byId('vacProm3');
+    const p12El = byId('vacProm12');
+    const dEl = byId('vacDias');
+    const applyBtn = byId('vacApply');
+
+    [p3El, p12El].forEach(el=>{
+      if(!el) return;
+      el.addEventListener('input', function(){
+        el.value = String(el.value||'').replace(/[^0-9]/g,'');
+        renderVacaciones();
+      }, {passive:true});
+      el.addEventListener('blur', function(){
+        formatMoneyField(el);
+        renderVacaciones();
+      }, {passive:true});
+    });
+
+    if(dEl){
+      dEl.addEventListener('input', renderVacaciones, {passive:true});
+      dEl.addEventListener('blur', function(){
+        const n = Math.max(0, Math.min(15, Number(dEl.value||0)));
+        dEl.value = Number.isFinite(n) ? String(n) : '0';
+        renderVacaciones();
+      }, {passive:true});
+    }
+
+    if(applyBtn){
+      applyBtn.addEventListener('click', function(){
+        const monto = renderVacaciones() || 0;
+        const target = byKey('haber.bono_vacaciones');
+        if(target){
+          target.value = fmtCLP(monto);
+          target.dispatchEvent(new Event('input', {bubbles:true}));
+          target.dispatchEvent(new Event('change', {bubbles:true}));
+        }
+        // Cierra el panel lateral actual si existe, para volver a la liquidación.
+        const closeBtn = byId('helpCloseBtn');
+        if(closeBtn) closeBtn.click();
+      });
+    }
+
+    renderVacaciones();
+  });
+})();
+</script>
+
+</body>
 </html>
