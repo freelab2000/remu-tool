@@ -709,6 +709,44 @@ body{ line-height:1.5; letter-spacing:.1px; }
 }
 </style>
 
+
+<style>
+/* === Compensación Feriados: calculadora integrada en ayuda lateral === */
+.fer-calc{margin-top:16px;padding:14px;border:1px solid rgba(251,191,36,.24);border-radius:14px;background:rgba(255,255,255,.035);display:grid;gap:10px}
+.fer-calc h3{margin:0 0 2px;color:#dfe7ff}
+.fer-info{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#0b1526;border:1px solid rgba(255,255,255,.08)}
+.fer-info span{color:var(--muted);font-size:13px}
+.fer-info strong{color:#fde68a;font-size:16px;white-space:nowrap}
+.fer-field{display:grid;gap:6px;color:#cfe0ff;font-size:13px}
+.fer-field input{width:100%;background:#0b1526;border:1px solid var(--border);border-radius:10px;color:var(--fg);padding:10px 12px;font:700 15px/1 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;text-align:right}
+.fer-result{display:grid;gap:8px;margin-top:4px}
+.fer-result>div{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-radius:12px;background:#0b1526;border:1px solid rgba(255,255,255,.08)}
+.fer-result span{color:var(--muted);font-size:13px}
+.fer-result strong{color:#bbf7d0;font-size:16px;white-space:nowrap}
+.fer-apply{margin-top:4px;width:100%;border:1px solid rgba(34,197,94,.35);background:rgba(22,163,74,.16);color:#dcfce7;border-radius:999px;padding:11px 14px;font-weight:800;cursor:pointer}
+.fer-apply:hover{background:rgba(22,163,74,.24)}
+.fer-calc .formula{margin:4px 0 0;padding:9px 10px;border-left:3px solid rgba(251,191,36,.45);border-radius:8px;background:rgba(251,191,36,.08);color:#fde68a;font-size:13px}
+.convenio-box{margin-top:16px;border:1px solid rgba(255,255,255,.10);border-radius:14px;background:rgba(255,255,255,.03);overflow:hidden}
+.convenio-box summary{cursor:pointer;padding:12px 14px;font-weight:800;color:#dfe7ff;list-style:none}
+.convenio-box summary::-webkit-details-marker{display:none}
+.convenio-box summary::after{content:"＋";float:right;color:#fbbf24}
+.convenio-box[open] summary::after{content:"−"}
+.convenio-text{padding:0 14px 14px;color:#cfe0ff;font-size:13px;line-height:1.55}
+.convenio-text p{border-left:3px solid rgba(251,191,36,.34);padding-left:12px}
+@media (max-width:560px){.fer-calc{padding:12px}.fer-info,.fer-result>div{align-items:flex-start;flex-direction:column;gap:4px}.fer-result strong,.fer-info strong{font-size:17px}}
+</style>
+
+
+<style>
+.fer-note{
+  margin-top:-4px;
+  padding:8px 10px;
+  border-left:3px solid rgba(251,191,36,.36);
+  border-radius:8px;
+  background:rgba(251,191,36,.06);
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -758,6 +796,13 @@ body{ line-height:1.5; letter-spacing:.1px; }
           <button aria-label="Ayuda" class="tip" data-help="#bono-vacaciones" data-tip="Bono establecido por convenio colectivo: 3,33% del mayor promedio entre últimos 3 meses íntegramente volados o últimos 12 meses, por cada día efectivo de vacaciones usado. Tope referencial: 15 días/año." type="button">?</button>
 </div>
 <input data-key="haber.bono_vacaciones" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+          Compensación Feriados
+          <button aria-label="Ayuda" class="tip" data-help="#feriados-trabajados" data-tip="Compensación por feriados trabajados: 6,6% del sueldo base ingresado, multiplicado por la cantidad de feriados trabajados." type="button">?</button>
+</div>
+<input data-key="haber.feriados" type="text" value="$0"/>
 </div>
 </div>
 </div>
@@ -1149,6 +1194,65 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <h3>Fundamento</h3>
 <p><b>Convenio Colectivo vigente</b>, cláusula de bono de vacaciones.</p>
 </section>
+
+
+<section class="help-section card anchor" id="feriados-trabajados">
+<h2>Compensación Feriados Trabajados</h2>
+<p>Pago adicional asociado a la prestación de servicios durante días feriados. En esta herramienta se calcula de forma asistida usando la <b>Base de Cálculo</b> definida en el convenio colectivo.</p>
+<p><b>Fórmula aplicada:</b> (Sueldo Base + Asignación de Antigüedad + <b>mayor promedio de Remuneración Variable</b>) × <b>6,6%</b> × cantidad de feriados trabajados.</p>
+
+<div class="fer-calc">
+  <h3>Calculadora rápida</h3>
+  <p class="small muted">La app toma automáticamente el sueldo base y la asignación de antigüedad que ya ingresaste en Haberes. Solo debes ingresar el mayor promedio variable.</p>
+
+  <div class="fer-info">
+    <span>Sueldo Base detectado</span>
+    <strong id="ferSueldoBase">$0</strong>
+  </div>
+
+  <div class="fer-info">
+    <span>Asignación de Antigüedad detectada</span>
+    <strong id="ferAntiguedad">$0</strong>
+  </div>
+
+  <label class="fer-field">
+    <span>Mayor promedio Remuneración Variable</span>
+    <input id="ferVariableProm" inputmode="numeric" type="text" placeholder="$0"/>
+  </label>
+  <p class="small muted fer-note">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>
+
+  <label class="fer-field">
+    <span>Cantidad de feriados trabajados</span>
+    <input id="ferDias" inputmode="numeric" type="number" min="0" step="1" placeholder="0"/>
+  </label>
+
+  <div class="fer-result">
+    <div><span>Base de cálculo utilizada</span><strong id="ferBaseCalculo">$0</strong></div>
+    <div><span>6,6% por feriado</span><strong id="ferPorDia">$0</strong></div>
+    <div><span>Total compensación feriados</span><strong id="ferTotal">$0</strong></div>
+  </div>
+
+  <p class="formula">Fórmula: (sueldo base + antigüedad + mayor promedio variable 3m/12m) × 6,6% × feriados trabajados.</p>
+
+  <button class="fer-apply" id="ferApply" type="button">Aplicar a liquidación</button>
+</div>
+
+<details class="convenio-box">
+  <summary>Ver cláusula completa del convenio</summary>
+  <div class="convenio-text">
+    <p><b>Compensación de Feriados trabajados</b></p>
+    <p>En conformidad con lo dispuesto en el artículo 152 ter del Código del Trabajo, si los roles de vuelo implicaren la prestación de servicios durante días feriados, el empleador deberá otorgar los respectivos descansos adicionales dentro de los siguientes sesenta días, pudiendo, con todo, acordarse su compensación en dinero, pero con un recargo no inferior al señalado en el artículo 32 del mismo cuerpo legal.</p>
+    <p>A partir de octubre de 2023, las partes acuerdan que la Empresa compensará dicho día feriado en el que se prestó servicios, con el recargo bruto equivalente al <b>6,6 %</b> de su Remuneración, de acuerdo a lo indicado en la cláusula cuarta numeral 5, cantidad que en caso alguno podrá ser inferior a la que corresponda por aplicación de lo dispuesto en el artículo 32 del Código del Trabajo.</p>
+
+    <p><b>5. Base de Cálculo</b></p>
+    <p>A partir de octubre de 2023, para los efectos de la base de cálculo que aplique de acuerdo a lo indicado en la respectiva cláusula de los conceptos indicados en el presente numeral, adicional al Sueldo Base y la Asignación de antigüedad en caso de corresponder, se considerará para la remuneración variable el mayor valor que resulte entre el promedio de la Remuneración Variable de los tres últimos meses íntegramente volados y el promedio de la remuneración variable de los últimos 12 meses anteriores, pagando el monto mayor que resulte de la comparación.</p>
+    <p>Para un mejor entendimiento se aplicará el mayor valor de la base de cálculo entre el promedio de los últimos 12 anteriores y 3 últimos meses trabajados íntegramente. Así, a modo de ejemplo, si en un mes se utilizan vacaciones y/o licencia médica, ese mes no se considera trabajado íntegramente.</p>
+  </div>
+</details>
+
+<h3>Nota de uso</h3>
+<p>Este cálculo requiere ingresar manualmente el <b>mayor promedio de Remuneración Variable</b>, porque la herramienta no dispone del historial de los últimos 3 o 12 meses. El sueldo base y la antigüedad sí se leen automáticamente desde los Haberes ya ingresados.</p>
+</section>
 <section class="help-section card anchor" id="cesantia">
 <h2>Seguro de Cesantía</h2>
 <p>El <b>Seguro de Cesantía</b> se financia con aportes del trabajador y del empleador: <b>0,6 %</b> a cargo del trabajador y <b>2,4 %</b> a cargo del empleador (<b>1,6 %</b> al Seguro de Cesantía y <b>0,8 %</b> al Fondo de Cesantía Solidario). Las cotizaciones se efectúan durante un máximo de <b>11 años por relación laboral</b>.</p>
@@ -1327,7 +1431,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
   const getVal = (el)=> parseCLP(el && el.value);
   const byKey  = (k)=> document.querySelector(`[data-key="${k}"]`);
 
-  function impRaw(){ return ["haber.sueldo_base","haber.gratificacion","haber.antiguedad","haber.bono_prod","haber.bono_vacaciones"].map(k => getVal(byKey(k))).reduce((a,b)=>a+b,0); }
+  function impRaw(){ return ["haber.sueldo_base","haber.gratificacion","haber.antiguedad","haber.bono_prod","haber.bono_vacaciones","haber.feriados"].map(k => getVal(byKey(k))).reduce((a,b)=>a+b,0); }
   function ufCLP(){ const ufEl = $('#ufVal'); return ufEl ? parseCLP(ufEl.value) : 0; }
   function toggle(el, show){ if(!el) return; el.style.display = show ? '' : 'none'; }
 
@@ -2144,7 +2248,7 @@ function setIuscRetValue(monto){
 
   // Read sources
   function totalHaberes(){
-    const keys = ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones'];
+    const keys = ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones','haber.feriados'];
     return keys.map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0);
   }
   function descuentosBaseSinIusc(){
@@ -2398,7 +2502,7 @@ function setIuscRetValue(monto){
   const byKey = (k)=> document.querySelector('[data-key=\"'+k+'\"]');
 
   // Data readers (no mutation)
-  function totalHaberes(){ return ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
+  function totalHaberes(){ return ['haber.sueldo_base','haber.gratificacion','haber.antiguedad','haber.bono_prod','haber.bono_vacaciones','haber.feriados'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function descuentosLegales(){ return ['desc.afp10','desc.salud7','desc.cesantia','desc.trab_pesado','desc.com_afp'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function descuentosVarios(){ return ['desc.sind_uccl','desc.cot_adicional'].map(k=> parseCLP(byKey(k)?.value)).reduce((a,b)=>a+b,0); }
   function apvForm(){ return parseCLP(byKey('desc.apv')?.value); }
@@ -2782,6 +2886,112 @@ function setIuscRetValue(monto){
     }
 
     renderVacaciones();
+  });
+})();
+</script>
+
+
+
+<script>
+/* === Compensación Feriados: cálculo asistido + aplicación a Haberes === */
+(function(){
+  const fmtCLP=(n)=>'$'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('es-CL');
+  const parseCLP=(s)=>{const cleaned=String(s||'').replace(/[^0-9]/g,'');const n=Number(cleaned);return Number.isFinite(n)?n:0;};
+  const byId=(id)=>document.getElementById(id);
+  const byKey=(k)=>document.querySelector('[data-key="'+k+'"]');
+
+  function sueldoBaseActual(){return parseCLP(byKey('haber.sueldo_base')?.value);}
+  function antiguedadActual(){return parseCLP(byKey('haber.antiguedad')?.value);}
+  function variablePromedio(){return parseCLP(byId('ferVariableProm')?.value);}
+
+  function renderFeriados(){
+    const sueldoEl=byId('ferSueldoBase');
+    const antigEl=byId('ferAntiguedad');
+    const varEl=byId('ferVariableProm');
+    const diasEl=byId('ferDias');
+    const baseEl=byId('ferBaseCalculo');
+    const porDiaEl=byId('ferPorDia');
+    const totalEl=byId('ferTotal');
+    if(!sueldoEl||!antigEl||!varEl||!diasEl||!baseEl||!porDiaEl||!totalEl) return 0;
+
+    const sueldo=sueldoBaseActual();
+    const antig=antiguedadActual();
+    const variable=variablePromedio();
+    const diasRaw=Number(diasEl.value||0);
+    const dias=Math.max(0,Number.isFinite(diasRaw)?diasRaw:0);
+
+    const base=sueldo+antig+variable;
+    const porDia=Math.round(base*0.066);
+    const total=Math.round(porDia*dias);
+
+    sueldoEl.textContent=fmtCLP(sueldo);
+    antigEl.textContent=fmtCLP(antig);
+    baseEl.textContent=fmtCLP(base);
+    porDiaEl.textContent=fmtCLP(porDia);
+    totalEl.textContent=fmtCLP(total);
+    return total;
+  }
+
+  function formatMoneyInput(el){
+    if(!el) return;
+    el.value=fmtCLP(parseCLP(el.value));
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    const diasEl=byId('ferDias');
+    const varEl=byId('ferVariableProm');
+    const applyBtn=byId('ferApply');
+    const sueldoBaseInput=byKey('haber.sueldo_base');
+    const antigInput=byKey('haber.antiguedad');
+
+    if(varEl){
+      varEl.addEventListener('input',function(){
+        varEl.value=String(varEl.value||'').replace(/[^0-9]/g,'');
+        renderFeriados();
+      },{passive:true});
+      varEl.addEventListener('blur',function(){
+        formatMoneyInput(varEl);
+        renderFeriados();
+      },{passive:true});
+    }
+
+    if(diasEl){
+      diasEl.addEventListener('input',renderFeriados,{passive:true});
+      diasEl.addEventListener('blur',function(){
+        const n=Math.max(0,Number(diasEl.value||0));
+        diasEl.value=Number.isFinite(n)?String(n):'0';
+        renderFeriados();
+      },{passive:true});
+    }
+
+    [sueldoBaseInput, antigInput].forEach(function(el){
+      if(el){
+        el.addEventListener('input',function(){
+          setTimeout(renderFeriados,0);
+        },{passive:true});
+      }
+    });
+
+    if(applyBtn){
+      applyBtn.addEventListener('click',function(){
+        const total=renderFeriados()||0;
+        const target=byKey('haber.feriados');
+        if(target){
+          target.value=fmtCLP(total);
+          target.dispatchEvent(new Event('input',{bubbles:true}));
+          target.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+        const closeBtn=byId('helpCloseBtn');
+        if(closeBtn) closeBtn.click();
+      });
+    }
+
+    document.addEventListener('click',function(e){
+      const btn=e.target.closest&&e.target.closest('[data-help="#feriados-trabajados"]');
+      if(btn) setTimeout(renderFeriados,120);
+    },true);
+
+    renderFeriados();
   });
 })();
 </script>
