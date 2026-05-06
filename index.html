@@ -997,6 +997,83 @@ body{ line-height:1.5; letter-spacing:.1px; }
 .bc-storage-note.warn{color:#fbbf24}
 </style>
 
+
+<style>
+/* === Panel Herramientas === */
+.tools-card{
+  margin-top:var(--gap);
+  border-color:rgba(148,163,184,.22);
+  background:linear-gradient(180deg, rgba(15,27,51,.98), rgba(10,18,32,.98));
+}
+.tools-card > h2{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:0 0 6px;
+}
+#toolsBody{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.08);
+  display:grid;
+  gap:12px;
+}
+.tool-section{
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.03);
+  overflow:hidden;
+}
+.tool-section summary{
+  cursor:pointer;
+  padding:12px 14px;
+  font-weight:800;
+  color:#dfe7ff;
+  list-style:none;
+}
+.tool-section summary::-webkit-details-marker{display:none}
+.tool-section summary::after{
+  content:"＋";
+  float:right;
+  color:#60a5fa;
+}
+.tool-section[open] summary::after{content:"−"}
+.tool-body{
+  padding:0 14px 14px;
+}
+.tool-body .base-convenio-card{
+  margin-top:0;
+  box-shadow:none;
+}
+.tool-body .base-convenio-card > .bc-collapse-head{
+  display:none;
+}
+.tool-body #bcBody{
+  display:block !important;
+  margin-top:0;
+  padding-top:0;
+  border-top:0;
+}
+.tool-actions{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:10px;
+}
+.tool-actions button,
+.tool-iusc-btn{
+  width:100%;
+  justify-content:center;
+}
+@media (max-width:560px){
+  .tools-card > h2{
+    align-items:stretch;
+    flex-direction:column;
+  }
+  #toolsToggle{width:100%}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1063,7 +1140,107 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </div>
 </div>
 </div>
-<div class="card base-convenio-card bc-collapsed-card" id="baseConvenioCard">
+
+
+<div class="card">
+<h2 class="section-tag">DESCUENTOS</h2>
+<div class="grid">
+<div class="row">
+<div class="label">
+        Seguro de Cesantía (trabajador 0,6%)
+        <button aria-label="Ayuda" class="tip" data-help="#cesantia" data-tip="Cotización trabajador 0,6% a AFC (contrato indefinido). Tope según bloque UF — referencia." type="button">?</button>
+</div>
+<input data-key="desc.cesantia" readonly="" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        Fondo Pens. AFP (10,00%)
+        <button aria-label="Ayuda" class="tip" data-help="#afp10" data-tip="Cotización obligatoria 10% a AFP sobre renta imponible (tope vigente)." type="button">?</button>
+</div>
+<input data-key="desc.afp10" readonly="" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        Comisión AFP <span class="small">(%)</span>
+<button aria-label="Ayuda" class="tip" data-help="#comision-afp" data-tip="Porcentaje cobrado por la administradora sobre la misma base topada que AFP." type="button">?</button>
+</div>
+<div class="right">
+<input id="pctComAFP" min="0" step="0.01" style="max-width:120px;text-align:right" type="number" value="1.44"/>
+</div>
+</div>
+<div class="row">
+<div class="label">
+        APV
+        <button aria-label="Ayuda" class="tip" data-help="#apv" data-tip="APV (DL 3.500): A = rebaja inmediata; B = diferimiento. Topes: 50 UF / 600 UF." type="button">?</button>
+</div>
+<input data-key="desc.apv" type="text" value="$0"/>
+<select aria-label="Régimen APV" id="apvReg" style="width:auto; margin-left:.5rem;">
+<option selected="" value="B">B (diferido)</option>
+<option value="A">A (rebaja tributable)</option>
+</select>
+<small class="muted" style="margin-left:.5rem">Por defecto: B. Cambia a A si quieres que el APV rebaje la RLI.</small>
+</div>
+<div class="row">
+<div class="label">
+        Impuesto único retenido
+        <button aria-label="Ayuda" class="tip" data-help="#iusc-ret" data-tip="IUSC: Art. 42 N.º 1 y 43 N.º 1 LIR. Retención mensual por el empleador según tabla SII vigente." type="button">?</button>
+</div>
+<input data-key="desc.iusc_ret" readonly="" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        Desc. Sind. Pil UCCL
+        <button aria-label="Ayuda" class="tip" data-help="#sind-uccl" data-tip="Cuota mensual 0,33% del sueldo base o extraordinaria hasta 0,5% por tiempo determinado. Fuente: Estatutos SPLC vigentes." type="button">?</button>
+</div>
+<input data-key="desc.sind_uccl" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        Comisión AFP (monto)
+        <button aria-label="Ayuda" class="tip" data-help="#afp-comision" data-tip="Monto calculado por la comisión AFP = % × imponible." type="button">?</button>
+</div>
+<input data-key="desc.com_afp" readonly="" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        7% Legal Isapre
+        <button aria-label="Ayuda" class="tip" data-help="#isapre7" data-tip="Cotización legal de salud 7% con tope; en isapre puede coexistir con plan." type="button">?</button>
+</div>
+<input data-key="desc.salud7" readonly="" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+          Valor plan Isapre (UF)
+          <button aria-label="Ayuda" class="tip" data-help="#plan-uf" type="button">?</button>
+</div>
+<input data-key="isapre.plan_uf" placeholder="Ej: 22,42" type="text" value=""/>
+</div>
+<div class="row">
+<div class="label">
+        Cot. Adicional
+        <button aria-label="Ayuda" class="tip" data-help="#adicional" data-tip="Adicional de salud (p. ej., plan isapre) sobre el 7% legal." type="button">?</button>
+</div>
+<input data-key="desc.cot_adicional" type="text" value="$0"/>
+</div>
+<div class="row">
+<div class="label">
+        Trabajo Pesado (1,00%)
+        <button aria-label="Ayuda" class="tip" data-help="#trabajo-pesado" data-tip="Cotización adicional 1% trabajador (Ley 19.404); tope respectivo." type="button">?</button>
+</div>
+<input data-key="desc.trab_pesado" readonly="" type="text" value="$0"/>
+</div>
+</div>
+</div>
+
+<div class="card tools-card" id="toolsCard">
+  <h2>Herramientas <button aria-expanded="false" class="btnGhost" id="toolsToggle" type="button">Mostrar</button></h2>
+  <p class="small muted">Módulos auxiliares para cálculos avanzados y explicación tributaria.</p>
+
+  <div id="toolsBody" style="display:none;">
+    <details class="tool-section" id="toolMejorVariable">
+      <summary>Calculo mejor variable</summary>
+      <div class="tool-body">
+        <div class="card base-convenio-card bc-collapsed-card" id="baseConvenioCard">
   <div class="bc-collapse-head">
     <div class="bc-title-wrap">
       <h2>Calculo mejor variable</h2>
@@ -1177,97 +1354,32 @@ body{ line-height:1.5; letter-spacing:.1px; }
   <input id="bcActiveValue" type="hidden" value="0" />
   </div>
 </div>
+      </div>
+    </details>
 
-<div class="card">
-<h2 class="section-tag">DESCUENTOS</h2>
-<div class="grid">
-<div class="row">
-<div class="label">
-        Seguro de Cesantía (trabajador 0,6%)
-        <button aria-label="Ayuda" class="tip" data-help="#cesantia" data-tip="Cotización trabajador 0,6% a AFC (contrato indefinido). Tope según bloque UF — referencia." type="button">?</button>
+    <details class="tool-section" id="toolAPV">
+      <summary>APV</summary>
+      <div class="tool-body">
+        <div class="tool-actions">
+          <button id="cmpAPV_btn" type="button" title="Comparar Con/Sin APV">Comparador APV</button>
+          <button class="help-btn-apv tip" data-help="#apv-guia" data-tip="Abre una guía paso a paso para entender el APV y cuándo conviene cada régimen." type="button">
+            Guía completa APV
+          </button>
+        </div>
+      </div>
+    </details>
+
+    <details class="tool-section" id="toolIUSC">
+      <summary>Demostración paso a paso del Impuesto Único Retenido</summary>
+      <div class="tool-body">
+        <p class="small muted">Abre una demostración didáctica del cálculo del impuesto usando la RLI y la tabla vigente.</p>
+        <button class="btn-iusc-inline tool-iusc-btn" id="btnPasoIUSC" type="button"><span class="ico">🧮</span><span>Ver paso a paso</span></button>
+      </div>
+    </details>
+  </div>
 </div>
-<input data-key="desc.cesantia" readonly="" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        Fondo Pens. AFP (10,00%)
-        <button aria-label="Ayuda" class="tip" data-help="#afp10" data-tip="Cotización obligatoria 10% a AFP sobre renta imponible (tope vigente)." type="button">?</button>
-</div>
-<input data-key="desc.afp10" readonly="" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        Comisión AFP <span class="small">(%)</span>
-<button aria-label="Ayuda" class="tip" data-help="#comision-afp" data-tip="Porcentaje cobrado por la administradora sobre la misma base topada que AFP." type="button">?</button>
-</div>
-<div class="right">
-<input id="pctComAFP" min="0" step="0.01" style="max-width:120px;text-align:right" type="number" value="1.44"/>
-</div>
-</div>
-<div class="row">
-<div class="label">
-        APV
-        <button aria-label="Ayuda" class="tip" data-help="#apv" data-tip="APV (DL 3.500): A = rebaja inmediata; B = diferimiento. Topes: 50 UF / 600 UF." type="button">?</button>
-</div>
-<input data-key="desc.apv" type="text" value="$0"/>
-<select aria-label="Régimen APV" id="apvReg" style="width:auto; margin-left:.5rem;">
-<option selected="" value="B">B (diferido)</option>
-<option value="A">A (rebaja tributable)</option>
-</select>
-<small class="muted" style="margin-left:.5rem">Por defecto: B. Cambia a A si quieres que el APV rebaje la RLI.</small>
-</div>
-<div class="row row-iusc-ret">
-<div class="label">
-        Impuesto único retenido
-        <button aria-label="Ayuda" class="tip" data-help="#iusc-ret" data-tip="IUSC: Art. 42 N.º 1 y 43 N.º 1 LIR. Retención mensual por el empleador según tabla SII vigente." type="button">?</button>
-</div>
-<button class="btn-iusc-inline" id="btnPasoIUSC" type="button"><span class="ico">🧮</span><span>¿Cómo se calcula?</span></button>
-<input data-key="desc.iusc_ret" readonly="" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        Desc. Sind. Pil UCCL
-        <button aria-label="Ayuda" class="tip" data-help="#sind-uccl" data-tip="Cuota mensual 0,33% del sueldo base o extraordinaria hasta 0,5% por tiempo determinado. Fuente: Estatutos SPLC vigentes." type="button">?</button>
-</div>
-<input data-key="desc.sind_uccl" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        Comisión AFP (monto)
-        <button aria-label="Ayuda" class="tip" data-help="#afp-comision" data-tip="Monto calculado por la comisión AFP = % × imponible." type="button">?</button>
-</div>
-<input data-key="desc.com_afp" readonly="" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        7% Legal Isapre
-        <button aria-label="Ayuda" class="tip" data-help="#isapre7" data-tip="Cotización legal de salud 7% con tope; en isapre puede coexistir con plan." type="button">?</button>
-</div>
-<input data-key="desc.salud7" readonly="" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-          Valor plan Isapre (UF)
-          <button aria-label="Ayuda" class="tip" data-help="#plan-uf" type="button">?</button>
-</div>
-<input data-key="isapre.plan_uf" placeholder="Ej: 22,42" type="text" value=""/>
-</div>
-<div class="row">
-<div class="label">
-        Cot. Adicional
-        <button aria-label="Ayuda" class="tip" data-help="#adicional" data-tip="Adicional de salud (p. ej., plan isapre) sobre el 7% legal." type="button">?</button>
-</div>
-<input data-key="desc.cot_adicional" type="text" value="$0"/>
-</div>
-<div class="row">
-<div class="label">
-        Trabajo Pesado (1,00%)
-        <button aria-label="Ayuda" class="tip" data-help="#trabajo-pesado" data-tip="Cotización adicional 1% trabajador (Ley 19.404); tope respectivo." type="button">?</button>
-</div>
-<input data-key="desc.trab_pesado" readonly="" type="text" value="$0"/>
-</div>
-</div>
-</div>
+
+
 <div class="card">
 <h2 class="section-tag">VALOR UF (CLP) — REFERENCIA</h2>
 <div class="row">
@@ -2658,15 +2770,7 @@ function setIuscRetValue(monto){
 <div class="k">Líquido a Pagar <span aria-live="polite" class="chip delta" id="kpiDelta"></span></div>
 <div class="v" id="kpiLP">$0</div>
 </div>
-<div class="kpi kpi-apv-tools">
-<div class="k">Herramientas APV</div>
-<div class="v kpi-apv-actions">
-<button aria-controls="cmpAPV_drawer" id="cmpAPV_btn" title="Comparar Con/Sin APV">Comparar APV</button>
-<button class="help-btn-apv tip" data-help="#apv-guia" data-tip="Abre una guía paso a paso para entender el APV y cuándo conviene cada régimen." type="button">
-          Ver guía completa APV
-        </button>
-</div>
-</div>
+
 </div>
 </div>
 <script>
@@ -3798,6 +3902,33 @@ function setIuscRetValue(monto){
 
     let open = false;
     try{ open = localStorage.getItem('remuTool.bcCollapsedOpen') === '1'; }catch(e){}
+    setOpen(open);
+
+    btn.addEventListener('click', function(){
+      setOpen(body.style.display === 'none');
+    });
+  });
+})();
+</script>
+
+
+<script>
+/* === Toggle panel Herramientas === */
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('toolsToggle');
+    const body = document.getElementById('toolsBody');
+    if(!btn || !body) return;
+
+    function setOpen(open){
+      body.style.display = open ? '' : 'none';
+      btn.textContent = open ? 'Ocultar' : 'Mostrar';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      try{ localStorage.setItem('remuTool.toolsOpen', open ? '1' : '0'); }catch(e){}
+    }
+
+    let open = false;
+    try{ open = localStorage.getItem('remuTool.toolsOpen') === '1'; }catch(e){}
     setOpen(open);
 
     btn.addEventListener('click', function(){
