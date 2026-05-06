@@ -1127,6 +1127,52 @@ body{ line-height:1.5; letter-spacing:.1px; }
 }
 </style>
 
+
+<style>
+/* === UF automática y compacta v.1.2.0.f.w.t === */
+.compact-uf{
+  padding:14px 16px;
+}
+.compact-uf .section-tag{
+  margin-bottom:10px;
+}
+.uf-inline{
+  display:grid;
+  grid-template-columns:minmax(220px,1fr) minmax(150px,220px) auto;
+  gap:10px;
+  align-items:center;
+}
+.uf-inline .label{
+  min-width:0;
+}
+.uf-inline input{
+  text-align:right;
+  font-weight:800;
+}
+.uf-refresh{
+  white-space:nowrap;
+  min-height:42px;
+}
+.uf-status{
+  margin:8px 0 0;
+  min-height:18px;
+}
+.uf-status.ok{color:#bbf7d0}
+.uf-status.warn{color:#fbbf24}
+.uf-status.err{color:#fca5a5}
+.uf-tops{
+  margin:6px 0 0;
+}
+@media (max-width:720px){
+  .uf-inline{
+    grid-template-columns:1fr;
+  }
+  .uf-refresh{
+    width:100%;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1433,16 +1479,18 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </div>
 
 
-<div class="card">
-<h2 class="section-tag">VALOR UF (CLP) — REFERENCIA</h2>
-<div class="row">
-<div class="label">
-        Valor UF último día del mes
-<button aria-label="Ayuda" class="tip" data-help="#valor-uf" data-tip="Usa la UF del último día del mes de remuneración. Fuente: SII (link en ayuda)." type="button">?</button>
+<div class="card uf-card compact-uf">
+<h2 class="section-tag">UF referencia</h2>
+<div class="uf-inline">
+  <div class="label">
+    UF último día mes anterior
+    <button aria-label="Ayuda" class="tip" data-help="#valor-uf" data-tip="Se intenta obtener automáticamente la UF del último día del mes anterior. Si no hay conexión o falla la consulta, puedes ingresarla manualmente. Link SII en ayuda." type="button">?</button>
+  </div>
+  <input id="ufVal" type="text" value="$39.486"/>
+  <button class="btnGhost uf-refresh" id="ufRefresh" type="button">Actualizar</button>
 </div>
-<input id="ufVal" type="text" value="$39.486"/>
-</div>
-<p class="small muted">Topes: AFP/Salud <b>89,9 UF</b>, Seguro de Cesantía/Trabajo pesado <b>135,1 UF</b>.</p>
+<p class="small muted uf-status" id="ufStatus">Intentando obtener UF del último día del mes anterior…</p>
+<p class="small muted uf-tops">Topes: AFP/Salud <b>89,9 UF</b> · Seguro de Cesantía/Trabajo pesado <b>135,1 UF</b>.</p>
 </div>
 <div class="duo">
 <div class="card">
@@ -3987,6 +4035,120 @@ function setIuscRetValue(monto){
     btn.addEventListener('click', function(){
       setOpen(body.style.display === 'none');
     });
+  });
+})();
+</script>
+
+
+<script>
+/* === UF automática: último día del mes anterior === */
+(function(){
+  const fmtCLP=(n)=>'$'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('es-CL');
+  const parseCLP=(s)=>{const cleaned=String(s||'').replace(/[^0-9]/g,'');const n=Number(cleaned);return Number.isFinite(n)?n:0;};
+  const byId=(id)=>document.getElementById(id);
+
+  function lastDayPreviousMonth(date=new Date()){
+    return new Date(date.getFullYear(), date.getMonth(), 0);
+  }
+
+  function isoDateLocal(d){
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const day=String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+  }
+
+  function humanDate(d){
+    const day=String(d.getDate()).padStart(2,'0');
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const y=d.getFullYear();
+    return `${day}-${m}-${y}`;
+  }
+
+  function setStatus(msg, cls){
+    const el=byId('ufStatus');
+    if(!el) return;
+    el.textContent=msg;
+    el.classList.remove('ok','warn','err');
+    if(cls) el.classList.add(cls);
+  }
+
+  function setUfValue(value, source, targetDate){
+    const input=byId('ufVal');
+    if(!input) return;
+    input.value=fmtCLP(value);
+    try{
+      localStorage.setItem('remuTool.ufLastValue', String(Math.round(value)));
+      localStorage.setItem('remuTool.ufLastDate', isoDateLocal(targetDate));
+      localStorage.setItem('remuTool.ufLastSource', source || 'online');
+    }catch(e){}
+    input.dispatchEvent(new Event('input',{bubbles:true}));
+    input.dispatchEvent(new Event('change',{bubbles:true}));
+  }
+
+  function sameDateFromApi(apiDate, target){
+    const d=new Date(apiDate);
+    return d.getUTCFullYear()===target.getFullYear()
+      && d.getUTCMonth()===target.getMonth()
+      && d.getUTCDate()===target.getDate();
+  }
+
+  async function fetchUfFromMindicador(target){
+    const year=target.getFullYear();
+
+    // 1) Serie anual: más robusta para buscar el último día del mes anterior.
+    let res=await fetch(`https://mindicador.cl/api/uf/${year}`, {cache:'no-store'});
+    if(res.ok){
+      const data=await res.json();
+      const item=(data.serie||[]).find(x=>sameDateFromApi(x.fecha,target));
+      if(item && Number.isFinite(Number(item.valor))) return Number(item.valor);
+    }
+
+    // 2) Fallback serie reciente.
+    res=await fetch('https://mindicador.cl/api/uf', {cache:'no-store'});
+    if(res.ok){
+      const data=await res.json();
+      const item=(data.serie||[]).find(x=>sameDateFromApi(x.fecha,target));
+      if(item && Number.isFinite(Number(item.valor))) return Number(item.valor);
+    }
+
+    throw new Error('UF no encontrada');
+  }
+
+  async function updateUf(){
+    const target=lastDayPreviousMonth();
+    setStatus(`Buscando UF ${humanDate(target)}…`, 'warn');
+
+    try{
+      const value=await fetchUfFromMindicador(target);
+      setUfValue(value,'mindicador',target);
+      setStatus(`UF ${humanDate(target)} obtenida automáticamente.`, 'ok');
+    }catch(e){
+      // No usamos valor antiguo automáticamente, para no inducir error de mes.
+      setStatus('No se pudo obtener informacion. Ingresa la UF manualmente.', 'err');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    const btn=byId('ufRefresh');
+    const input=byId('ufVal');
+
+    if(btn) btn.addEventListener('click',updateUf);
+
+    if(input){
+      input.addEventListener('blur',function(){
+        const n=parseCLP(input.value);
+        if(n>0){
+          input.value=fmtCLP(n);
+          try{
+            localStorage.setItem('remuTool.ufManualValue', String(n));
+          }catch(e){}
+          setStatus('UF ingresada manualmente.', 'warn');
+        }
+      },{passive:true});
+    }
+
+    updateUf();
   });
 })();
 </script>
