@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="1.1.1.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v1.1.1.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.0.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.0.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -297,7 +297,7 @@ input[readonly]{opacity:.9}
 }
 
 
-/* ===== v1.1.1.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
+/* ===== v.1.2.0.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
 
 /* Tipografía & espaciado global */
 body{ line-height:1.5; letter-spacing:.1px; }
@@ -1071,6 +1071,59 @@ body{ line-height:1.5; letter-spacing:.1px; }
     flex-direction:column;
   }
   #toolsToggle{width:100%}
+}
+</style>
+
+
+<style>
+/* === UI polish v.1.2.0.f.w.t: KPIs centrados y botones APV consistentes === */
+#kpiWrap.kpi-wrap{
+  max-width: 980px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  grid-template-columns: repeat(5, minmax(150px, 1fr)) !important;
+  justify-content: center;
+}
+#kpiFooter{
+  display:block;
+}
+.tool-actions{
+  grid-template-columns:repeat(2, minmax(180px, 1fr)) !important;
+  align-items:stretch;
+}
+.tool-actions button{
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  min-height:42px !important;
+  padding:10px 14px !important;
+  border-radius:999px !important;
+  border:1px solid var(--border) !important;
+  background:#0b1526 !important;
+  color:#e7f0ff !important;
+  font-weight:800 !important;
+  line-height:1.15 !important;
+  text-align:center !important;
+  box-shadow:none !important;
+}
+.tool-actions button:hover{
+  background:rgba(15,23,42,.96) !important;
+  border-color:rgba(90,169,255,.45) !important;
+}
+@media (max-width:920px){
+  #kpiWrap.kpi-wrap{
+    max-width: 720px !important;
+    grid-template-columns: repeat(2, minmax(150px, 1fr)) !important;
+  }
+}
+@media (max-width:560px){
+  #kpiWrap.kpi-wrap{
+    max-width: none !important;
+    grid-template-columns:1fr !important;
+  }
+  .tool-actions{
+    grid-template-columns:1fr !important;
+  }
 }
 </style>
 
@@ -3216,7 +3269,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <footer class="footer">
-<div class="footer-title">Simulador Liquidación de Sueldo Versión v1.1.1.f.w.t</div>
+<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.0.f.w.t</div>
 <div class="footer-text">
     Herramienta desarrollada para apoyar al usuario en la comprensión de su liquidación mensual con fines demostrativos.<br/>
     Los resultados mostrados son referenciales y no constituyen información oficial.
@@ -3256,7 +3309,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <script>
-// v1.1.1.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
+// v.1.2.0.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
 (function(){
   const ids = ['kpiTH','kpiDL','kpiDV','kpiAL','kpiLP','kpiDelta'];
   const els = ids.map(id=>document.getElementById(id)).filter(Boolean);
