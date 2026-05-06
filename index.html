@@ -1475,6 +1475,68 @@ body{ line-height:1.5; letter-spacing:.1px; }
         <button class="btn-iusc-inline tool-iusc-btn" id="btnPasoIUSC" type="button"><span class="ico">🧮</span><span>Ver paso a paso</span></button>
       </div>
     </details>
+
+    <details class="tool-section" id="toolLM">
+      <summary>Simulador Licencia Médica Carga</summary>
+      <div class="tool-body">
+        <p class="small muted">Estimación referencial según práctica actual carga: no considera mejor variable 3/12 para el complemento de licencia. En licencia parcial mantiene los conceptos operacionales ya ingresados si fueron generados en el mes.</p>
+
+        <div class="lm-calc">
+          <label class="lm-field">
+            <span>Tipo de licencia</span>
+            <select id="lmModo">
+              <option value="parcial">Parcial / mes mixto</option>
+              <option value="completa">Mes completo / mayor a 30 días</option>
+            </select>
+          </label>
+
+          <label class="lm-field">
+            <span>Días de licencia médica</span>
+            <input id="lmDias" inputmode="numeric" type="number" min="1" step="1" placeholder="0"/>
+          </label>
+
+          <div class="lm-grid">
+            <div class="lm-box"><span>Sueldo base</span><strong id="lmSueldo">$0</strong></div>
+            <div class="lm-box"><span>Antigüedad</span><strong id="lmAntig">$0</strong></div>
+            <div class="lm-box"><span>Gratificación</span><strong id="lmGrat">$0</strong></div>
+            <div class="lm-box"><span>Base fija LM carga</span><strong id="lmBaseFija">$0</strong></div>
+          </div>
+
+          <div class="lm-operacionales" id="lmOperacionales">
+            <h4>Conceptos operacionales copiados desde Haberes</h4>
+            <div class="lm-grid">
+              <div class="lm-box"><span>Productividad</span><strong id="lmProd">$0</strong></div>
+              <div class="lm-box"><span>Bono vacaciones</span><strong id="lmVac">$0</strong></div>
+              <div class="lm-box"><span>Feriados</span><strong id="lmFer">$0</strong></div>
+              <div class="lm-box"><span>Secuencia 9/10</span><strong id="lmSec">$0</strong></div>
+            </div>
+          </div>
+
+          <div class="lm-results">
+            <div><span>Base diaria convenio carga</span><strong id="lmBaseDia">$0</strong></div>
+            <div><span>Subsidio diario estimado</span><strong id="lmSubDia">$0</strong></div>
+            <div><span>Días con subsidio legal estimado</span><strong id="lmDiasSub">0</strong></div>
+            <div><span>Cobertura 3 primeros días</span><strong id="lmTresDias">$0</strong></div>
+            <div><span>Subsidio total estimado</span><strong id="lmSubTotal">$0</strong></div>
+            <div><span>Diferencia subsidio empresa</span><strong id="lmDifEmpresa">$0</strong></div>
+            <div><span>Total estimado asociado a LM</span><strong id="lmTotalLM">$0</strong></div>
+          </div>
+
+          <p class="small muted lm-note" id="lmNota">Estimación referencial. El subsidio real puede variar según Isapre/Fonasa, COMPIN, topes legales, reliquidaciones y criterios internos de pago.</p>
+        </div>
+
+        <details class="convenio-box">
+          <summary>Ver cláusula carga y criterio usado</summary>
+          <div class="convenio-text">
+            <p><b>Licencia médica — Convenio carga</b></p>
+            <p>La Empresa enterará la diferencia en dinero que se produzca entre el valor del subsidio diario y la correspondiente remuneración líquida diaria del trabajador, incluidos los tres primeros días licencia médica cuando corresponda. Para estos efectos se considerará la base de cálculo indicada en la cláusula cuarta numeral 5, a partir de octubre de 2023.</p>
+            <p>Para tener derecho a este beneficio el trabajador deberá presentar la licencia médica reglamentaria dentro del plazo que establezcan las normas vigentes. La presentación fuera de plazo, su sustitución por certificado médico u otro documento, y el no pago total o parcial del subsidio legal por cualquier causa no darán derecho al beneficio pactado.</p>
+            <p><b>Criterio implementado:</b> práctica actual carga sin protección explícita del mejor promedio variable 3/12 para licencia médica. Para mes parcial se muestran variables operacionales efectivamente ingresadas en Haberes. Para mes completo se desactivan visualmente esos conceptos.</p>
+          </div>
+        </details>
+      </div>
+    </details>
+
   </div>
 </div>
 
@@ -4149,6 +4211,105 @@ function setIuscRetValue(monto){
     }
 
     updateUf();
+  });
+})();
+</script>
+
+
+<script>
+/* === Simulador Licencia Médica Carga === */
+(function(){
+  const fmtCLP=(n)=>'$'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('es-CL');
+  const parseCLP=(s)=>{const cleaned=String(s||'').replace(/[^0-9]/g,'');const n=Number(cleaned);return Number.isFinite(n)?n:0;};
+  const byId=(id)=>document.getElementById(id);
+  const byKey=(k)=>document.querySelector('[data-key="'+k+'"]');
+
+  function val(key){ return parseCLP(byKey(key)?.value); }
+  function uf(){ return parseCLP(byId('ufVal')?.value); }
+
+  function setText(id, value){
+    const el=byId(id);
+    if(el) el.textContent = typeof value === 'number' ? fmtCLP(value) : String(value);
+  }
+
+  function renderLM(){
+    const modo=byId('lmModo')?.value || 'parcial';
+    const diasRaw=Number(byId('lmDias')?.value || 0);
+    const dias=Math.max(0, Number.isFinite(diasRaw) ? Math.floor(diasRaw) : 0);
+
+    const sueldo=val('haber.sueldo_base');
+    const antig=val('haber.antiguedad');
+    const grat=val('haber.gratificacion');
+    const prod=val('haber.bono_prod');
+    const vac=val('haber.bono_vacaciones');
+    const fer=val('haber.feriados');
+    const sec=val('haber.secuencia_9_10');
+
+    const baseFija=sueldo+antig+grat;
+    const baseDia=baseFija/30;
+
+    // Estimación legal simplificada: subsidio diario topado por tope AFP/salud de 89,9 UF.
+    const topeMensual = uf() > 0 ? uf()*89.9 : baseFija;
+    const subDia = Math.min(baseFija, topeMensual)/30;
+
+    const diasSub = dias > 10 ? dias : Math.max(0, dias-3);
+    const diasCarencia = dias > 0 && dias <= 10 ? Math.min(3,dias) : 0;
+
+    const subsidioTotal = subDia * diasSub;
+    const coberturaTres = baseDia * diasCarencia;
+    const diferenciaEmpresa = Math.max(0, (baseDia - subDia) * diasSub);
+    const totalLM = subsidioTotal + coberturaTres + diferenciaEmpresa;
+
+    setText('lmSueldo', sueldo);
+    setText('lmAntig', antig);
+    setText('lmGrat', grat);
+    setText('lmBaseFija', baseFija);
+
+    setText('lmProd', modo==='parcial' ? prod : 0);
+    setText('lmVac', modo==='parcial' ? vac : 0);
+    setText('lmFer', modo==='parcial' ? fer : 0);
+    setText('lmSec', modo==='parcial' ? sec : 0);
+
+    setText('lmBaseDia', baseDia);
+    setText('lmSubDia', subDia);
+    setText('lmDiasSub', diasSub);
+    setText('lmTresDias', coberturaTres);
+    setText('lmSubTotal', subsidioTotal);
+    setText('lmDifEmpresa', diferenciaEmpresa);
+    setText('lmTotalLM', totalLM);
+
+    const op=byId('lmOperacionales');
+    if(op) op.classList.toggle('lm-disabled', modo!=='parcial');
+
+    const nota=byId('lmNota');
+    if(nota){
+      if(modo==='completa'){
+        nota.textContent='Modo mes completo: la estimación desactiva productividad, vacaciones, feriados y secuencia 9/10 como conceptos operacionales del mes. No usa mejor variable 3/12 según práctica actual carga.';
+      }else{
+        nota.textContent='Modo parcial: se copian los conceptos operacionales ya ingresados en Haberes. No se usa mejor variable 3/12 para el complemento de licencia en la práctica actual carga.';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function(){
+    ['lmModo','lmDias','ufVal'].forEach(function(id){
+      const el=byId(id);
+      if(el){
+        el.addEventListener(id==='lmModo' ? 'change' : 'input', renderLM, {passive:true});
+        el.addEventListener('blur', renderLM, {passive:true});
+      }
+    });
+
+    document.addEventListener('input', function(e){
+      if(e.target && e.target.matches('[data-key^="haber."]')) renderLM();
+    }, {passive:true});
+
+    document.addEventListener('click', function(e){
+      const btn=e.target.closest && e.target.closest('#toolLM summary');
+      if(btn) setTimeout(renderLM,120);
+    }, true);
+
+    renderLM();
   });
 })();
 </script>
