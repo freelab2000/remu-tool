@@ -965,6 +965,38 @@ body{ line-height:1.5; letter-spacing:.1px; }
 }
 </style>
 
+
+<style>
+/* === Etapa 2: módulos usan la variable global activa === */
+.fer-info strong#ferVariableActiva,
+.sec-info strong#secVariableActiva{
+  color:#bbf7d0;
+}
+</style>
+
+
+<style>
+/* === Persistencia local: Calculo mejor variable === */
+.bc-btn.secondary{
+  margin-top:8px;
+  border-color:rgba(239,68,68,.35);
+  background:rgba(127,29,29,.18);
+  color:#fecaca;
+}
+.bc-btn.secondary:hover{
+  background:rgba(127,29,29,.28);
+}
+.bc-storage-note{
+  margin:8px 12px 12px;
+  padding:8px 10px;
+  border-left:3px solid rgba(96,165,250,.36);
+  border-radius:8px;
+  background:rgba(96,165,250,.06);
+}
+.bc-storage-note.ok{color:#bbf7d0}
+.bc-storage-note.warn{color:#fbbf24}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1138,6 +1170,8 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
     <p class="small muted" id="bcWarn"></p>
     <button class="bc-btn" id="bcUseHistory" type="button">Usar resultado histórico</button>
+    <button class="bc-btn secondary" id="bcClearHistory" type="button">Limpiar historial</button>
+    <p class="small muted bc-storage-note" id="bcStorageNote">Los datos quedan guardados solo en este dispositivo.</p>
   </details>
 
   <input id="bcActiveValue" type="hidden" value="0" />
@@ -1552,12 +1586,11 @@ body{ line-height:1.5; letter-spacing:.1px; }
     <span>Asignación de Antigüedad detectada</span>
     <strong id="ferAntiguedad">$0</strong>
   </div>
-
-  <label class="fer-field">
-    <span>Mayor promedio Remuneración Variable</span>
-    <input id="ferVariableProm" inputmode="numeric" type="text" placeholder="$0"/>
-  </label>
-  <p class="small muted fer-note">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>
+  <div class="fer-info">
+    <span>Mejor variable 3/12 activa</span>
+    <strong id="ferVariableActiva">$0</strong>
+  </div>
+  <p class="small muted fer-note">Este valor viene desde el módulo global <b>Calculo mejor variable</b>. Si necesitas cambiarlo, actualízalo allí una sola vez.</p>
 
   <label class="fer-field">
     <span>Cantidad de feriados trabajados</span>
@@ -1611,12 +1644,11 @@ body{ line-height:1.5; letter-spacing:.1px; }
     <span>Asignación de Antigüedad detectada</span>
     <strong id="secAntiguedad">$0</strong>
   </div>
-
-  <label class="sec-field">
-    <span>Mayor promedio Remuneración Variable</span>
-    <input id="secVariableProm" inputmode="numeric" type="text" placeholder="$0"/>
-  </label>
-  <p class="small muted sec-note">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>
+  <div class="sec-info">
+    <span>Mejor variable 3/12 activa</span>
+    <strong id="secVariableActiva">$0</strong>
+  </div>
+  <p class="small muted sec-note">Este valor viene desde el módulo global <b>Calculo mejor variable</b>. Si necesitas cambiarlo, actualízalo allí una sola vez.</p>
 
   <label class="sec-field">
     <span>Cantidad de secuencias de 9 días</span>
@@ -3298,6 +3330,7 @@ function setIuscRetValue(monto){
 
 
 
+
 <script>
 /* === Compensación Feriados: cálculo asistido + aplicación a Haberes === */
 (function(){
@@ -3308,21 +3341,25 @@ function setIuscRetValue(monto){
 
   function sueldoBaseActual(){return parseCLP(byKey('haber.sueldo_base')?.value);}
   function antiguedadActual(){return parseCLP(byKey('haber.antiguedad')?.value);}
-  function variablePromedio(){return parseCLP(byId('ferVariableProm')?.value);}
+  function variableGlobal(){
+    const hidden=byId('bcActiveValue');
+    if(hidden) return parseCLP(hidden.value);
+    return Number(window.__baseConvenioVariable||0) || 0;
+  }
 
   function renderFeriados(){
     const sueldoEl=byId('ferSueldoBase');
     const antigEl=byId('ferAntiguedad');
-    const varEl=byId('ferVariableProm');
+    const varActivaEl=byId('ferVariableActiva');
     const diasEl=byId('ferDias');
     const baseEl=byId('ferBaseCalculo');
     const porDiaEl=byId('ferPorDia');
     const totalEl=byId('ferTotal');
-    if(!sueldoEl||!antigEl||!varEl||!diasEl||!baseEl||!porDiaEl||!totalEl) return 0;
+    if(!sueldoEl||!antigEl||!varActivaEl||!diasEl||!baseEl||!porDiaEl||!totalEl) return 0;
 
     const sueldo=sueldoBaseActual();
     const antig=antiguedadActual();
-    const variable=variablePromedio();
+    const variable=variableGlobal();
     const diasRaw=Number(diasEl.value||0);
     const dias=Math.max(0,Number.isFinite(diasRaw)?diasRaw:0);
 
@@ -3332,34 +3369,18 @@ function setIuscRetValue(monto){
 
     sueldoEl.textContent=fmtCLP(sueldo);
     antigEl.textContent=fmtCLP(antig);
+    varActivaEl.textContent=fmtCLP(variable);
     baseEl.textContent=fmtCLP(base);
     porDiaEl.textContent=fmtCLP(porDia);
     totalEl.textContent=fmtCLP(total);
     return total;
   }
 
-  function formatMoneyInput(el){
-    if(!el) return;
-    el.value=fmtCLP(parseCLP(el.value));
-  }
-
   document.addEventListener('DOMContentLoaded',function(){
     const diasEl=byId('ferDias');
-    const varEl=byId('ferVariableProm');
     const applyBtn=byId('ferApply');
     const sueldoBaseInput=byKey('haber.sueldo_base');
     const antigInput=byKey('haber.antiguedad');
-
-    if(varEl){
-      varEl.addEventListener('input',function(){
-        varEl.value=String(varEl.value||'').replace(/[^0-9]/g,'');
-        renderFeriados();
-      },{passive:true});
-      varEl.addEventListener('blur',function(){
-        formatMoneyInput(varEl);
-        renderFeriados();
-      },{passive:true});
-    }
 
     if(diasEl){
       diasEl.addEventListener('input',renderFeriados,{passive:true});
@@ -3372,11 +3393,11 @@ function setIuscRetValue(monto){
 
     [sueldoBaseInput, antigInput].forEach(function(el){
       if(el){
-        el.addEventListener('input',function(){
-          setTimeout(renderFeriados,0);
-        },{passive:true});
+        el.addEventListener('input',function(){setTimeout(renderFeriados,0);},{passive:true});
       }
     });
+
+    document.addEventListener('baseConvenio:change', renderFeriados);
 
     if(applyBtn){
       applyBtn.addEventListener('click',function(){
@@ -3404,6 +3425,7 @@ function setIuscRetValue(monto){
 
 
 
+
 <script>
 /* === Secuencia días 9 y 10: cálculo asistido + aplicación a Haberes === */
 (function(){
@@ -3414,7 +3436,11 @@ function setIuscRetValue(monto){
 
   function sueldoBaseActual(){return parseCLP(byKey('haber.sueldo_base')?.value);}
   function antiguedadActual(){return parseCLP(byKey('haber.antiguedad')?.value);}
-  function variablePromedio(){return parseCLP(byId('secVariableProm')?.value);}
+  function variableGlobal(){
+    const hidden=byId('bcActiveValue');
+    if(hidden) return parseCLP(hidden.value);
+    return Number(window.__baseConvenioVariable||0) || 0;
+  }
   function cantidad(id){
     const raw=Number(byId(id)?.value||0);
     return Math.max(0,Number.isFinite(raw)?raw:0);
@@ -3426,7 +3452,7 @@ function setIuscRetValue(monto){
   function renderSecuencia(){
     const sueldoEl=byId('secSueldoBase');
     const antigEl=byId('secAntiguedad');
-    const varEl=byId('secVariableProm');
+    const varActivaEl=byId('secVariableActiva');
     const cant9El=byId('secCant9');
     const cant10El=byId('secCant10');
     const baseEl=byId('secBaseCalculo');
@@ -3434,11 +3460,11 @@ function setIuscRetValue(monto){
     const pct10El=byId('secPct10');
     const pctTotalEl=byId('secPctTotal');
     const totalEl=byId('secTotal');
-    if(!sueldoEl||!antigEl||!varEl||!cant9El||!cant10El||!baseEl||!pct9El||!pct10El||!pctTotalEl||!totalEl) return 0;
+    if(!sueldoEl||!antigEl||!varActivaEl||!cant9El||!cant10El||!baseEl||!pct9El||!pct10El||!pctTotalEl||!totalEl) return 0;
 
     const sueldo=sueldoBaseActual();
     const antig=antiguedadActual();
-    const variable=variablePromedio();
+    const variable=variableGlobal();
     const cant9=cantidad('secCant9');
     const cant10=cantidad('secCant10');
 
@@ -3450,17 +3476,13 @@ function setIuscRetValue(monto){
 
     sueldoEl.textContent=fmtCLP(sueldo);
     antigEl.textContent=fmtCLP(antig);
+    varActivaEl.textContent=fmtCLP(variable);
     baseEl.textContent=fmtCLP(base);
     pct9El.textContent=fmtPct(pct9);
     pct10El.textContent=fmtPct(pct10);
     pctTotalEl.textContent=fmtPct(pctTotal);
     totalEl.textContent=fmtCLP(total);
     return total;
-  }
-
-  function formatMoneyInput(el){
-    if(!el) return;
-    el.value=fmtCLP(parseCLP(el.value));
   }
 
   function normalizeCount(el){
@@ -3470,23 +3492,11 @@ function setIuscRetValue(monto){
   }
 
   document.addEventListener('DOMContentLoaded',function(){
-    const varEl=byId('secVariableProm');
     const cant9El=byId('secCant9');
     const cant10El=byId('secCant10');
     const applyBtn=byId('secApply');
     const sueldoBaseInput=byKey('haber.sueldo_base');
     const antigInput=byKey('haber.antiguedad');
-
-    if(varEl){
-      varEl.addEventListener('input',function(){
-        varEl.value=String(varEl.value||'').replace(/[^0-9]/g,'');
-        renderSecuencia();
-      },{passive:true});
-      varEl.addEventListener('blur',function(){
-        formatMoneyInput(varEl);
-        renderSecuencia();
-      },{passive:true});
-    }
 
     [cant9El,cant10El].forEach(function(el){
       if(!el) return;
@@ -3502,6 +3512,8 @@ function setIuscRetValue(monto){
         el.addEventListener('input',function(){setTimeout(renderSecuencia,0);},{passive:true});
       }
     });
+
+    document.addEventListener('baseConvenio:change', renderSecuencia);
 
     if(applyBtn){
       applyBtn.addEventListener('click',function(){
@@ -3528,12 +3540,48 @@ function setIuscRetValue(monto){
 </script>
 
 
+
 <script>
-/* === Base Cálculo Convenio: variable global reutilizable === */
+/* === Base Cálculo Convenio: variable global reutilizable + persistencia local === */
 (function(){
   const fmtCLP=(n)=>'$'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('es-CL');
   const parseCLP=(s)=>{const cleaned=String(s||'').replace(/[^0-9]/g,'');const n=Number(cleaned);return Number.isFinite(n)?n:0;};
   const byId=(id)=>document.getElementById(id);
+  const LS_PREFIX='remuTool.baseConvenio.';
+  const LS_ACTIVE='remuTool.baseConvenioVariable';
+  const LS_SOURCE='remuTool.baseConvenioSource';
+
+  function setNote(msg, cls){
+    const note=byId('bcStorageNote');
+    if(!note) return;
+    note.textContent=msg || 'Los datos quedan guardados solo en este dispositivo.';
+    note.classList.remove('ok','warn');
+    if(cls) note.classList.add(cls);
+  }
+
+  function saveField(key, value){
+    try{ localStorage.setItem(LS_PREFIX+key, String(value ?? '')); }catch(e){}
+  }
+
+  function loadField(key, fallback=''){
+    try{
+      const v=localStorage.getItem(LS_PREFIX+key);
+      return v == null ? fallback : v;
+    }catch(e){ return fallback; }
+  }
+
+  function clearStoredHistory(){
+    try{
+      const keys=[];
+      for(let i=0;i<localStorage.length;i++){
+        const k=localStorage.key(i);
+        if(k && (k.startsWith(LS_PREFIX) || k===LS_ACTIVE || k===LS_SOURCE || k==='remuTool.bcCollapsedOpen')){
+          keys.push(k);
+        }
+      }
+      keys.forEach(k=>localStorage.removeItem(k));
+    }catch(e){}
+  }
 
   function setActive(value, source){
     const n=Math.max(0,Math.round(Number(value)||0));
@@ -3541,23 +3589,9 @@ function setIuscRetValue(monto){
     const displays=document.querySelectorAll('#bcActiveDisplay, #bcActiveDisplayBody');
     if(hidden) hidden.value=String(n);
     displays.forEach(function(display){ display.textContent=fmtCLP(n); });
-    try{ localStorage.setItem('remuTool.baseConvenioVariable', String(n)); }catch(e){}
-    try{ localStorage.setItem('remuTool.baseConvenioSource', source || 'manual'); }catch(e){}
+    try{ localStorage.setItem(LS_ACTIVE, String(n)); }catch(e){}
+    try{ localStorage.setItem(LS_SOURCE, source || 'manual'); }catch(e){}
     window.__baseConvenioVariable = n;
-
-    // Sincroniza módulos que usan el mismo mayor promedio variable.
-    ['ferVariableProm','secVariableProm'].forEach(function(id){
-      const el=byId(id);
-      if(el && n>0){
-        const current=parseCLP(el.value);
-        if(current===0 || el.dataset.syncedBaseConvenio === '1'){
-          el.value=fmtCLP(n);
-          el.dataset.syncedBaseConvenio='1';
-          el.dispatchEvent(new Event('input',{bubbles:true}));
-          el.dispatchEvent(new Event('change',{bubbles:true}));
-        }
-      }
-    });
 
     document.dispatchEvent(new CustomEvent('baseConvenio:change',{detail:{value:n,source:source||'manual'}}));
   }
@@ -3581,6 +3615,45 @@ function setIuscRetValue(monto){
   function avg(arr){
     if(!arr.length) return 0;
     return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+  }
+
+  function saveHistory(){
+    const manual=byId('bcManual');
+    if(manual) saveField('manual', parseCLP(manual.value));
+
+    for(let i=1;i<=12;i++){
+      const input=byId('bcVar'+i);
+      const ok=byId('bcOk'+i);
+      if(input) saveField('var'+i, parseCLP(input.value));
+      if(ok) saveField('ok'+i, ok.checked ? '1' : '0');
+    }
+
+    const active=readActive();
+    saveField('active', active);
+    setNote('Datos guardados automáticamente en este dispositivo.', 'ok');
+  }
+
+  function restoreHistory(){
+    const manual=byId('bcManual');
+    const savedManual=Number(loadField('manual', 0));
+    if(manual && savedManual>0) manual.value=fmtCLP(savedManual);
+
+    for(let i=1;i<=12;i++){
+      const input=byId('bcVar'+i);
+      const ok=byId('bcOk'+i);
+      const v=Number(loadField('var'+i, 0));
+      const okSaved=loadField('ok'+i, '1');
+      if(input && v>0) input.value=fmtCLP(v);
+      if(ok) ok.checked = okSaved !== '0';
+    }
+
+    let savedActive=0;
+    try{ savedActive=Number(localStorage.getItem(LS_ACTIVE) || loadField('active', 0) || 0); }catch(e){}
+    if(Number.isFinite(savedActive) && savedActive>0){
+      setActive(savedActive, localStorage.getItem(LS_SOURCE) || 'saved');
+      if(manual && !manual.value) manual.value=fmtCLP(savedActive);
+      setNote('Historial restaurado desde este dispositivo.', 'ok');
+    }
   }
 
   function renderHistory(){
@@ -3613,27 +3686,27 @@ function setIuscRetValue(monto){
     const manual=byId('bcManual');
     const useManual=byId('bcUseManual');
     const useHistory=byId('bcUseHistory');
+    const clearBtn=byId('bcClearHistory');
 
-    try{
-      const saved=Number(localStorage.getItem('remuTool.baseConvenioVariable') || 0);
-      if(Number.isFinite(saved) && saved>0){
-        setActive(saved, localStorage.getItem('remuTool.baseConvenioSource') || 'saved');
-        if(manual) manual.value=fmtCLP(saved);
-      }
-    }catch(e){}
+    restoreHistory();
+    renderHistory();
 
     if(manual){
       manual.addEventListener('input',function(){
         manual.value=String(manual.value||'').replace(/[^0-9]/g,'');
+        saveHistory();
       },{passive:true});
       manual.addEventListener('blur',function(){
         formatMoneyInput(manual);
+        saveHistory();
       },{passive:true});
     }
 
     if(useManual){
       useManual.addEventListener('click',function(){
         setActive(parseCLP(manual ? manual.value : ''),'manual');
+        saveHistory();
+        setNote('Valor manual aplicado y guardado en este dispositivo.', 'ok');
       });
     }
 
@@ -3644,13 +3717,20 @@ function setIuscRetValue(monto){
         input.addEventListener('input',function(){
           input.value=String(input.value||'').replace(/[^0-9]/g,'');
           renderHistory();
+          saveHistory();
         },{passive:true});
         input.addEventListener('blur',function(){
           formatMoneyInput(input);
           renderHistory();
+          saveHistory();
         },{passive:true});
       }
-      if(ok){ ok.addEventListener('change',renderHistory,{passive:true}); }
+      if(ok){
+        ok.addEventListener('change',function(){
+          renderHistory();
+          saveHistory();
+        },{passive:true});
+      }
     }
 
     if(useHistory){
@@ -3658,19 +3738,41 @@ function setIuscRetValue(monto){
         const best=renderHistory();
         setActive(best,'history');
         if(manual) manual.value=fmtCLP(best);
+        saveHistory();
+        setNote('Resultado histórico aplicado y guardado en este dispositivo.', 'ok');
       });
     }
 
-    renderHistory();
+    if(clearBtn){
+      clearBtn.addEventListener('click',function(){
+        const ok=confirm('¿Limpiar el historial de mejor variable guardado en este dispositivo?');
+        if(!ok) return;
 
-    // Si el usuario abre feriados o secuencia y no ha aplicado manualmente nada allí,
-    // refresca esos módulos con el valor global activo.
+        clearStoredHistory();
+
+        if(manual) manual.value='';
+        for(let i=1;i<=12;i++){
+          const input=byId('bcVar'+i);
+          const chk=byId('bcOk'+i);
+          if(input) input.value='';
+          if(chk) chk.checked=true;
+        }
+
+        setActive(0,'clear');
+        renderHistory();
+        setNote('Historial limpiado. Los nuevos datos se guardarán automáticamente.', 'warn');
+      });
+    }
+
+    // Si el usuario abre feriados o secuencia, refresca con el valor global activo.
     document.addEventListener('click',function(e){
       const btn=e.target.closest && e.target.closest('[data-help="#feriados-trabajados"],[data-help="#secuencia-9-10"]');
       if(btn){
         setTimeout(function(){
           const active=readActive();
-          if(active>0) setActive(active,'sync');
+          if(active>=0){
+            document.dispatchEvent(new CustomEvent('baseConvenio:change',{detail:{value:active,source:'sync'}}));
+          }
         },120);
       }
     },true);
