@@ -1283,14 +1283,15 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <p>Este cálculo requiere ingresar manualmente el <b>mayor promedio de Remuneración Variable</b>, porque la herramienta no dispone del historial de los últimos 3 o 12 meses. El sueldo base y la antigüedad sí se leen automáticamente desde los Haberes ya ingresados.</p>
 </section>
 
+
 <section class="help-section card anchor" id="secuencia-9-10">
 <h2>Compensación Secuencia días 9 y 10</h2>
 <p>Compensación asociada a la programación de secuencias continuas de trabajo en aviones cargueros, según anexo al convenio colectivo vigente desde abril de 2025.</p>
-<p><b>Fórmula aplicada:</b> (Sueldo Base + Asignación de Antigüedad + <b>mayor promedio de Remuneración Variable</b>) × porcentaje aplicable.</p>
+<p><b>Fórmula aplicada:</b> Base de cálculo convenio × porcentaje total acumulado del mes.</p>
 
 <div class="sec-calc">
   <h3>Calculadora rápida</h3>
-  <p class="small muted">La app toma automáticamente el sueldo base y la asignación de antigüedad ya ingresados. Solo debes ingresar el mayor promedio variable y seleccionar el tipo de secuencia.</p>
+  <p class="small muted">La app toma automáticamente el sueldo base y la asignación de antigüedad ya ingresados. Solo debes ingresar el mayor promedio variable y la cantidad de secuencias programadas en el mes.</p>
 
   <div class="sec-info">
     <span>Sueldo Base detectado</span>
@@ -1309,20 +1310,24 @@ body{ line-height:1.5; letter-spacing:.1px; }
   <p class="small muted sec-note">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>
 
   <label class="sec-field">
-    <span>Tipo de secuencia programada</span>
-    <select id="secTipo">
-      <option value="9">Secuencia 9 días — 3,3%</option>
-      <option value="10">Secuencia 10 días — 4,8% acumulado</option>
-    </select>
+    <span>Cantidad de secuencias de 9 días</span>
+    <input id="secCant9" inputmode="numeric" type="number" min="0" step="1" placeholder="0"/>
+  </label>
+
+  <label class="sec-field">
+    <span>Cantidad de secuencias de 10 días</span>
+    <input id="secCant10" inputmode="numeric" type="number" min="0" step="1" placeholder="0"/>
   </label>
 
   <div class="sec-result">
     <div><span>Base de cálculo utilizada</span><strong id="secBaseCalculo">$0</strong></div>
-    <div><span>Porcentaje aplicado</span><strong id="secPct">3,3%</strong></div>
+    <div><span>9 días: cantidad × 3,3%</span><strong id="secPct9">0,0%</strong></div>
+    <div><span>10 días: cantidad × 4,8%</span><strong id="secPct10">0,0%</strong></div>
+    <div><span>Porcentaje total aplicado</span><strong id="secPctTotal">0,0%</strong></div>
     <div><span>Total compensación secuencia</span><strong id="secTotal">$0</strong></div>
   </div>
 
-  <p class="formula">9 días = 3,3%. 10 días = 3,3% + 1,5% acumulable = 4,8%.</p>
+  <p class="formula">Cada secuencia de 9 días paga 3,3%. Cada secuencia de 10 días paga 4,8% acumulado, equivalente a 3,3% del noveno día + 1,5% del décimo día.</p>
 
   <button class="sec-apply" id="secApply" type="button">Aplicar a liquidación</button>
 </div>
@@ -1343,7 +1348,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </details>
 
 <h3>Nota de uso</h3>
-<p>Este cálculo requiere ingresar manualmente el <b>mayor promedio de Remuneración Variable</b>, porque la herramienta no dispone del historial de los últimos 3 o 12 meses. El sueldo base y la antigüedad se leen automáticamente desde los Haberes ya ingresados.</p>
+<p>Este cálculo permite ingresar múltiples secuencias en el mismo mes. Una secuencia de <b>10 días</b> ya incluye el bono del noveno día más el bono del décimo día, por eso se calcula como <b>4,8%</b> acumulado.</p>
 </section>
 <section class="help-section card anchor" id="cesantia">
 <h2>Seguro de Cesantía</h2>
@@ -3089,6 +3094,7 @@ function setIuscRetValue(monto){
 </script>
 
 
+
 <script>
 /* === Secuencia días 9 y 10: cálculo asistido + aplicación a Haberes === */
 (function(){
@@ -3100,32 +3106,45 @@ function setIuscRetValue(monto){
   function sueldoBaseActual(){return parseCLP(byKey('haber.sueldo_base')?.value);}
   function antiguedadActual(){return parseCLP(byKey('haber.antiguedad')?.value);}
   function variablePromedio(){return parseCLP(byId('secVariableProm')?.value);}
-  function porcentaje(){
-    const tipo=byId('secTipo')?.value || '9';
-    return tipo==='10' ? 0.048 : 0.033;
+  function cantidad(id){
+    const raw=Number(byId(id)?.value||0);
+    return Math.max(0,Number.isFinite(raw)?raw:0);
+  }
+  function fmtPct(n){
+    return (n*100).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
   }
 
   function renderSecuencia(){
     const sueldoEl=byId('secSueldoBase');
     const antigEl=byId('secAntiguedad');
     const varEl=byId('secVariableProm');
-    const tipoEl=byId('secTipo');
+    const cant9El=byId('secCant9');
+    const cant10El=byId('secCant10');
     const baseEl=byId('secBaseCalculo');
-    const pctEl=byId('secPct');
+    const pct9El=byId('secPct9');
+    const pct10El=byId('secPct10');
+    const pctTotalEl=byId('secPctTotal');
     const totalEl=byId('secTotal');
-    if(!sueldoEl||!antigEl||!varEl||!tipoEl||!baseEl||!pctEl||!totalEl) return 0;
+    if(!sueldoEl||!antigEl||!varEl||!cant9El||!cant10El||!baseEl||!pct9El||!pct10El||!pctTotalEl||!totalEl) return 0;
 
     const sueldo=sueldoBaseActual();
     const antig=antiguedadActual();
     const variable=variablePromedio();
+    const cant9=cantidad('secCant9');
+    const cant10=cantidad('secCant10');
+
     const base=sueldo+antig+variable;
-    const pct=porcentaje();
-    const total=Math.round(base*pct);
+    const pct9=cant9*0.033;
+    const pct10=cant10*0.048;
+    const pctTotal=pct9+pct10;
+    const total=Math.round(base*pctTotal);
 
     sueldoEl.textContent=fmtCLP(sueldo);
     antigEl.textContent=fmtCLP(antig);
     baseEl.textContent=fmtCLP(base);
-    pctEl.textContent=(pct*100).toLocaleString('es-CL',{minimumFractionDigits:1,maximumFractionDigits:1})+'%';
+    pct9El.textContent=fmtPct(pct9);
+    pct10El.textContent=fmtPct(pct10);
+    pctTotalEl.textContent=fmtPct(pctTotal);
     totalEl.textContent=fmtCLP(total);
     return total;
   }
@@ -3135,9 +3154,16 @@ function setIuscRetValue(monto){
     el.value=fmtCLP(parseCLP(el.value));
   }
 
+  function normalizeCount(el){
+    if(!el) return;
+    const n=Math.max(0,Math.floor(Number(el.value||0)));
+    el.value=Number.isFinite(n)?String(n):'0';
+  }
+
   document.addEventListener('DOMContentLoaded',function(){
     const varEl=byId('secVariableProm');
-    const tipoEl=byId('secTipo');
+    const cant9El=byId('secCant9');
+    const cant10El=byId('secCant10');
     const applyBtn=byId('secApply');
     const sueldoBaseInput=byKey('haber.sueldo_base');
     const antigInput=byKey('haber.antiguedad');
@@ -3153,7 +3179,14 @@ function setIuscRetValue(monto){
       },{passive:true});
     }
 
-    if(tipoEl){tipoEl.addEventListener('change',renderSecuencia,{passive:true});}
+    [cant9El,cant10El].forEach(function(el){
+      if(!el) return;
+      el.addEventListener('input',renderSecuencia,{passive:true});
+      el.addEventListener('blur',function(){
+        normalizeCount(el);
+        renderSecuencia();
+      },{passive:true});
+    });
 
     [sueldoBaseInput, antigInput].forEach(function(el){
       if(el){
