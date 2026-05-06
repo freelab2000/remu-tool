@@ -918,6 +918,53 @@ body{ line-height:1.5; letter-spacing:.1px; }
 }
 </style>
 
+
+<style>
+/* === Cálculo mejor variable: módulo colapsable bajo Haberes === */
+.haberes-base-layout{display:block !important}
+.base-convenio-card.bc-collapsed-card{
+  margin-top:var(--gap);
+  border-color:rgba(96,165,250,.24);
+  background:linear-gradient(180deg, rgba(15,27,51,.98), rgba(8,17,32,.98));
+}
+.bc-collapse-head{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(190px, auto) auto;
+  gap:12px;
+  align-items:center;
+}
+.bc-title-wrap h2{
+  margin:0 0 4px;
+  font:800 16px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+  letter-spacing:.03em;
+  color:#dfe7ff;
+}
+.bc-title-wrap p{margin:0}
+.bc-active.compact{
+  margin:0;
+  min-width:190px;
+}
+#bcBody{
+  margin-top:14px;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.08);
+}
+#bcBody .bc-field{
+  max-width:420px;
+}
+#bcToggle{
+  white-space:nowrap;
+}
+@media (max-width:720px){
+  .bc-collapse-head{
+    grid-template-columns:1fr;
+    align-items:stretch;
+  }
+  .bc-active.compact{min-width:0}
+  #bcToggle{width:100%}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -926,7 +973,6 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <p class="hero-subtitle">Simulador interactivo de liquidación mensual</p>
 </header>
 <div class="hero-divider" aria-hidden="true"></div>
-<div class="haberes-base-layout">
 <div class="card">
 <h2 class="section-tag">HABERES</h2>
 <div class="grid">
@@ -985,18 +1031,21 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </div>
 </div>
 </div>
-
-
-<div class="card base-convenio-card" id="baseConvenioCard">
-  <h2 class="section-tag">BASE CONVENIO</h2>
-  <p class="small muted">Mayor promedio de remuneración variable usado por cláusula de base de cálculo.</p>
-
-  <div class="bc-active">
-    <span>Variable activa</span>
-    <strong id="bcActiveDisplay">$0</strong>
+<div class="card base-convenio-card bc-collapsed-card" id="baseConvenioCard">
+  <div class="bc-collapse-head">
+    <div class="bc-title-wrap">
+      <h2>Calculo mejor variable</h2>
+      <p class="small muted">Mayor promedio de remuneración variable 3 / 12 meses.</p>
+    </div>
+    <div class="bc-active compact">
+      <span>Variable activa</span>
+      <strong id="bcActiveDisplay">$0</strong>
+    </div>
+    <button aria-expanded="false" class="btnGhost" id="bcToggle" type="button">Mostrar</button>
   </div>
 
-  <label class="bc-field">
+  <div id="bcBody" style="display:none;">
+<label class="bc-field">
     <span>Ingreso manual</span>
     <input id="bcManual" inputmode="numeric" type="text" placeholder="$0" />
   </label>
@@ -1092,8 +1141,9 @@ body{ line-height:1.5; letter-spacing:.1px; }
   </details>
 
   <input id="bcActiveValue" type="hidden" value="0" />
+  </div>
 </div>
-</div>
+
 <div class="card">
 <h2 class="section-tag">DESCUENTOS</h2>
 <div class="grid">
@@ -3488,9 +3538,9 @@ function setIuscRetValue(monto){
   function setActive(value, source){
     const n=Math.max(0,Math.round(Number(value)||0));
     const hidden=byId('bcActiveValue');
-    const display=byId('bcActiveDisplay');
+    const displays=document.querySelectorAll('#bcActiveDisplay, #bcActiveDisplayBody');
     if(hidden) hidden.value=String(n);
-    if(display) display.textContent=fmtCLP(n);
+    displays.forEach(function(display){ display.textContent=fmtCLP(n); });
     try{ localStorage.setItem('remuTool.baseConvenioVariable', String(n)); }catch(e){}
     try{ localStorage.setItem('remuTool.baseConvenioSource', source || 'manual'); }catch(e){}
     window.__baseConvenioVariable = n;
@@ -3624,6 +3674,33 @@ function setIuscRetValue(monto){
         },120);
       }
     },true);
+  });
+})();
+</script>
+
+
+<script>
+/* === Toggle Cálculo mejor variable === */
+(function(){
+  document.addEventListener('DOMContentLoaded', function(){
+    const btn = document.getElementById('bcToggle');
+    const body = document.getElementById('bcBody');
+    if(!btn || !body) return;
+
+    function setOpen(open){
+      body.style.display = open ? '' : 'none';
+      btn.textContent = open ? 'Ocultar' : 'Mostrar';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      try{ localStorage.setItem('remuTool.bcCollapsedOpen', open ? '1' : '0'); }catch(e){}
+    }
+
+    let open = false;
+    try{ open = localStorage.getItem('remuTool.bcCollapsedOpen') === '1'; }catch(e){}
+    setOpen(open);
+
+    btn.addEventListener('click', function(){
+      setOpen(body.style.display === 'none');
+    });
   });
 })();
 </script>
