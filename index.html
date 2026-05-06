@@ -769,6 +769,155 @@ body{ line-height:1.5; letter-spacing:.1px; }
 @media (max-width:560px){.sec-calc{padding:12px}.sec-info,.sec-result>div{align-items:flex-start;flex-direction:column;gap:4px}.sec-result strong,.sec-info strong{font-size:17px}}
 </style>
 
+
+<style>
+/* === Base Cálculo Convenio: módulo global junto a Haberes === */
+.haberes-base-layout{
+  display:grid;
+  grid-template-columns:minmax(0, 1.25fr) minmax(280px, .75fr);
+  gap:18px;
+  align-items:start;
+  margin-top:var(--gap);
+}
+.haberes-base-layout > .card{margin-top:0}
+.base-convenio-card{
+  border-color:rgba(96,165,250,.26);
+  background:linear-gradient(180deg, rgba(15,27,51,.98), rgba(8,17,32,.98));
+}
+.base-convenio-card .section-tag{
+  background:rgba(96,165,250,.10);
+  border:1px solid rgba(96,165,250,.18);
+}
+.bc-active{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:12px;
+  border-radius:14px;
+  background:#0b1526;
+  border:1px solid rgba(255,255,255,.08);
+  margin:10px 0 12px;
+}
+.bc-active span{color:var(--muted);font-size:13px}
+.bc-active strong{color:#bbf7d0;font-size:18px;white-space:nowrap}
+.bc-field{
+  display:grid;
+  gap:6px;
+  color:#cfe0ff;
+  font-size:13px;
+  margin-bottom:10px;
+}
+.bc-field input,
+.bc-row input{
+  width:100%;
+  background:#0b1526;
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--fg);
+  padding:10px 12px;
+  font:700 15px/1 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+  text-align:right;
+}
+.bc-btn{
+  width:100%;
+  border:1px solid rgba(34,197,94,.35);
+  background:rgba(22,163,74,.16);
+  color:#dcfce7;
+  border-radius:999px;
+  padding:10px 12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.bc-btn:hover{background:rgba(22,163,74,.24)}
+.bc-history{
+  margin-top:12px;
+  border:1px solid rgba(255,255,255,.10);
+  border-radius:14px;
+  background:rgba(255,255,255,.03);
+  overflow:hidden;
+}
+.bc-history summary{
+  cursor:pointer;
+  padding:12px 14px;
+  font-weight:800;
+  color:#dfe7ff;
+  list-style:none;
+}
+.bc-history summary::-webkit-details-marker{display:none}
+.bc-history summary::after{content:"＋";float:right;color:#60a5fa}
+.bc-history[open] summary::after{content:"−"}
+.bc-history > p,
+.bc-history .bc-grid,
+.bc-history .bc-results,
+.bc-history #bcWarn,
+.bc-history .bc-btn{
+  margin-left:12px;
+  margin-right:12px;
+}
+.bc-grid{
+  display:grid;
+  gap:8px;
+  margin-top:10px;
+}
+.bc-row{
+  display:grid;
+  grid-template-columns:58px 1fr 88px;
+  gap:8px;
+  align-items:center;
+}
+.bc-row > label:first-child{
+  color:var(--muted);
+  font-size:13px;
+}
+.bc-check{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:5px;
+  color:#cfe0ff;
+  font-size:12px;
+  white-space:nowrap;
+}
+.bc-check input{accent-color:#60a5fa}
+.bc-results{
+  display:grid;
+  gap:8px;
+  margin-top:12px;
+  margin-bottom:10px;
+}
+.bc-results > div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:10px 12px;
+  border-radius:12px;
+  background:#0b1526;
+  border:1px solid rgba(255,255,255,.08);
+}
+.bc-results span{color:var(--muted);font-size:13px}
+.bc-results strong{color:#bfdbfe;font-size:15px;white-space:nowrap}
+#bcWarn{
+  min-height:18px;
+  color:#fbbf24;
+  line-height:1.35;
+  margin-top:0;
+  margin-bottom:10px;
+}
+@media (max-width:820px){
+  .haberes-base-layout{grid-template-columns:1fr}
+}
+@media (max-width:560px){
+  .bc-row{grid-template-columns:54px 1fr; grid-template-areas:"m v" "c c"}
+  .bc-row > label:first-child{grid-area:m}
+  .bc-row input[type="text"]{grid-area:v}
+  .bc-check{grid-area:c;justify-content:flex-start;padding-left:62px}
+  .bc-active{align-items:flex-start;flex-direction:column;gap:4px}
+  .bc-active strong{font-size:19px}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -777,6 +926,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <p class="hero-subtitle">Simulador interactivo de liquidación mensual</p>
 </header>
 <div class="hero-divider" aria-hidden="true"></div>
+<div class="haberes-base-layout">
 <div class="card">
 <h2 class="section-tag">HABERES</h2>
 <div class="grid">
@@ -833,6 +983,115 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </div>
 <input data-key="haber.secuencia_9_10" type="text" value="$0"/>
 </div>
+</div>
+</div>
+
+
+<div class="card base-convenio-card" id="baseConvenioCard">
+  <h2 class="section-tag">BASE CONVENIO</h2>
+  <p class="small muted">Mayor promedio de remuneración variable usado por cláusula de base de cálculo.</p>
+
+  <div class="bc-active">
+    <span>Variable activa</span>
+    <strong id="bcActiveDisplay">$0</strong>
+  </div>
+
+  <label class="bc-field">
+    <span>Ingreso manual</span>
+    <input id="bcManual" inputmode="numeric" type="text" placeholder="$0" />
+  </label>
+  <button class="bc-btn" id="bcUseManual" type="button">Usar valor manual</button>
+
+  <details class="bc-history" id="bcHistory">
+    <summary>Calcular con historial 3 / 12 meses</summary>
+    <p class="small muted">Marca solo los meses íntegramente volados. La app calcula el promedio de los últimos 3 meses válidos y el promedio de los últimos 12 meses válidos, usando el mayor.</p>
+
+    <div class="bc-grid">
+      
+    <div class="bc-row">
+      <label for="bcVar1">Mes -1</label>
+      <input id="bcVar1" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk1" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar2">Mes -2</label>
+      <input id="bcVar2" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk2" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar3">Mes -3</label>
+      <input id="bcVar3" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk3" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar4">Mes -4</label>
+      <input id="bcVar4" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk4" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar5">Mes -5</label>
+      <input id="bcVar5" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk5" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar6">Mes -6</label>
+      <input id="bcVar6" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk6" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar7">Mes -7</label>
+      <input id="bcVar7" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk7" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar8">Mes -8</label>
+      <input id="bcVar8" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk8" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar9">Mes -9</label>
+      <input id="bcVar9" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk9" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar10">Mes -10</label>
+      <input id="bcVar10" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk10" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar11">Mes -11</label>
+      <input id="bcVar11" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk11" type="checkbox" checked /> íntegro</label>
+    </div>
+
+    <div class="bc-row">
+      <label for="bcVar12">Mes -12</label>
+      <input id="bcVar12" inputmode="numeric" type="text" placeholder="$0" />
+      <label class="bc-check"><input id="bcOk12" type="checkbox" checked /> íntegro</label>
+    </div>
+    </div>
+
+    <div class="bc-results">
+      <div><span>Promedio 3 meses</span><strong id="bcAvg3">$0</strong></div>
+      <div><span>Promedio 12 meses</span><strong id="bcAvg12">$0</strong></div>
+      <div><span>Mayor promedio</span><strong id="bcBest">$0</strong></div>
+    </div>
+
+    <p class="small muted" id="bcWarn"></p>
+    <button class="bc-btn" id="bcUseHistory" type="button">Usar resultado histórico</button>
+  </details>
+
+  <input id="bcActiveValue" type="hidden" value="0" />
 </div>
 </div>
 <div class="card">
@@ -3214,6 +3473,157 @@ function setIuscRetValue(monto){
     },true);
 
     renderSecuencia();
+  });
+})();
+</script>
+
+
+<script>
+/* === Base Cálculo Convenio: variable global reutilizable === */
+(function(){
+  const fmtCLP=(n)=>'$'+Math.max(0,Math.round(Number(n)||0)).toLocaleString('es-CL');
+  const parseCLP=(s)=>{const cleaned=String(s||'').replace(/[^0-9]/g,'');const n=Number(cleaned);return Number.isFinite(n)?n:0;};
+  const byId=(id)=>document.getElementById(id);
+
+  function setActive(value, source){
+    const n=Math.max(0,Math.round(Number(value)||0));
+    const hidden=byId('bcActiveValue');
+    const display=byId('bcActiveDisplay');
+    if(hidden) hidden.value=String(n);
+    if(display) display.textContent=fmtCLP(n);
+    try{ localStorage.setItem('remuTool.baseConvenioVariable', String(n)); }catch(e){}
+    try{ localStorage.setItem('remuTool.baseConvenioSource', source || 'manual'); }catch(e){}
+    window.__baseConvenioVariable = n;
+
+    // Sincroniza módulos que usan el mismo mayor promedio variable.
+    ['ferVariableProm','secVariableProm'].forEach(function(id){
+      const el=byId(id);
+      if(el && n>0){
+        const current=parseCLP(el.value);
+        if(current===0 || el.dataset.syncedBaseConvenio === '1'){
+          el.value=fmtCLP(n);
+          el.dataset.syncedBaseConvenio='1';
+          el.dispatchEvent(new Event('input',{bubbles:true}));
+          el.dispatchEvent(new Event('change',{bubbles:true}));
+        }
+      }
+    });
+
+    document.dispatchEvent(new CustomEvent('baseConvenio:change',{detail:{value:n,source:source||'manual'}}));
+  }
+
+  function readActive(){
+    const hidden=byId('bcActiveValue');
+    return parseCLP(hidden ? hidden.value : window.__baseConvenioVariable);
+  }
+
+  function valuesFor(range){
+    const vals=[];
+    for(let i=1;i<=range;i++){
+      const input=byId('bcVar'+i);
+      const ok=byId('bcOk'+i);
+      const n=parseCLP(input ? input.value : '');
+      if(ok && ok.checked && n>0) vals.push(n);
+    }
+    return vals;
+  }
+
+  function avg(arr){
+    if(!arr.length) return 0;
+    return Math.round(arr.reduce((a,b)=>a+b,0)/arr.length);
+  }
+
+  function renderHistory(){
+    const v3=valuesFor(3);
+    const v12=valuesFor(12);
+    const avg3=avg(v3);
+    const avg12=avg(v12);
+    const best=Math.max(avg3, avg12);
+
+    if(byId('bcAvg3')) byId('bcAvg3').textContent=fmtCLP(avg3);
+    if(byId('bcAvg12')) byId('bcAvg12').textContent=fmtCLP(avg12);
+    if(byId('bcBest')) byId('bcBest').textContent=fmtCLP(best);
+
+    const warn=byId('bcWarn');
+    if(warn){
+      const notes=[];
+      if(v3.length>0 && v3.length<3) notes.push('Promedio 3m calculado con '+v3.length+' mes(es) íntegro(s).');
+      if(v12.length>0 && v12.length<12) notes.push('Promedio 12m calculado con '+v12.length+' mes(es) íntegro(s).');
+      warn.textContent=notes.join(' ');
+    }
+    return best;
+  }
+
+  function formatMoneyInput(el){
+    if(!el) return;
+    el.value=fmtCLP(parseCLP(el.value));
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    const manual=byId('bcManual');
+    const useManual=byId('bcUseManual');
+    const useHistory=byId('bcUseHistory');
+
+    try{
+      const saved=Number(localStorage.getItem('remuTool.baseConvenioVariable') || 0);
+      if(Number.isFinite(saved) && saved>0){
+        setActive(saved, localStorage.getItem('remuTool.baseConvenioSource') || 'saved');
+        if(manual) manual.value=fmtCLP(saved);
+      }
+    }catch(e){}
+
+    if(manual){
+      manual.addEventListener('input',function(){
+        manual.value=String(manual.value||'').replace(/[^0-9]/g,'');
+      },{passive:true});
+      manual.addEventListener('blur',function(){
+        formatMoneyInput(manual);
+      },{passive:true});
+    }
+
+    if(useManual){
+      useManual.addEventListener('click',function(){
+        setActive(parseCLP(manual ? manual.value : ''),'manual');
+      });
+    }
+
+    for(let i=1;i<=12;i++){
+      const input=byId('bcVar'+i);
+      const ok=byId('bcOk'+i);
+      if(input){
+        input.addEventListener('input',function(){
+          input.value=String(input.value||'').replace(/[^0-9]/g,'');
+          renderHistory();
+        },{passive:true});
+        input.addEventListener('blur',function(){
+          formatMoneyInput(input);
+          renderHistory();
+        },{passive:true});
+      }
+      if(ok){ ok.addEventListener('change',renderHistory,{passive:true}); }
+    }
+
+    if(useHistory){
+      useHistory.addEventListener('click',function(){
+        const best=renderHistory();
+        setActive(best,'history');
+        if(manual) manual.value=fmtCLP(best);
+      });
+    }
+
+    renderHistory();
+
+    // Si el usuario abre feriados o secuencia y no ha aplicado manualmente nada allí,
+    // refresca esos módulos con el valor global activo.
+    document.addEventListener('click',function(e){
+      const btn=e.target.closest && e.target.closest('[data-help="#feriados-trabajados"],[data-help="#secuencia-9-10"]');
+      if(btn){
+        setTimeout(function(){
+          const active=readActive();
+          if(active>0) setActive(active,'sync');
+        },120);
+      }
+    },true);
   });
 })();
 </script>
