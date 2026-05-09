@@ -1173,6 +1173,43 @@ body{ line-height:1.5; letter-spacing:.1px; }
 }
 </style>
 
+
+<style>
+/* === Herramientas por categorías === */
+.tools-category{
+  display:grid;
+  gap:10px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.025);
+}
+.tools-category + .tools-category{
+  margin-top:2px;
+}
+.tools-category > h3{
+  margin:0;
+  font:800 15px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;
+  color:#dfe7ff;
+  letter-spacing:.02em;
+}
+.tools-category > p{
+  margin:0 0 2px;
+}
+.tools-category .tool-section{
+  margin:0;
+}
+.tools-category .tool-section summary{
+  padding:11px 14px;
+}
+@media (max-width:560px){
+  .tools-category{
+    padding:10px;
+    border-radius:14px;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1333,10 +1370,13 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 <div class="card tools-card" id="toolsCard">
   <h2>Herramientas <button aria-expanded="false" class="btnGhost" id="toolsToggle" type="button">Mostrar</button></h2>
-  <p class="small muted">Módulos auxiliares para cálculos avanzados y explicación tributaria.</p>
+  <p class="small muted">Módulos auxiliares agrupados por uso: convenio, APV y tributario.</p>
 
   <div id="toolsBody" style="display:none;">
-    <details class="tool-section" id="toolMejorVariable">
+    <div class="tools-category">
+      <h3>Convenio / Remuneración</h3>
+      <p class="small muted">Herramientas relacionadas con bases de cálculo, bonos y escenarios de remuneración bajo convenio.</p>
+      <details class="tool-section" id="toolMejorVariable">
       <summary>Calculo mejor variable</summary>
       <div class="tool-body">
         <div class="card base-convenio-card bc-collapsed-card" id="baseConvenioCard">
@@ -1455,28 +1495,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 </div>
       </div>
     </details>
-
-    <details class="tool-section" id="toolAPV">
-      <summary>APV</summary>
-      <div class="tool-body">
-        <div class="tool-actions">
-          <button id="cmpAPV_btn" type="button" title="Comparar Con/Sin APV">Comparador APV</button>
-          <button class="help-btn-apv tip" data-help="#apv-guia" data-tip="Abre una guía paso a paso para entender el APV y cuándo conviene cada régimen." type="button">
-            Guía completa APV
-          </button>
-        </div>
-      </div>
-    </details>
-
-    <details class="tool-section" id="toolIUSC">
-      <summary>Demostración paso a paso del Impuesto Único Retenido</summary>
-      <div class="tool-body">
-        <p class="small muted">Abre una demostración didáctica del cálculo del impuesto usando la RLI y la tabla vigente.</p>
-        <button class="btn-iusc-inline tool-iusc-btn" id="btnPasoIUSC" type="button"><span class="ico">🧮</span><span>Ver paso a paso</span></button>
-      </div>
-    </details>
-
-    <details class="tool-section" id="toolLM">
+      <details class="tool-section" id="toolLM">
       <summary>Simulador Licencia Médica Carga</summary>
       <div class="tool-body">
         <p class="small muted">Estimación referencial según práctica actual carga: no considera mejor variable 3/12 para el complemento de licencia. En licencia parcial mantiene los conceptos operacionales ya ingresados si fueron generados en el mes.</p>
@@ -1536,8 +1555,36 @@ body{ line-height:1.5; letter-spacing:.1px; }
         </details>
       </div>
     </details>
+    </div>
 
-  </div>
+    <div class="tools-category">
+      <h3>Ahorro / APV</h3>
+      <p class="small muted">Herramientas para comparar efectos de APV y revisar la guía explicativa.</p>
+      <details class="tool-section" id="toolAPV">
+      <summary>APV</summary>
+      <div class="tool-body">
+        <div class="tool-actions">
+          <button id="cmpAPV_btn" type="button" title="Comparar Con/Sin APV">Comparador APV</button>
+          <button class="help-btn-apv tip" data-help="#apv-guia" data-tip="Abre una guía paso a paso para entender el APV y cuándo conviene cada régimen." type="button">
+            Guía completa APV
+          </button>
+        </div>
+      </div>
+    </details>
+    </div>
+
+    <div class="tools-category">
+      <h3>Tributario</h3>
+      <p class="small muted">Explicación del cálculo del Impuesto Único Retenido y su paso a paso.</p>
+      <details class="tool-section" id="toolIUSC">
+      <summary>Demostración paso a paso del Impuesto Único Retenido</summary>
+      <div class="tool-body">
+        <p class="small muted">Abre una demostración didáctica del cálculo del impuesto usando la RLI y la tabla vigente.</p>
+        <button class="btn-iusc-inline tool-iusc-btn" id="btnPasoIUSC" type="button"><span class="ico">🧮</span><span>Ver paso a paso</span></button>
+      </div>
+    </details>
+    </div>
+</div>
 </div>
 
 
