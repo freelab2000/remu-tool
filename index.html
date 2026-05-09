@@ -1175,14 +1175,112 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === v.1.2.0.f.w.t — quitar tooltip hover: solo panel lateral al presionar ? === */
-.tt{
-  display:none !important;
-  visibility:hidden !important;
-  pointer-events:none !important;
+/* === Modo guiado fase 1 === */
+.mode-panel{
+  margin:0 auto var(--gap);
+  max-width:960px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:rgba(255,255,255,.025);
 }
-.tip{
+.mode-tabs{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.mode-btn,
+.guide-step{
+  border:1px solid var(--border);
+  background:#0b1526;
+  color:#e7f0ff;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:800;
   cursor:pointer;
+}
+.mode-btn.active,
+.guide-step.active{
+  border-color:rgba(90,169,255,.55);
+  background:rgba(90,169,255,.16);
+  color:#dbeafe;
+}
+.guide-steps{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.guide-hint{
+  margin:10px 4px 0;
+  text-align:center;
+}
+body.mode-guided [data-guide-card],
+body.mode-guided [data-guide-row]{
+  display:none !important;
+}
+body.mode-guided[data-guide-step="base"] [data-guide-card="haberes"],
+body.mode-guided[data-guide-step="base"] [data-guide-card="uf"],
+body.mode-guided[data-guide-step="base"] [data-guide-row="base"]{
+  display:grid !important;
+}
+body.mode-guided[data-guide-step="variables"] [data-guide-card="haberes"],
+body.mode-guided[data-guide-step="variables"] [data-guide-row="variables"]{
+  display:grid !important;
+}
+body.mode-guided[data-guide-step="descuentos"] [data-guide-card="descuentos"],
+body.mode-guided[data-guide-step="descuentos"] [data-guide-row="descuentos"]{
+  display:grid !important;
+}
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="uf"],
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="resultados"],
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="footer"],
+body.mode-guided[data-guide-step="resultado"] .duo[data-guide-card="resultados"]{
+  display:grid !important;
+}
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],
+body.mode-guided[data-guide-step="resultado"] [data-guide-card="footer"]{
+  display:block !important;
+}
+body.mode-guided [data-guide-card="haberes"],
+body.mode-guided [data-guide-card="descuentos"],
+body.mode-guided [data-guide-card="uf"],
+body.mode-guided [data-guide-card="resultados"]{
+  animation:guideFade .16s ease;
+}
+@keyframes guideFade{
+  from{opacity:.55;transform:translateY(4px)}
+  to{opacity:1;transform:translateY(0)}
+}
+.guide-nav{
+  display:flex;
+  gap:10px;
+  justify-content:space-between;
+  margin:14px 0 0;
+}
+.guide-nav button{
+  border:1px solid var(--border);
+  background:#0b1526;
+  color:#e7f0ff;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:800;
+  cursor:pointer;
+}
+@media (max-width:720px){
+  .guide-steps{
+    grid-template-columns:1fr 1fr;
+  }
+}
+@media (max-width:520px){
+  .mode-panel{
+    padding:10px;
+  }
+  .mode-tabs,
+  .guide-steps{
+    grid-template-columns:1fr;
+  }
 }
 </style>
 
@@ -1194,6 +1292,25 @@ body{ line-height:1.5; letter-spacing:.1px; }
 <p class="hero-subtitle">Simulador interactivo de liquidación mensual</p>
 </header>
 <div class="hero-divider" aria-hidden="true"></div>
+
+<div class="mode-panel" id="modePanel">
+  <div class="mode-tabs" role="tablist" aria-label="Modo de uso">
+    <button class="mode-btn active" id="modeClassic" type="button">Modo clásico</button>
+    <button class="mode-btn" id="modeGuided" type="button">Modo guiado</button>
+  </div>
+
+  <div class="guide-steps" id="guideSteps" style="display:none;">
+    <button class="guide-step active" data-guide-step="base" type="button">1. Datos base</button>
+    <button class="guide-step" data-guide-step="variables" type="button">2. Variables</button>
+    <button class="guide-step" data-guide-step="descuentos" type="button">3. Descuentos</button>
+    <button class="guide-step" data-guide-step="resultado" type="button">4. Resultado</button>
+  </div>
+
+  <p class="small muted guide-hint" id="guideHint" style="display:none;">
+    Modo guiado: la herramienta muestra solo una sección a la vez, sin modificar los cálculos.
+  </p>
+</div>
+
 <div class="card">
 <h2 class="section-tag">HABERES</h2>
 <div class="grid">
@@ -4329,34 +4446,134 @@ function setIuscRetValue(monto){
 
 
 <script>
-/* === Desactivar tooltips flotantes: mantener solo click/tap al panel lateral === */
+/* === Modo guiado fase 1: organización visual sin tocar cálculos === */
 (function(){
-  function removeFloatingTooltip(){
-    document.querySelectorAll('.tt').forEach(function(el){ el.remove(); });
+  const steps=['base','variables','descuentos','resultado'];
+
+  function byKey(k){return document.querySelector('[data-key="'+k+'"]');}
+  function closestCard(el){return el ? el.closest('.card') : null;}
+
+  function cardByHeading(text){
+    return Array.from(document.querySelectorAll('.card')).find(card=>{
+      const h=card.querySelector('h2,h3');
+      return h && h.textContent.trim().toLowerCase().includes(text.toLowerCase());
+    });
   }
 
-  document.addEventListener('DOMContentLoaded', function(){
-    removeFloatingTooltip();
-  });
+  function markStructure(){
+    const haberes=cardByHeading('HABERES');
+    const descuentos=cardByHeading('DESCUENTOS');
+    const tools=document.getElementById('toolsCard');
+    const uf=document.querySelector('.uf-card');
+    const iusc=document.getElementById('iusc-oct-card');
+    const footer=document.querySelector('.footer');
 
-  ['mouseover','mouseenter','mousemove'].forEach(function(type){
-    document.addEventListener(type, function(ev){
-      if(ev.target && ev.target.closest && ev.target.closest('.tip')){
-        removeFloatingTooltip();
-        ev.stopImmediatePropagation();
-      }
-    }, true);
-  });
+    if(haberes) haberes.setAttribute('data-guide-card','haberes');
+    if(descuentos) descuentos.setAttribute('data-guide-card','descuentos');
+    if(tools) tools.setAttribute('data-guide-card','tools');
+    if(uf) uf.setAttribute('data-guide-card','uf');
+    if(iusc) iusc.setAttribute('data-guide-card','iusc');
+    if(footer) footer.setAttribute('data-guide-card','footer');
 
-  ['mouseout','mouseleave','blur'].forEach(function(type){
-    document.addEventListener(type, function(){
-      removeFloatingTooltip();
-    }, true);
-  });
+    const duo = document.querySelector('.duo');
+    if(duo) duo.setAttribute('data-guide-card','resultados');
 
-  document.addEventListener('click', function(){
-    setTimeout(removeFloatingTooltip, 0);
-  }, true);
+    ['haber.sueldo_base','haber.gratificacion','haber.antiguedad'].forEach(k=>{
+      const row=byKey(k)?.closest('.row');
+      if(row) row.setAttribute('data-guide-row','base');
+    });
+
+    ['haber.bono_prod','haber.bono_vacaciones','haber.feriados','haber.secuencia_9_10'].forEach(k=>{
+      const row=byKey(k)?.closest('.row');
+      if(row) row.setAttribute('data-guide-row','variables');
+    });
+
+    document.querySelectorAll('[data-key^="desc."], [data-key^="isapre."]').forEach(input=>{
+      const row=input.closest('.row');
+      if(row) row.setAttribute('data-guide-row','descuentos');
+    });
+    const pct=document.getElementById('pctComAFP');
+    if(pct && pct.closest('.row')) pct.closest('.row').setAttribute('data-guide-row','descuentos');
+    const apvReg=document.getElementById('apvReg');
+    if(apvReg && apvReg.closest('.row')) apvReg.closest('.row').setAttribute('data-guide-row','descuentos');
+  }
+
+  function addGuideNav(){
+    if(document.getElementById('guideNav')) return;
+    const panel=document.getElementById('modePanel');
+    if(!panel) return;
+    const nav=document.createElement('div');
+    nav.className='guide-nav';
+    nav.id='guideNav';
+    nav.style.display='none';
+    nav.innerHTML='<button type="button" id="guidePrev">← Volver</button><button type="button" id="guideNext">Continuar →</button>';
+    panel.appendChild(nav);
+
+    nav.querySelector('#guidePrev').addEventListener('click',()=>{
+      const current=document.body.getAttribute('data-guide-step')||'base';
+      const i=Math.max(0,steps.indexOf(current)-1);
+      setStep(steps[i]);
+    });
+    nav.querySelector('#guideNext').addEventListener('click',()=>{
+      const current=document.body.getAttribute('data-guide-step')||'base';
+      const i=Math.min(steps.length-1,steps.indexOf(current)+1);
+      setStep(steps[i]);
+    });
+  }
+
+  function setMode(mode){
+    const guided=mode==='guided';
+    document.body.classList.toggle('mode-guided', guided);
+    document.getElementById('modeClassic')?.classList.toggle('active', !guided);
+    document.getElementById('modeGuided')?.classList.toggle('active', guided);
+    const stepsEl=document.getElementById('guideSteps');
+    const hint=document.getElementById('guideHint');
+    const nav=document.getElementById('guideNav');
+    if(stepsEl) stepsEl.style.display=guided?'grid':'none';
+    if(hint) hint.style.display=guided?'block':'none';
+    if(nav) nav.style.display=guided?'flex':'none';
+    try{localStorage.setItem('remuTool.mode', mode);}catch(e){}
+    if(guided && !document.body.getAttribute('data-guide-step')) setStep('base');
+  }
+
+  function setStep(step){
+    if(!steps.includes(step)) step='base';
+    document.body.setAttribute('data-guide-step', step);
+    document.querySelectorAll('.guide-step').forEach(btn=>{
+      btn.classList.toggle('active', btn.dataset.guideStep===step);
+    });
+    try{localStorage.setItem('remuTool.guideStep', step);}catch(e){}
+    const nav=document.getElementById('guideNav');
+    if(nav){
+      const i=steps.indexOf(step);
+      const prev=nav.querySelector('#guidePrev');
+      const next=nav.querySelector('#guideNext');
+      if(prev) prev.disabled=i===0;
+      if(next) next.disabled=i===steps.length-1;
+      if(next) next.textContent=i===steps.length-1?'Finalizado':'Continuar →';
+    }
+    document.getElementById('modePanel')?.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  document.addEventListener('DOMContentLoaded',function(){
+    markStructure();
+    addGuideNav();
+
+    document.getElementById('modeClassic')?.addEventListener('click',()=>setMode('classic'));
+    document.getElementById('modeGuided')?.addEventListener('click',()=>setMode('guided'));
+    document.querySelectorAll('.guide-step').forEach(btn=>{
+      btn.addEventListener('click',()=>setStep(btn.dataset.guideStep));
+    });
+
+    let savedMode='classic';
+    let savedStep='base';
+    try{
+      savedMode=localStorage.getItem('remuTool.mode')||'classic';
+      savedStep=localStorage.getItem('remuTool.guideStep')||'base';
+    }catch(e){}
+    setStep(savedStep);
+    setMode(savedMode);
+  });
 })();
 </script>
 
