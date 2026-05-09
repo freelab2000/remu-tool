@@ -1311,6 +1311,73 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
 @media(max-width:520px){.mode-panel-v2{padding:10px}.mode-tabs,.guide-steps{grid-template-columns:1fr}.guide-shell{padding:10px}}
 </style>
 
+
+<style>
+/* === Modo guiado fase 3: chequeo inteligente === */
+.guide-smart{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  background:rgba(11,21,38,.78);
+}
+.guide-smart-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.guide-smart-head strong{
+  color:#dfe7ff;
+  font-size:14px;
+}
+#guideSmartBadge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-width:70px;
+  border-radius:999px;
+  padding:4px 10px;
+  font-size:12px;
+  font-weight:800;
+  border:1px solid rgba(34,197,94,.35);
+  background:rgba(22,163,74,.12);
+  color:#bbf7d0;
+}
+#guideSmartBadge.warn{
+  border-color:rgba(251,191,36,.38);
+  background:rgba(251,191,36,.10);
+  color:#fde68a;
+}
+#guideSmartBadge.info{
+  border-color:rgba(96,165,250,.38);
+  background:rgba(96,165,250,.10);
+  color:#bfdbfe;
+}
+#guideSmartList{
+  margin:0;
+  padding-left:18px;
+  color:#cfe0ff;
+  font-size:13px;
+  line-height:1.45;
+}
+#guideSmartList li + li{margin-top:4px}
+.guide-field-missing{
+  outline:1px solid rgba(251,191,36,.70) !important;
+  box-shadow:0 0 0 3px rgba(251,191,36,.12) !important;
+}
+.guide-field-ok{
+  outline:1px solid rgba(34,197,94,.28) !important;
+}
+@media (max-width:520px){
+  .guide-smart-head{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1331,6 +1398,13 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
     <p class="small muted" id="guideStepCounter">Paso 1 de 4</p>
     <h2 id="guideStepTitle">Datos base</h2>
     <p class="small muted" id="guideStepDesc">Ingresa los conceptos fijos principales para iniciar la simulación.</p>
+    <div class="guide-smart" id="guideSmartBox">
+      <div class="guide-smart-head">
+        <strong>Chequeo inteligente</strong>
+        <span id="guideSmartBadge">Listo</span>
+      </div>
+      <ul id="guideSmartList"></ul>
+    </div>
     <div class="guide-steps" id="guideSteps">
       <button class="guide-step active" data-guide-step="base" type="button">1. Datos base</button>
       <button class="guide-step" data-guide-step="variables" type="button">2. Variables</button>
