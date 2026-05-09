@@ -4506,7 +4506,11 @@ function setIuscRetValue(monto){
     const nav=document.createElement('div');
     nav.className='guide-nav guide-bottom-nav'; nav.id='guideBottomNav'; nav.style.display='none';
     nav.innerHTML='<button type="button" id="guidePrevBottom">← Volver</button><button type="button" id="guideNextBottom">Continuar →</button>';
-    const wrap=$('.wrap'); const footer=$('.footer'); if(wrap)wrap.insertBefore(nav,footer||null);
+    const wrap=$('.wrap'); const footer=$('.footer');
+    if(wrap){
+      if(footer && footer.parentNode===wrap) wrap.insertBefore(nav, footer);
+      else wrap.appendChild(nav);
+    }
     $('#guidePrevBottom')?.addEventListener('click',()=>move(-1));
     $('#guideNextBottom')?.addEventListener('click',()=>move(1));
   }
@@ -4540,14 +4544,56 @@ function setIuscRetValue(monto){
     try{localStorage.setItem('remuTool.guideStep',step);}catch(e){}
     $('#modePanel')?.scrollIntoView({behavior:'smooth',block:'start'});
   }
-  document.addEventListener('DOMContentLoaded',()=>{
+  function initGuideMode(){
     mark(); addBottomNav();
     $('#modeClassic')?.addEventListener('click',()=>setMode('classic'));
     $('#modeGuided')?.addEventListener('click',()=>setMode('guided'));
     document.querySelectorAll('.guide-step').forEach(b=>b.addEventListener('click',()=>setStep(b.dataset.guideStep)));
-    let mode='classic', step='base'; try{mode=localStorage.getItem('remuTool.mode')||mode;step=localStorage.getItem('remuTool.guideStep')||step;}catch(e){}
+    let mode='classic', step='base';
+    try{mode=localStorage.getItem('remuTool.mode')||mode;step=localStorage.getItem('remuTool.guideStep')||step;}catch(e){}
     setStep(step); setMode(mode);
-  });
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initGuideMode);
+  else initGuideMode();
+})();
+</script>
+
+
+<script>
+/* === Failsafe botón modo guiado === */
+(function(){
+  function activateGuided(){
+    document.body.classList.add('mode-guided');
+    if(!document.body.getAttribute('data-guide-step')) document.body.setAttribute('data-guide-step','base');
+    var shell=document.getElementById('guideShell');
+    var hint=document.getElementById('guideHint');
+    var guided=document.getElementById('modeGuided');
+    var classic=document.getElementById('modeClassic');
+    if(shell) shell.style.display='block';
+    if(hint) hint.style.display='block';
+    if(guided) guided.classList.add('active');
+    if(classic) classic.classList.remove('active');
+    try{localStorage.setItem('remuTool.mode','guided');}catch(e){}
+  }
+  function activateClassic(){
+    document.body.classList.remove('mode-guided');
+    var shell=document.getElementById('guideShell');
+    var hint=document.getElementById('guideHint');
+    var guided=document.getElementById('modeGuided');
+    var classic=document.getElementById('modeClassic');
+    if(shell) shell.style.display='none';
+    if(hint) hint.style.display='none';
+    if(guided) guided.classList.remove('active');
+    if(classic) classic.classList.add('active');
+    try{localStorage.setItem('remuTool.mode','classic');}catch(e){}
+  }
+  function bind(){
+    var mg=document.getElementById('modeGuided');
+    var mc=document.getElementById('modeClassic');
+    if(mg && !mg.dataset.failsafeBound){mg.dataset.failsafeBound='1';mg.addEventListener('click',activateGuided);}
+    if(mc && !mc.dataset.failsafeBound){mc.dataset.failsafeBound='1';mc.addEventListener('click',activateClassic);}
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',bind); else bind();
 })();
 </script>
 
