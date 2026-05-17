@@ -1378,6 +1378,47 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
 }
 </style>
 
+
+<style>
+/* === MiCopilot v0.1 — asistencia IA contextual para Impuesto Único === */
+.ai-help-btn{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:8px;
+  padding:6px 12px;
+  border-radius:999px;
+  border:1px solid rgba(90,169,255,.42);
+  background:rgba(90,169,255,.12);
+  color:#dbeafe;
+  font-weight:800;
+  font-size:12px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.ai-help-btn:hover{background:rgba(90,169,255,.18);border-color:rgba(90,169,255,.62)}
+.row-ai-iusc .label{flex-wrap:wrap}
+#aiContextOverlay{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:10020;display:none}
+#aiContextPanel{
+  position:fixed;right:18px;bottom:18px;width:min(620px, calc(100vw - 24px));
+  max-height:min(760px, calc(100vh - 24px));overflow:auto;
+  background:#0b1526;border:1px solid var(--border);border-radius:18px;
+  box-shadow:0 20px 60px rgba(0,0,0,.50);z-index:10021;display:none;
+}
+#aiContextPanel.open,#aiContextOverlay.open{display:block}
+.ai-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid var(--border);background:#0f1b33;border-radius:18px 18px 0 0}
+.ai-panel-head h3{margin:0;color:#dfe7ff}.ai-panel-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.ai-panel-body{padding:16px;display:grid;gap:12px}
+.ai-context-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.ai-context-item{padding:10px 12px;border:1px solid rgba(255,255,255,.08);border-radius:12px;background:rgba(255,255,255,.035)}
+.ai-context-item span{display:block;color:var(--muted);font-size:12px}.ai-context-item strong{display:block;color:#e7f0ff;font-size:14px;margin-top:2px}
+#aiPromptBox{width:100%;min-height:210px;resize:vertical;background:#07101f;border:1px solid var(--border);border-radius:14px;color:#e7f0ff;padding:12px;font:500 13px/1.45 ui-monospace,SFMono-Regular,Consolas,monospace}
+.ai-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.ai-action-btn{border:1px solid var(--border);background:#0b1526;color:#e7f0ff;border-radius:999px;padding:10px 12px;font-weight:800;cursor:pointer}
+.ai-action-btn.primary{border-color:rgba(34,197,94,.35);background:rgba(22,163,74,.16);color:#dcfce7}.ai-action-btn:hover{filter:brightness(1.12)}
+.ai-note{padding:10px 12px;border-left:3px solid rgba(251,191,36,.45);border-radius:10px;background:rgba(251,191,36,.07);color:#fde68a;font-size:13px}
+@media(max-width:620px){#aiContextPanel{right:8px;bottom:8px;width:calc(100vw - 16px)}.ai-context-grid,.ai-actions{grid-template-columns:1fr}.ai-help-btn{margin-left:0;margin-top:6px}}
+</style>
 </head>
 <body>
 <div class="wrap">
@@ -1514,10 +1555,10 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
 </select>
 <small class="muted" style="margin-left:.5rem">Por defecto: B. Cambia a A si quieres que el APV rebaje la RLI.</small>
 </div>
-<div class="row">
+<div class="row row-ai-iusc">
 <div class="label">
         Impuesto único retenido
-        <button aria-label="Ayuda" class="tip" data-help="#iusc-ret" data-tip="IUSC: Art. 42 N.º 1 y 43 N.º 1 LIR. Retención mensual por el empleador según tabla SII vigente." type="button">?</button>
+        <button aria-label="Preguntar a la IA sobre Impuesto Único" class="ai-help-btn" id="btnAiIusc" type="button">Preguntar IA</button>
 </div>
 <input data-key="desc.iusc_ret" readonly="" type="text" value="$0"/>
 </div>
@@ -4671,5 +4712,103 @@ function setIuscRetValue(monto){
 })();
 </script>
 
+
+<!-- MiCopilot v0.1 — panel IA contextual -->
+<div id="aiContextOverlay" aria-hidden="true"></div>
+<aside id="aiContextPanel" role="dialog" aria-modal="true" aria-labelledby="aiContextTitle">
+  <div class="ai-panel-head">
+    <div>
+      <h3 id="aiContextTitle">Asistente IA — Impuesto Único</h3>
+      <p>Genera un prompt contextual con los datos actuales de la liquidación.</p>
+    </div>
+    <button class="helpClose" id="aiContextClose" type="button">Cerrar</button>
+  </div>
+  <div class="ai-panel-body">
+    <div class="ai-context-grid" id="aiContextGrid"></div>
+    <label class="small muted" for="aiPromptBox">Prompt preparado para MiCopilot / Open WebUI</label>
+    <textarea id="aiPromptBox" spellcheck="false"></textarea>
+    <div class="ai-actions">
+      <button class="ai-action-btn primary" id="aiCopyPrompt" type="button">Copiar prompt</button>
+      <button class="ai-action-btn" id="aiOpenLocal" type="button">Abrir IA local</button>
+      <button class="ai-action-btn" id="aiOpenRemote" type="button">Abrir IA Tailscale</button>
+    </div>
+    <div class="ai-note">v0.1 usa modo puente: copia el contexto y lo llevas a Open WebUI. En v0.2 conectaremos la app directamente a un backend IA para responder dentro del panel.</div>
+  </div>
+</aside>
+
+<script>
+(function(){
+  const LOCAL_AI_URL = 'http://192.168.4.255:8080';
+  const TAILSCALE_AI_URL = 'http://100.98.13.84:8080';
+  const $ = (s,root=document)=>root.querySelector(s);
+  function val(key){ return ($('[data-key="'+key+'"]')?.value || '').trim() || '$0'; }
+  function cleanLabel(key){
+    const input = $('[data-key="'+key+'"]');
+    const label = input?.closest('.row')?.querySelector('.label');
+    if(!label) return key;
+    return label.childNodes[0]?.textContent?.replace(/\s+/g,' ').trim() || key;
+  }
+  function item(label,value){return '<div class="ai-context-item"><span>'+label+'</span><strong>'+value+'</strong></div>'}
+  function buildIuscContext(){
+    const data = {
+      'Sueldo base': val('haber.sueldo_base'),
+      'Gratificación': val('haber.gratificacion'),
+      'Antigüedad': val('haber.antiguedad'),
+      'Bono productividad': val('haber.bono_prod'),
+      'Bono vacaciones': val('haber.bono_vacaciones'),
+      'Feriados': val('haber.feriados'),
+      'Secuencia 9/10': val('haber.secuencia_9_10'),
+      'AFP 10%': val('desc.afp10'),
+      'Comisión AFP': val('desc.com_afp'),
+      'Salud 7%': val('desc.salud7'),
+      'APV': val('desc.apv'),
+      'Régimen APV': ($('#apvReg')?.value || 'B'),
+      'Impuesto único retenido': val('desc.iusc_ret'),
+      'Cotización adicional salud': val('desc.cot_adicional'),
+      'Trabajo pesado': val('desc.trab_pesado'),
+      'UF usada': ($('#ufInput')?.value || $('[data-key="uf.valor"]')?.value || 'No disponible'),
+      'Comisión AFP %': ($('#pctComAFP')?.value || 'No disponible')
+    };
+    const prompt = `Actúa como asistente experto en liquidaciones de sueldo chilenas, pero responde en lenguaje simple y didáctico.
+
+Quiero que expliques el concepto “Impuesto Único retenido” usando exclusivamente los datos que te entrego. No inventes valores. Si falta algún dato, dilo claramente.
+
+Datos actuales de la simulación:
+${Object.entries(data).map(([k,v])=>'- '+k+': '+v).join('\n')}
+
+Entrega la respuesta con esta estructura:
+1. Qué significa el impuesto único retenido.
+2. Por qué aparece este monto en esta simulación.
+3. Qué factores lo hicieron subir o bajar.
+4. Cómo influye el APV régimen ${data['Régimen APV']} en este caso.
+5. Una explicación corta para un piloto que no domina temas tributarios.
+6. Advertencias o datos faltantes, si corresponde.
+
+No des asesoría tributaria definitiva. Explica que es una simulación referencial.`;
+    return {data,prompt};
+  }
+  function openPanel(){
+    const overlay=$('#aiContextOverlay'), panel=$('#aiContextPanel'), grid=$('#aiContextGrid'), box=$('#aiPromptBox');
+    if(!overlay||!panel||!grid||!box) return;
+    const {data,prompt}=buildIuscContext();
+    grid.innerHTML = Object.entries(data).filter(([k])=>['Sueldo base','APV','Régimen APV','Impuesto único retenido','UF usada','Comisión AFP %'].includes(k)).map(([k,v])=>item(k,v)).join('');
+    box.value = prompt;
+    overlay.classList.add('open'); panel.classList.add('open');
+    setTimeout(()=>box.focus(),80);
+  }
+  function closePanel(){ $('#aiContextOverlay')?.classList.remove('open'); $('#aiContextPanel')?.classList.remove('open'); }
+  document.addEventListener('click', async (ev)=>{
+    if(ev.target?.id==='btnAiIusc') openPanel();
+    if(ev.target?.id==='aiContextClose' || ev.target?.id==='aiContextOverlay') closePanel();
+    if(ev.target?.id==='aiCopyPrompt'){
+      const txt=$('#aiPromptBox')?.value || '';
+      try{ await navigator.clipboard.writeText(txt); ev.target.textContent='Copiado ✓'; setTimeout(()=>ev.target.textContent='Copiar prompt',1200); }
+      catch(e){ $('#aiPromptBox')?.select(); document.execCommand('copy'); }
+    }
+    if(ev.target?.id==='aiOpenLocal') window.open(LOCAL_AI_URL,'_blank','noopener');
+    if(ev.target?.id==='aiOpenRemote') window.open(TAILSCALE_AI_URL,'_blank','noopener');
+  });
+})();
+</script>
 </body>
 </html>
