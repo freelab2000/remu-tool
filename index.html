@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.1.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.1.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.3.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.3.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -297,7 +297,7 @@ input[readonly]{opacity:.9}
 }
 
 
-/* ===== v.1.2.2.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
+/* ===== v.1.2.3.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
 
 /* Tipografía & espaciado global */
 body{ line-height:1.5; letter-spacing:.1px; }
@@ -1076,7 +1076,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UI polish v.1.2.2.f.w.t: KPIs centrados y botones APV consistentes === */
+/* === UI polish v.1.2.3.f.w.t: KPIs centrados y botones APV consistentes === */
 #kpiWrap.kpi-wrap{
   max-width: 980px !important;
   margin-left: auto !important;
@@ -1129,7 +1129,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UF automática y compacta v.1.2.2.f.w.t === */
+/* === UF automática y compacta v.1.2.3.f.w.t === */
 .compact-uf{
   padding:14px 16px;
 }
@@ -3764,7 +3764,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <footer class="footer">
-<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.2.f.w.t</div>
+<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.3.f.w.t</div>
 <div class="footer-text">
     Herramienta desarrollada para apoyar al usuario en la comprensión de su liquidación mensual con fines demostrativos.<br/>
     Los resultados mostrados son referenciales y no constituyen información oficial.
@@ -3804,7 +3804,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <script>
-// v.1.2.2.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
+// v.1.2.3.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
 (function(){
   const ids = ['kpiTH','kpiDL','kpiDV','kpiAL','kpiLP','kpiDelta'];
   const els = ids.map(id=>document.getElementById(id)).filter(Boolean);
@@ -4822,7 +4822,7 @@ function setIuscRetValue(monto){
 </script>
 
 
-<!-- MiCopilot v0.5 — panel conversacional local preparado para IA futura -->
+<!-- MiCopilot v0.6 — motor local con clasificación de intención y respuestas contextuales -->
 <div id="aiContextOverlay" aria-hidden="true"></div>
 <aside id="aiContextPanel" role="dialog" aria-modal="true" aria-labelledby="aiContextTitle">
   <div class="ai-panel-head">
@@ -4853,17 +4853,17 @@ function setIuscRetValue(monto){
         <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
         <button class="ai-send-btn" id="aiAskBtn" type="button">Consultar</button>
       </div>
-      
     </div>
   </div>
 </aside>
 
 <script>
-/* === RemuTool v1.2.2.f.w.t — Guided First + MiCopilot v0.5 local === */
+/* === RemuTool v1.2.3.f.w.t — MiCopilot v0.6 local === */
 (function(){
   const $ = (s,root=document)=>root.querySelector(s);
   const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
   const CLP = n => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(n)||0);
+
   function parseCLP(v){
     if(v == null) return 0;
     let s = String(v).replace(/\s/g,'').replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.');
@@ -4875,8 +4875,13 @@ function setIuscRetValue(monto){
   function outVal(sel){ return parseCLP($(sel)?.value); }
   function getTextValue(sel){ return ($(sel)?.value || '').trim(); }
   function sum(obj){ return Object.values(obj).reduce((a,b)=>a+(Number(b)||0),0); }
-  function nonZeroEntries(obj){ return Object.entries(obj).filter(([,v])=>Number(v)>0); }
-  function topEntries(obj, limit=3){ return Object.entries(obj).filter(([,v])=>Number(v)>0).sort((a,b)=>b[1]-a[1]).slice(0,limit); }
+  function topEntries(obj, limit=3){
+    return Object.entries(obj).filter(([,v])=>Number(v)>0).sort((a,b)=>b[1]-a[1]).slice(0,limit);
+  }
+  function norm(s){
+    return String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+  }
+
   function buildContext(){
     const ingresosFijos = {
       'Sueldo Base': val('haber.sueldo_base'),
@@ -4918,20 +4923,22 @@ function setIuscRetValue(monto){
     if(!bases.uf) faltantes.push('UF');
     return {ingresosFijos, variables, descuentos, resultados, bases, faltantes};
   }
+
   const KB = {
-    'apv': 'El APV es un ahorro previsional voluntario. En RemuTool se ingresa como descuento y, si está en régimen B, puede reducir la base tributable usada para calcular el IUSC.',
+    'apv': 'El APV es un ahorro previsional voluntario. En RemuTool se ingresa como descuento y, si está en régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.',
     'afp': 'La AFP corresponde a la cotización previsional obligatoria. RemuTool calcula el 10% y la comisión sobre la base imponible, considerando los topes vigentes.',
-    'iusc': 'El IUSC es el impuesto mensual aplicado a la renta tributable. RemuTool lo calcula identificando el tramo, aplicando tasa y rebaja correspondiente.',
+    'iusc': 'El Impuesto Único es el impuesto mensual aplicado a la renta tributable. RemuTool lo calcula identificando el tramo, aplicando la tasa y restando la rebaja correspondiente.',
     'imponible': 'El imponible es la base sobre la cual se calculan cotizaciones como AFP, salud y cesantía. En RemuTool surge de los haberes imponibles ingresados.',
-    'tributable': 'El tributable es la base utilizada para calcular el IUSC. Normalmente corresponde al imponible menos descuentos legales y APV régimen B cuando aplica.',
+    'tributable': 'El tributable es la base utilizada para calcular el Impuesto Único. Normalmente corresponde al imponible menos descuentos legales y APV régimen B cuando aplica.',
     'mejor variable': 'La Mejor Variable es una base de cálculo utilizada para determinados beneficios del convenio. RemuTool compara el promedio variable de los últimos 3 meses con el promedio de los últimos 12 meses y utiliza el mayor valor.',
     'vacaciones': 'El bono de vacaciones busca fomentar el uso efectivo de vacaciones y compensar parcialmente la pérdida de variables. En RemuTool se calcula usando la Mejor Variable.',
     'feriados': 'La compensación de feriados corresponde al beneficio de convenio por prestar servicios en días feriados. RemuTool usa el monto pagado por la empresa; MiCopilot puede explicar que la referencia de convenio es 6,6% de la remuneración aplicable.',
-    'secuencia': 'La compensación por secuencias reconoce secuencias operacionales prolongadas. En RemuTool se considera como variable; día 9 y 10 se calculan sobre remuneración bruta según reglas del convenio.',
-    'productividad': 'El Bono de Productividad es una remuneración variable asociada a las horas de vuelo del mes. Depende de cargo, nivel y tramo de horas definido en la tabla del convenio.',
+    'secuencia': 'La compensación por secuencias reconoce períodos operacionales prolongados. En RemuTool se considera como variable y se calcula sobre remuneración bruta según las reglas del convenio.',
+    'productividad': 'El Bono de Productividad es una remuneración variable asociada a las horas de vuelo del mes. Depende de cargo, nivel y tramo de horas definido en la tabla vigente del convenio.',
     'salud': 'La cotización de salud corresponde al 7% legal sobre base imponible, con tope. Si existe Isapre, puede haber cotización adicional según el valor del plan.',
     'cesantia': 'El seguro de cesantía es una cotización destinada a proteger al trabajador ante pérdida de empleo. RemuTool calcula el aporte del trabajador según la base imponible y tope correspondiente.'
   };
+
   function updateStatus(){
     const c = buildContext();
     const el = $('#aiDataStatus');
@@ -4944,6 +4951,7 @@ function setIuscRetValue(monto){
       el.textContent = '🟢 Simulación lista';
     }
   }
+
   function explainLiquidacion(){
     const c = buildContext();
     const totalFijos = sum(c.ingresosFijos);
@@ -4968,21 +4976,23 @@ function setIuscRetValue(monto){
       lines.push('Tributable calculado: '+CLP(c.resultados.tributable)+'.');
     }
     if(c.resultados.liquido) lines.push('El líquido a pagar calculado es '+CLP(c.resultados.liquido)+'.');
-    if(c.faltantes.length) lines.push('\nFaltan algunos datos para completar el análisis: '+c.faltantes.join(', ')+'.');
+    if(c.faltantes.length) lines.push('\nCompleta los datos pendientes para obtener un análisis más preciso.');
     return lines.join('\n');
   }
+
   function analyzeDescuentos(){
     const c = buildContext();
     const entries = topEntries(c.descuentos, 6);
-    if(!entries.length) return 'Aún no hay descuentos calculados o ingresados. Completa la simulación y podré ordenar AFP, salud, APV, IUSC y otros descuentos.';
+    if(!entries.length) return 'Aún no hay descuentos calculados o ingresados. Completa la simulación y podré ordenar AFP, salud, APV, Impuesto Único y otros descuentos.';
     let lines = ['Tus principales descuentos en esta simulación son:'];
     entries.forEach(([k,v],i)=>lines.push((i+1)+'. '+k+': '+CLP(v)));
     const apv = c.descuentos['APV'];
-    if(apv>0) lines.push('\nAPV ingresado: '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. Si es régimen B, puede reducir la base tributable usada para calcular el IUSC.');
+    if(apv>0) lines.push('\nAPV ingresado: '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. Si es régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.');
     return lines.join('\n');
   }
+
   function explainConcept(q){
-    const normalized = (q||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const normalized = norm(q);
     const aliases = [
       ['mejor variable',['mejor variable','variable']],
       ['apv',['apv']], ['afp',['afp']], ['iusc',['iusc','impuesto','impuesto unico']],
@@ -4993,8 +5003,38 @@ function setIuscRetValue(monto){
     for(const [key, words] of aliases){
       if(words.some(w=>normalized.includes(w))) return KB[key];
     }
-    return 'Puedo explicar conceptos de RemuTool como APV, AFP, IUSC, imponible, tributable, Mejor Variable, Vacaciones, Feriados, Secuencias o Productividad. Escribe el concepto que quieres revisar.';
+    return 'Puedo explicar conceptos de RemuTool como APV, AFP, Impuesto Único, imponible, tributable, Mejor Variable, Vacaciones, Feriados, Secuencias o Productividad. Escribe el concepto que quieres revisar.';
   }
+
+  function explainCalculo(q){
+    const n = norm(q);
+    if(n.includes('vacacion')){
+      return 'En RemuTool el bono de vacaciones se calcula utilizando la Mejor Variable como base. El monto corresponde al 3,33% de esa base por cada día de vacaciones ingresado, con un máximo de 15 días.';
+    }
+    if(n.includes('feriado')){
+      return 'En RemuTool los feriados se ingresan como el monto efectivamente pagado por la empresa. Como referencia de convenio, el feriado trabajado se compensa con un 6,6% de la remuneración definida para este beneficio.';
+    }
+    if(n.includes('secuencia') && (n.includes('10') || n.includes('diez'))){
+      return 'Una secuencia de 10 días genera una compensación equivalente al 5% de la remuneración bruta utilizada para este beneficio. En RemuTool se considera como variable del mes.';
+    }
+    if(n.includes('secuencia') && (n.includes('9') || n.includes('nueve'))){
+      return 'Una secuencia de 9 días genera una compensación equivalente al 3,3% de la remuneración bruta utilizada para este beneficio. En RemuTool se considera como variable del mes.';
+    }
+    if(n.includes('secuencia')){
+      return 'En RemuTool las secuencias se calculan sobre remuneración bruta: secuencia de 9 días = 3,3% y secuencia de 10 días = 5%.';
+    }
+    if(n.includes('productividad')){
+      return 'El Bono de Productividad se determina según horas de vuelo del mes, cargo, nivel y tramo de horas definido en la tabla vigente del convenio.';
+    }
+    if(n.includes('iusc') || n.includes('impuesto')){
+      return explainIuscCalculo();
+    }
+    if(n.includes('apv')){
+      return explainApvImpact();
+    }
+    return explainConcept(q);
+  }
+
   function explainIuscAlto(){
     const c = buildContext();
     const iusc = c.descuentos['IUSC'];
@@ -5012,8 +5052,9 @@ function setIuscRetValue(monto){
       if(apv>0) lines.push('El APV ingresado es '+CLP(apv)+' en régimen '+c.bases.regimenAPV+', lo que también influye en la base tributable según el régimen seleccionado.');
       return lines.join('\n');
     }
-    return 'Para explicar por qué tu Impuesto Único es alto necesito que la simulación tenga tributable e IUSC calculados. Conceptualmente, el IUSC aumenta cuando sube la renta tributable o cuando pasas a un tramo superior.';
+    return 'Para explicar por qué tu Impuesto Único es alto necesito que la simulación tenga tributable e Impuesto Único calculados. Conceptualmente, el impuesto aumenta cuando sube la renta tributable o cuando pasas a un tramo superior.';
   }
+
   function explainApvImpact(){
     const c=buildContext(), apv=c.descuentos['APV'], iusc=c.descuentos['IUSC'], trib=c.resultados.tributable;
     if(apv>0){
@@ -5022,40 +5063,82 @@ function setIuscRetValue(monto){
       else lines.push('En régimen A, el APV no rebaja directamente la base tributable mensual en RemuTool.');
       if(trib) lines.push('Con los datos actuales, la renta tributable calculada es '+CLP(trib)+'.');
       if(iusc) lines.push('El Impuesto Único calculado es '+CLP(iusc)+'.');
+      lines.push('En términos prácticos, el APV contribuye a modificar la carga tributaria de esta simulación según el régimen seleccionado.');
       return lines.join('\n');
     }
     return 'No hay APV ingresado en esta simulación. Conceptualmente, el APV régimen B puede reducir la base tributable usada para calcular el Impuesto Único.';
   }
+
   function explainIuscCalculo(){
     const c=buildContext(), trib=c.resultados.tributable, iusc=c.descuentos['IUSC'];
     if(trib && iusc) return 'RemuTool calcula el Impuesto Único usando la renta tributable. En esta simulación, la renta tributable calculada es '+CLP(trib)+' y el Impuesto Único calculado es '+CLP(iusc)+'. El cálculo se obtiene aplicando el tramo, la tasa y la rebaja correspondiente de la tabla IUSC.';
     return 'El Impuesto Único se calcula sobre la renta tributable, aplicando el tramo, la tasa y la rebaja correspondiente. Completa la simulación para que RemuTool muestre el valor calculado.';
   }
+
+  function analyzeLiquido(){
+    const c = buildContext();
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const topV = topEntries(c.variables,1)[0];
+    const topD = topEntries(c.descuentos,1)[0];
+    if(!c.resultados.liquido && !totalFijos && !totalVars){
+      return 'Para analizar el líquido necesito que completes la simulación. Cuando existan ingresos y descuentos calculados, podré identificar qué concepto impacta más.';
+    }
+    let lines = [];
+    if(c.resultados.liquido) lines.push('El líquido calculado por RemuTool es '+CLP(c.resultados.liquido)+'.');
+    if(topV) lines.push('El ingreso variable que más influye es '+topV[0]+' por '+CLP(topV[1])+'.');
+    if(topD) lines.push('El descuento más relevante es '+topD[0]+' por '+CLP(topD[1])+'.');
+    lines.push('Si quieres comparar con otro mes, será necesario contar con ambos escenarios.');
+    return lines.join('\n');
+  }
+
   function classifyIntent(n){
-    if((n.includes('por que') || n.includes('porque') || n.includes('alto') || n.includes('tan alto') || n.includes('tanto')) && (n.includes('iusc') || n.includes('impuesto'))) return 'iusc_alto';
+    const asksCalc = n.includes('como se calcula') || n.includes('como se calculan') || n.includes('calculo') || n.includes('formula');
+    const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('bajo') || n.includes('aumento') || n.includes('disminuyo');
+    if(asksCalc) return 'calculo';
+    if((asksAnalysis) && (n.includes('iusc') || n.includes('impuesto'))) return 'iusc_alto';
     if(n.includes('apv') && (n.includes('afecta') || n.includes('impacto') || n.includes('impuesto'))) return 'apv_impacto';
-    if(n.includes('como se calcula') && (n.includes('iusc') || n.includes('impuesto'))) return 'iusc_calculo';
+    if(asksAnalysis && (n.includes('liquido') || n.includes('sueldo') || n.includes('liquidacion'))) return 'liquido_analisis';
     if(n.includes('descuento') || n.includes('descuentos')) return 'descuentos';
     if(n.includes('liquidacion') || n.includes('liquido') || n.includes('sueldo')) return 'liquidacion';
     if(n.includes('cuanto corresponde') || n.includes('a cuantas horas') || n.includes('tramo')) return 'referencia';
     return 'concepto';
   }
+
   function answerQuestion(q){
     const s = (q||'').trim();
     if(!s) return 'Escribe una consulta sobre tu liquidación o elige una opción sugerida.';
-    const n = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const n = norm(s);
     const intent = classifyIntent(n);
+    if(intent==='calculo') return explainCalculo(s);
     if(intent==='iusc_alto') return explainIuscAlto();
     if(intent==='apv_impacto') return explainApvImpact();
-    if(intent==='iusc_calculo') return explainIuscCalculo();
+    if(intent==='liquido_analisis') return analyzeLiquido();
     if(intent==='descuentos') return analyzeDescuentos();
     if(intent==='liquidacion') return explainLiquidacion();
     if(intent==='referencia') return 'Puedo responder consultas de referencia cuando la tabla correspondiente esté cargada. Para Productividad, necesitaremos cargo, nivel y horas de vuelo, o bien el monto que quieres identificar.';
     return explainConcept(s);
   }
-  function setResponse(text){ const box=$('#aiResponseBox'); if(box) box.textContent=text; }
+
+  function setResponse(text){
+    const box=$('#aiResponseBox');
+    if(box) box.textContent=text;
+  }
+
+  function askAndClear(){
+    const input = $('#aiUserQuestion');
+    const question = input?.value || '';
+    setResponse(answerQuestion(question));
+    if(input){
+      input.value = '';
+      input.placeholder = 'Pregunta algo sobre tu liquidación...';
+      setTimeout(()=>input.focus(), 30);
+    }
+  }
+
   function openPanel(){ $('#aiContextOverlay')?.classList.add('open'); $('#aiContextPanel')?.classList.add('open'); updateStatus(); setTimeout(()=>$('#aiUserQuestion')?.focus(),120); }
   function closePanel(){ $('#aiContextOverlay')?.classList.remove('open'); $('#aiContextPanel')?.classList.remove('open'); }
+
   function activateGuidedFirst(){
     document.body.classList.add('mode-guided');
     document.body.setAttribute('data-guide-step', document.body.getAttribute('data-guide-step') || 'base');
@@ -5072,8 +5155,10 @@ function setIuscRetValue(monto){
       if(map[btn.dataset.guideStep]) btn.textContent=map[btn.dataset.guideStep];
     });
   }
+
   document.addEventListener('DOMContentLoaded', activateGuidedFirst);
   setTimeout(activateGuidedFirst, 80);
+
   document.addEventListener('click', (ev)=>{
     const t=ev.target;
     if(t?.id==='btnMiCopilotGlobal' || t?.id==='btnAiIusc') openPanel();
@@ -5081,14 +5166,27 @@ function setIuscRetValue(monto){
     if(t?.dataset?.aiPrompt){
       if(t.dataset.aiPrompt==='liquidacion') setResponse(explainLiquidacion());
       if(t.dataset.aiPrompt==='descuentos') setResponse(analyzeDescuentos());
-      if(t.dataset.aiPrompt==='concepto') { const input=$('#aiUserQuestion'); if(input){ input.value=''; input.placeholder='Ej: APV, IUSC, Mejor Variable, Feriados...'; input.focus(); } setResponse('Escribe el concepto que quieres revisar. Ejemplos: APV, IUSC, Mejor Variable, Feriados, Productividad.'); }
+      if(t.dataset.aiPrompt==='concepto') {
+        const input=$('#aiUserQuestion');
+        if(input){
+          input.value='';
+          input.placeholder='Ej: APV, IUSC, Mejor Variable, Feriados...';
+          input.focus();
+        }
+        setResponse('Escribe el concepto que quieres revisar. Ejemplos: APV, Impuesto Único, Mejor Variable, Feriados, Productividad.');
+      }
     }
-    if(t?.id==='aiAskBtn') setResponse(answerQuestion($('#aiUserQuestion')?.value));
+    if(t?.id==='aiAskBtn') askAndClear();
   });
+
   document.addEventListener('keydown',(ev)=>{
     if(ev.key==='Escape') closePanel();
-    if(ev.key==='Enter' && document.activeElement?.id==='aiUserQuestion'){ ev.preventDefault(); setResponse(answerQuestion($('#aiUserQuestion')?.value)); }
+    if(ev.key==='Enter' && document.activeElement?.id==='aiUserQuestion'){
+      ev.preventDefault();
+      askAndClear();
+    }
   });
+
   document.addEventListener('input', updateStatus);
 })();
 </script>
