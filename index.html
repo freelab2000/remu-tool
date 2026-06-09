@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.0.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.0.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.1.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.1.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -1419,6 +1419,106 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
 .ai-note{padding:10px 12px;border-left:3px solid rgba(251,191,36,.45);border-radius:10px;background:rgba(251,191,36,.07);color:#fde68a;font-size:13px}
 @media(max-width:620px){#aiContextPanel{right:8px;bottom:8px;width:calc(100vw - 16px)}.ai-context-grid,.ai-actions{grid-template-columns:1fr}.ai-help-btn{margin-left:0;margin-top:6px}}
 </style>
+
+<style>
+/* === RemuTool v1.2.1.f.w.t — Guided First + MiCopilot v0.4 === */
+.micopilot-hero{
+  max-width:960px;
+  margin:0 auto var(--gap);
+  padding:12px 14px;
+  border:1px solid rgba(90,169,255,.24);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(90,169,255,.10),rgba(15,27,51,.70));
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.micopilot-hero-text strong{display:block;color:#e7f0ff;font-size:15px}
+.micopilot-hero-text span{display:block;color:var(--muted);font-size:13px;margin-top:2px}
+.micopilot-main-btn{
+  border:1px solid rgba(90,169,255,.45);
+  background:rgba(90,169,255,.16);
+  color:#dbeafe;
+  border-radius:999px;
+  padding:10px 14px;
+  font-weight:900;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.micopilot-main-btn:hover{background:rgba(90,169,255,.23);border-color:rgba(90,169,255,.65)}
+/* En esta etapa el modo guiado es la presentación principal; el clásico queda como respaldo interno. */
+#modePanel .mode-tabs{display:none !important;}
+body.mode-guided .tip{display:none !important;}
+body.mode-guided #btnPasoIUSC{display:none !important;}
+/* MiCopilot panel limpio */
+#aiContextOverlay{position:fixed;inset:0;background:rgba(0,0,0,.58);z-index:10020;display:none}
+#aiContextOverlay.open{display:block}
+#aiContextPanel{
+  position:fixed;
+  top:0;right:0;bottom:0;
+  width:min(520px,94vw);
+  max-height:none;
+  overflow:hidden;
+  background:#0b1526;
+  border-left:1px solid var(--border);
+  border-radius:0;
+  box-shadow:-20px 0 60px rgba(0,0,0,.50);
+  z-index:10021;
+  display:flex;
+  flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .18s ease-out;
+}
+#aiContextPanel.open{display:flex;transform:translateX(0)}
+.ai-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:15px 16px;border-bottom:1px solid var(--border);background:#0f1b33;border-radius:0}
+.ai-panel-head h3{margin:0;color:#dfe7ff}.ai-panel-head p{margin:4px 0 0;color:var(--muted);font-size:13px}
+.ai-panel-body{padding:16px;display:flex;flex-direction:column;gap:14px;overflow:auto;min-height:0}
+.ai-status-pill{display:inline-flex;align-items:center;gap:7px;width:fit-content;border:1px solid rgba(255,255,255,.10);border-radius:999px;padding:6px 10px;background:rgba(255,255,255,.035);color:#cfe0ff;font-size:12px;font-weight:800}
+.ai-status-pill.warn{border-color:rgba(251,191,36,.30);background:rgba(251,191,36,.08);color:#fde68a}
+.ai-intro{padding:12px;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(255,255,255,.035);color:#dbe7ff}
+.ai-intro p{margin:0;color:var(--muted);font-size:13px}.ai-intro strong{display:block;margin-bottom:4px;color:#e7f0ff}
+.ai-prompts{display:grid;gap:8px}
+.ai-prompt-btn{
+  width:100%;text-align:left;
+  border:1px solid rgba(90,169,255,.24);
+  background:rgba(90,169,255,.08);
+  color:#e7f0ff;
+  border-radius:14px;
+  padding:11px 12px;
+  font-weight:850;
+  cursor:pointer;
+}
+.ai-prompt-btn:hover{background:rgba(90,169,255,.14);border-color:rgba(90,169,255,.42)}
+.ai-chat{display:grid;gap:10px}
+.ai-response{
+  min-height:150px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  background:#07101f;
+  padding:12px;
+  color:#e7f0ff;
+  line-height:1.48;
+  white-space:pre-wrap;
+}
+.ai-response .muted-line{color:var(--muted)}
+.ai-query-row{display:grid;grid-template-columns:1fr auto;gap:8px}
+#aiUserQuestion{
+  width:100%;background:#07101f;border:1px solid var(--border);border-radius:999px;color:#e7f0ff;
+  padding:12px 14px;font:600 14px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;text-align:left;
+}
+.ai-send-btn{border:1px solid rgba(34,197,94,.35);background:rgba(22,163,74,.16);color:#dcfce7;border-radius:999px;padding:10px 14px;font-weight:900;cursor:pointer}
+.ai-send-btn:hover{background:rgba(22,163,74,.24)}
+.ai-small-note{font-size:12px;color:var(--muted);line-height:1.35}
+@media(max-width:620px){
+  .micopilot-hero{align-items:stretch;flex-direction:column}
+  .micopilot-main-btn{width:100%}
+  #aiContextPanel{width:100vw}
+  .ai-query-row{grid-template-columns:1fr}
+  .ai-send-btn{width:100%}
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -1427,6 +1527,15 @@ body.mode-guided[data-guide-step="resultado"] [data-guide-card="iusc"],body.mode
 <p class="hero-subtitle">Simulador interactivo de liquidación mensual</p>
 </header>
 <div class="hero-divider" aria-hidden="true"></div>
+
+<div class="micopilot-hero" id="micopilotHero">
+  <div class="micopilot-hero-text">
+    <strong>MiCopilot</strong>
+    <span>Tu asistente para entender tu liquidación y los beneficios del convenio.</span>
+  </div>
+  <button class="micopilot-main-btn" id="btnMiCopilotGlobal" type="button">🤖 Abrir MiCopilot</button>
+</div>
+
 
 
 <div class="mode-panel mode-panel-v2" id="modePanel">
@@ -4713,102 +4822,224 @@ function setIuscRetValue(monto){
 </script>
 
 
-<!-- MiCopilot v0.1 — panel IA contextual -->
+<!-- MiCopilot v0.4 — panel conversacional local preparado para IA futura -->
 <div id="aiContextOverlay" aria-hidden="true"></div>
 <aside id="aiContextPanel" role="dialog" aria-modal="true" aria-labelledby="aiContextTitle">
   <div class="ai-panel-head">
     <div>
-      <h3 id="aiContextTitle">Asistente IA — Impuesto Único</h3>
-      <p>Genera un prompt contextual con los datos actuales de la liquidación.</p>
+      <h3 id="aiContextTitle">🤖 MiCopilot</h3>
+      <p>Tu asistente para entender tu liquidación y los beneficios del convenio.</p>
     </div>
     <button class="helpClose" id="aiContextClose" type="button">Cerrar</button>
   </div>
   <div class="ai-panel-body">
-    <div class="ai-context-grid" id="aiContextGrid"></div>
-    <label class="small muted" for="aiPromptBox">Prompt preparado para MiCopilot / Open WebUI</label>
-    <textarea id="aiPromptBox" spellcheck="false"></textarea>
-    <div class="ai-actions">
-      <button class="ai-action-btn primary" id="aiCopyPrompt" type="button">Copiar prompt</button>
-      <button class="ai-action-btn" id="aiOpenLocal" type="button">Abrir IA local</button>
-      <button class="ai-action-btn" id="aiOpenRemote" type="button">Abrir IA Tailscale</button>
+    <div id="aiDataStatus" class="ai-status-pill">🟢 Simulación lista</div>
+    <div class="ai-intro">
+      <strong>Hola 👋</strong>
+      <p>Puedo ayudarte a entender conceptos, cálculos y el impacto de los datos ingresados en RemuTool.</p>
     </div>
-    <div class="ai-note">v0.1 usa modo puente: copia el contexto y lo llevas a Open WebUI. En v0.2 conectaremos la app directamente a un backend IA para responder dentro del panel.</div>
+    <div class="ai-prompts" aria-label="Consultas sugeridas">
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="liquidacion">💰 Explícame mi liquidación</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
+    </div>
+    <div class="ai-chat">
+      <div id="aiResponseBox" class="ai-response"><span class="muted-line">Puedes comenzar con una de estas consultas:
+
+• ¿Qué es la Mejor Variable?
+• ¿Cómo afecta mi APV?
+• ¿Cómo se calculan las Vacaciones?</span></div>
+      <div class="ai-query-row">
+        <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
+        <button class="ai-send-btn" id="aiAskBtn" type="button">Consultar</button>
+      </div>
+      
+    </div>
   </div>
 </aside>
 
 <script>
+/* === RemuTool v1.2.1.f.w.t — Guided First + MiCopilot v0.4 local === */
 (function(){
-  const LOCAL_AI_URL = 'http://192.168.4.255:8080';
-  const TAILSCALE_AI_URL = 'http://100.98.13.84:8080';
   const $ = (s,root=document)=>root.querySelector(s);
-  function val(key){ return ($('[data-key="'+key+'"]')?.value || '').trim() || '$0'; }
-  function cleanLabel(key){
-    const input = $('[data-key="'+key+'"]');
-    const label = input?.closest('.row')?.querySelector('.label');
-    if(!label) return key;
-    return label.childNodes[0]?.textContent?.replace(/\s+/g,' ').trim() || key;
+  const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
+  const CLP = n => new Intl.NumberFormat('es-CL',{style:'currency',currency:'CLP',maximumFractionDigits:0}).format(Number(n)||0);
+  function parseCLP(v){
+    if(v == null) return 0;
+    let s = String(v).replace(/\s/g,'').replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.');
+    let n = Number(s.replace(/[^0-9.-]/g,''));
+    return Number.isFinite(n) ? Math.round(n) : 0;
   }
-  function item(label,value){return '<div class="ai-context-item"><span>'+label+'</span><strong>'+value+'</strong></div>'}
-  function buildIuscContext(){
-    const data = {
-      'Sueldo base': val('haber.sueldo_base'),
+  function byKey(key){ return document.querySelector('[data-key="'+key+'"]'); }
+  function val(key){ return parseCLP(byKey(key)?.value); }
+  function outVal(sel){ return parseCLP($(sel)?.value); }
+  function getTextValue(sel){ return ($(sel)?.value || '').trim(); }
+  function sum(obj){ return Object.values(obj).reduce((a,b)=>a+(Number(b)||0),0); }
+  function nonZeroEntries(obj){ return Object.entries(obj).filter(([,v])=>Number(v)>0); }
+  function topEntries(obj, limit=3){ return Object.entries(obj).filter(([,v])=>Number(v)>0).sort((a,b)=>b[1]-a[1]).slice(0,limit); }
+  function buildContext(){
+    const ingresosFijos = {
+      'Sueldo Base': val('haber.sueldo_base'),
       'Gratificación': val('haber.gratificacion'),
-      'Antigüedad': val('haber.antiguedad'),
-      'Bono productividad': val('haber.bono_prod'),
-      'Bono vacaciones': val('haber.bono_vacaciones'),
-      'Feriados': val('haber.feriados'),
-      'Secuencia 9/10': val('haber.secuencia_9_10'),
+      'Antigüedad': val('haber.antiguedad')
+    };
+    const variables = {
+      'Bono Productividad': val('haber.bono_prod'),
+      'Bono Vacaciones': val('haber.bono_vacaciones'),
+      'Compensación Feriados': val('haber.feriados'),
+      'Secuencia 9/10': val('haber.secuencia_9_10')
+    };
+    const descuentos = {
       'AFP 10%': val('desc.afp10'),
       'Comisión AFP': val('desc.com_afp'),
       'Salud 7%': val('desc.salud7'),
-      'APV': val('desc.apv'),
-      'Régimen APV': ($('#apvReg')?.value || 'B'),
-      'Impuesto único retenido': val('desc.iusc_ret'),
       'Cotización adicional salud': val('desc.cot_adicional'),
-      'Trabajo pesado': val('desc.trab_pesado'),
-      'UF usada': ($('#ufInput')?.value || $('[data-key="uf.valor"]')?.value || 'No disponible'),
-      'Comisión AFP %': ($('#pctComAFP')?.value || 'No disponible')
+      'Cesantía': val('desc.cesantia'),
+      'APV': val('desc.apv'),
+      'IUSC': val('desc.iusc_ret'),
+      'Sindicato': val('desc.sind_uccl'),
+      'Trabajo Pesado': val('desc.trab_pesado')
     };
-    const prompt = `Actúa como asistente experto en liquidaciones de sueldo chilenas, pero responde en lenguaje simple y didáctico.
-
-Quiero que expliques el concepto “Impuesto Único retenido” usando exclusivamente los datos que te entrego. No inventes valores. Si falta algún dato, dilo claramente.
-
-Datos actuales de la simulación:
-${Object.entries(data).map(([k,v])=>'- '+k+': '+v).join('\n')}
-
-Entrega la respuesta con esta estructura:
-1. Qué significa el impuesto único retenido.
-2. Por qué aparece este monto en esta simulación.
-3. Qué factores lo hicieron subir o bajar.
-4. Cómo influye el APV régimen ${data['Régimen APV']} en este caso.
-5. Una explicación corta para un piloto que no domina temas tributarios.
-6. Advertencias o datos faltantes, si corresponde.
-
-No des asesoría tributaria definitiva. Explica que es una simulación referencial.`;
-    return {data,prompt};
+    const resultados = {
+      imponible: outVal('#outImponible'),
+      tributable: outVal('#outTributable'),
+      liquido: parseCLP($('#kpiLiquido')?.textContent || $('#outLiquido')?.value || '')
+    };
+    const bases = {
+      uf: parseCLP(getTextValue('#ufVal') || getTextValue('#ufInput') || ''),
+      regimenAPV: getTextValue('#apvReg') || 'B',
+      comisionAFPpct: getTextValue('#pctComAFP') || '',
+      mejorVariable: parseCLP($('#bcActiveBase')?.textContent || $('#ferVariableActiva')?.textContent || '')
+    };
+    const faltantes = [];
+    if(sum(ingresosFijos)===0) faltantes.push('ingresos fijos');
+    if(!resultados.imponible) faltantes.push('imponible calculado');
+    if(!resultados.tributable) faltantes.push('tributable calculado');
+    if(!bases.uf) faltantes.push('UF');
+    return {ingresosFijos, variables, descuentos, resultados, bases, faltantes};
   }
-  function openPanel(){
-    const overlay=$('#aiContextOverlay'), panel=$('#aiContextPanel'), grid=$('#aiContextGrid'), box=$('#aiPromptBox');
-    if(!overlay||!panel||!grid||!box) return;
-    const {data,prompt}=buildIuscContext();
-    grid.innerHTML = Object.entries(data).filter(([k])=>['Sueldo base','APV','Régimen APV','Impuesto único retenido','UF usada','Comisión AFP %'].includes(k)).map(([k,v])=>item(k,v)).join('');
-    box.value = prompt;
-    overlay.classList.add('open'); panel.classList.add('open');
-    setTimeout(()=>box.focus(),80);
-  }
-  function closePanel(){ $('#aiContextOverlay')?.classList.remove('open'); $('#aiContextPanel')?.classList.remove('open'); }
-  document.addEventListener('click', async (ev)=>{
-    if(ev.target?.id==='btnAiIusc') openPanel();
-    if(ev.target?.id==='aiContextClose' || ev.target?.id==='aiContextOverlay') closePanel();
-    if(ev.target?.id==='aiCopyPrompt'){
-      const txt=$('#aiPromptBox')?.value || '';
-      try{ await navigator.clipboard.writeText(txt); ev.target.textContent='Copiado ✓'; setTimeout(()=>ev.target.textContent='Copiar prompt',1200); }
-      catch(e){ $('#aiPromptBox')?.select(); document.execCommand('copy'); }
+  const KB = {
+    'apv': 'El APV es un ahorro previsional voluntario. En RemuTool se ingresa como descuento y, si está en régimen B, puede reducir la base tributable usada para calcular el IUSC.',
+    'afp': 'La AFP corresponde a la cotización previsional obligatoria. RemuTool calcula el 10% y la comisión sobre la base imponible, considerando los topes vigentes.',
+    'iusc': 'El IUSC es el impuesto mensual aplicado a la renta tributable. RemuTool lo calcula identificando el tramo, aplicando tasa y rebaja correspondiente.',
+    'imponible': 'El imponible es la base sobre la cual se calculan cotizaciones como AFP, salud y cesantía. En RemuTool surge de los haberes imponibles ingresados.',
+    'tributable': 'El tributable es la base utilizada para calcular el IUSC. Normalmente corresponde al imponible menos descuentos legales y APV régimen B cuando aplica.',
+    'mejor variable': 'La Mejor Variable es una base de cálculo protectora. RemuTool compara el promedio variable de los últimos 3 meses con el promedio de los últimos 12 meses y usa el mayor valor.',
+    'vacaciones': 'El bono de vacaciones busca fomentar el uso efectivo de vacaciones y compensar parcialmente la pérdida de variables. En RemuTool se calcula usando la Mejor Variable.',
+    'feriados': 'La compensación de feriados corresponde al beneficio de convenio por prestar servicios en días feriados. RemuTool usa el monto pagado por la empresa; MiCopilot puede explicar que la referencia de convenio es 6,6% de la remuneración aplicable.',
+    'secuencia': 'La compensación por secuencias reconoce secuencias operacionales prolongadas. En RemuTool se considera como variable; día 9 y 10 se calculan sobre remuneración bruta según reglas del convenio.',
+    'productividad': 'El Bono de Productividad es una remuneración variable asociada a las horas de vuelo del mes. Depende de cargo, nivel y tramo de horas definido en la tabla del convenio.',
+    'salud': 'La cotización de salud corresponde al 7% legal sobre base imponible, con tope. Si existe Isapre, puede haber cotización adicional según el valor del plan.',
+    'cesantia': 'El seguro de cesantía es una cotización destinada a proteger al trabajador ante pérdida de empleo. RemuTool calcula el aporte del trabajador según la base imponible y tope correspondiente.'
+  };
+  function updateStatus(){
+    const c = buildContext();
+    const el = $('#aiDataStatus');
+    if(!el) return;
+    if(c.faltantes.length){
+      el.classList.add('warn');
+      el.textContent = '🟡 Faltan algunos datos para realizar un análisis completo.';
+    }else{
+      el.classList.remove('warn');
+      el.textContent = '🟢 Simulación lista';
     }
-    if(ev.target?.id==='aiOpenLocal') window.open(LOCAL_AI_URL,'_blank','noopener');
-    if(ev.target?.id==='aiOpenRemote') window.open(TAILSCALE_AI_URL,'_blank','noopener');
+  }
+  function explainLiquidacion(){
+    const c = buildContext();
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const totalDesc = sum(c.descuentos);
+    let lines = [];
+    lines.push('Tu liquidación se arma desde ingresos fijos, variables y descuentos.');
+    if(totalFijos>0) lines.push('Ingresos fijos: '+CLP(totalFijos)+'.'); else lines.push('Aún no hay ingresos fijos ingresados.');
+    if(totalVars>0){
+      const topV = topEntries(c.variables,2).map(([k,v])=>k+' '+CLP(v)).join(' y ');
+      lines.push('Variables: '+CLP(totalVars)+(topV ? ' — destacan '+topV+'.' : '.'));
+    }else lines.push('No hay variables ingresadas en esta simulación.');
+    if(c.resultados.imponible) lines.push('Imponible calculado: '+CLP(c.resultados.imponible)+'.');
+    if(c.resultados.tributable) lines.push('Tributable calculado: '+CLP(c.resultados.tributable)+'.');
+    const iusc = c.descuentos['IUSC'];
+    if(iusc) lines.push('IUSC estimado: '+CLP(iusc)+'.');
+    if(c.resultados.liquido) lines.push('Líquido estimado: '+CLP(c.resultados.liquido)+'.');
+    if(c.faltantes.length) lines.push('\nDato parcial: para una explicación más precisa falta '+c.faltantes.join(', ')+'.');
+    return lines.join('\n');
+  }
+  function analyzeDescuentos(){
+    const c = buildContext();
+    const entries = topEntries(c.descuentos, 6);
+    if(!entries.length) return 'Aún no hay descuentos calculados o ingresados. Completa la simulación y podré ordenar AFP, salud, APV, IUSC y otros descuentos.';
+    let lines = ['Tus principales descuentos en esta simulación son:'];
+    entries.forEach(([k,v],i)=>lines.push((i+1)+'. '+k+': '+CLP(v)));
+    const apv = c.descuentos['APV'];
+    if(apv>0) lines.push('\nAPV ingresado: '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. Si es régimen B, puede reducir la base tributable usada para calcular el IUSC.');
+    return lines.join('\n');
+  }
+  function explainConcept(q){
+    const normalized = (q||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    const aliases = [
+      ['mejor variable',['mejor variable','variable']],
+      ['apv',['apv']], ['afp',['afp']], ['iusc',['iusc','impuesto','impuesto unico']],
+      ['imponible',['imponible']], ['tributable',['tributable','rli']], ['vacaciones',['vacaciones']],
+      ['feriados',['feriado','feriados']], ['secuencia',['secuencia','secuencias']], ['productividad',['productividad','bono productividad']],
+      ['salud',['salud','isapre','fonasa']], ['cesantia',['cesantia','afc']]
+    ];
+    for(const [key, words] of aliases){
+      if(words.some(w=>normalized.includes(w))) return KB[key];
+    }
+    return 'Puedo explicar conceptos de RemuTool como APV, AFP, IUSC, imponible, tributable, Mejor Variable, Vacaciones, Feriados, Secuencias o Productividad. Escribe el concepto que quieres revisar.';
+  }
+  function answerQuestion(q){
+    const s = (q||'').trim();
+    if(!s) return 'Escribe una consulta sobre tu liquidación o elige una opción sugerida.';
+    const n = s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(n.includes('liquidacion') || n.includes('liquido') || n.includes('sueldo')) return explainLiquidacion();
+    if(n.includes('descuento') || n.includes('descuentos')) return analyzeDescuentos();
+    if(n.includes('apv') && (n.includes('afecta') || n.includes('impuesto'))){
+      const c=buildContext(), apv=c.descuentos['APV'];
+      if(apv>0) return 'Registras APV por '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. En RemuTool, si corresponde a régimen B, este monto puede reducir la base tributable usada para calcular el IUSC.';
+      return 'No hay APV ingresado en esta simulación. Conceptualmente, el APV régimen B puede reducir la base tributable usada para calcular el IUSC.';
+    }
+    return explainConcept(s);
+  }
+  function setResponse(text){ const box=$('#aiResponseBox'); if(box) box.textContent=text; }
+  function openPanel(){ $('#aiContextOverlay')?.classList.add('open'); $('#aiContextPanel')?.classList.add('open'); updateStatus(); setTimeout(()=>$('#aiUserQuestion')?.focus(),120); }
+  function closePanel(){ $('#aiContextOverlay')?.classList.remove('open'); $('#aiContextPanel')?.classList.remove('open'); }
+  function activateGuidedFirst(){
+    document.body.classList.add('mode-guided');
+    document.body.setAttribute('data-guide-step', document.body.getAttribute('data-guide-step') || 'base');
+    const shell=$('#guideShell'), hint=$('#guideHint'), guided=$('#modeGuided'), classic=$('#modeClassic');
+    if(shell) shell.style.display='block';
+    if(hint) hint.style.display='block';
+    guided?.classList.add('active'); classic?.classList.remove('active');
+    const titles = {base:['Ingresos','Ingresa los montos fijos principales de tu liquidación.'], variables:['Variables','Ingresa las variables ocasionales del mes.'], descuentos:['Descuentos','Revisa descuentos legales, salud, APV e impuesto.'], resultado:['Análisis','Revisa el resultado final de la simulación.']};
+    const step = document.body.getAttribute('data-guide-step') || 'base';
+    if($('#guideStepTitle')) $('#guideStepTitle').textContent = titles[step]?.[0] || 'Ingresos';
+    if($('#guideStepDesc')) $('#guideStepDesc').textContent = titles[step]?.[1] || 'Ingresa los montos fijos principales de tu liquidación.';
+    $$('.guide-step').forEach(btn=>{
+      const map={base:'1. Ingresos',variables:'2. Variables',descuentos:'3. Descuentos',resultado:'4. Análisis'};
+      if(map[btn.dataset.guideStep]) btn.textContent=map[btn.dataset.guideStep];
+    });
+  }
+  document.addEventListener('DOMContentLoaded', activateGuidedFirst);
+  setTimeout(activateGuidedFirst, 80);
+  document.addEventListener('click', (ev)=>{
+    const t=ev.target;
+    if(t?.id==='btnMiCopilotGlobal' || t?.id==='btnAiIusc') openPanel();
+    if(t?.id==='aiContextClose' || t?.id==='aiContextOverlay') closePanel();
+    if(t?.dataset?.aiPrompt){
+      if(t.dataset.aiPrompt==='liquidacion') setResponse(explainLiquidacion());
+      if(t.dataset.aiPrompt==='descuentos') setResponse(analyzeDescuentos());
+      if(t.dataset.aiPrompt==='concepto') { const input=$('#aiUserQuestion'); if(input){ input.value=''; input.placeholder='Ej: APV, IUSC, Mejor Variable, Feriados...'; input.focus(); } setResponse('Escribe el concepto que quieres revisar. Ejemplos: APV, IUSC, Mejor Variable, Feriados, Productividad.'); }
+    }
+    if(t?.id==='aiAskBtn') setResponse(answerQuestion($('#aiUserQuestion')?.value));
   });
+  document.addEventListener('keydown',(ev)=>{
+    if(ev.key==='Escape') closePanel();
+    if(ev.key==='Enter' && document.activeElement?.id==='aiUserQuestion'){ ev.preventDefault(); setResponse(answerQuestion($('#aiUserQuestion')?.value)); }
+  });
+  document.addEventListener('input', updateStatus);
 })();
 </script>
+
 </body>
 </html>
