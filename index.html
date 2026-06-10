@@ -4997,7 +4997,7 @@ function setIuscRetValue(monto){
       }
     }
 
-    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
+    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
     if(c.faltantes.length) lines.push('\nCompleta los datos pendientes para obtener un análisis más preciso.');
     return cleanAnswer(lines.join('\n'));
   }
@@ -5013,9 +5013,8 @@ function setIuscRetValue(monto){
     if(top) lines.push('\nEl descuento de mayor impacto corresponde a '+top[0]+' por '+CLP(top[1])+(descLegales ? ' ('+pct(top[1]/descLegales*100)+' de los descuentos legales).' : '.'));
     const apv = c.descuentos['APV'];
     if(apv>0) lines.push('APV ingresado: '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. Si es régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.');
-    const insights = generarInsightsRemuTool(c).map(i => i.texto)
-  .filter(x => x.includes('APV') || x.includes('descuento') || x.includes('Impuesto Único'));
-    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
+    const insights = generarInsightsRemuTool(c).filter(x => x.includes('APV') || x.includes('descuento') || x.includes('Impuesto Único'));
+    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
     return cleanAnswer(lines.join('\n'));
   }
 
@@ -5034,7 +5033,7 @@ function setIuscRetValue(monto){
     if(totalHaberes>0) lines.push('En conjunto, las variables representan '+pct(totalVars/totalHaberes*100)+' de los haberes totales.');
     if(c.descuentos['IUSC']>0) lines.push('Estas variables aumentan la base afecta a cálculo y pueden incidir en el Impuesto Único calculado.');
     const insights = generarInsightsRemuTool(c).filter(x => x.includes('variables') || x.includes('Productividad') || x.includes('vacaciones') || x.includes('feriados') || x.includes('secuencias'));
-    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
+    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
     return cleanAnswer(lines.join('\n'));
   }
 
@@ -5074,44 +5073,64 @@ function setIuscRetValue(monto){
   }
 
 
-  
-function generarInsightsRemuTool(c){
-  const insights = [];
-  const ingresosFijos = sum(c.ingresosFijos);
-  const variables = sum(c.variables);
-  const haberes = ingresosFijos + variables;
-  const productividad = c.variables['Bono Productividad'] || 0;
-  const vacaciones = c.variables['Bono Vacaciones'] || 0;
-  const feriados = c.variables['Compensación Feriados'] || 0;
-  const secuencias = c.variables['Secuencia 9/10'] || 0;
-  const apv = c.descuentos['APV'] || 0;
-  const iusc = c.descuentos['IUSC'] || 0;
-  const afpTotal = (c.descuentos['AFP 10%'] || 0) + (c.descuentos['Comisión AFP'] || 0);
-  const descLegales = c.resultados.descuentosLegales || sum(c.descuentos);
+  function generarInsightsRemuTool(c){
+    const insights = [];
+    const ingresosFijos = sum(c.ingresosFijos);
+    const variables = sum(c.variables);
+    const haberes = ingresosFijos + variables;
+    const productividad = c.variables['Bono Productividad'] || 0;
+    const vacaciones = c.variables['Bono Vacaciones'] || 0;
+    const feriados = c.variables['Compensación Feriados'] || 0;
+    const secuencias = c.variables['Secuencia 9/10'] || 0;
+    const apv = c.descuentos['APV'] || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const afpTotal = (c.descuentos['AFP 10%'] || 0) + (c.descuentos['Comisión AFP'] || 0);
+    const descLegales = c.resultados.descuentosLegales || sum(c.descuentos);
 
-  if(haberes>0 && variables>0){
-    const pctVariables=((variables/haberes)*100).toFixed(1);
-    insights.push({tipo:'variableAlta',prioridad:1,texto:`El ${pctVariables}% de tus haberes proviene de remuneraciones variables.`});
+    if(haberes > 0 && variables > 0){
+      const pctVariables = (variables / haberes) * 100;
+      if(pctVariables > 50){
+        insights.push('• Más del '+pctVariables.toFixed(0)+'% de tus ingresos proviene de remuneraciones variables. Esto puede generar diferencias importantes entre meses.');
+      }else if(pctVariables > 30){
+        insights.push('• Las variables representan '+pctVariables.toFixed(0)+'% de tus haberes totales.');
+      }
+    }
+
+    if(productividad > 0 && variables > 0 && (productividad / variables) > 0.7){
+      insights.push('• El Bono de Productividad es el principal componente variable de esta liquidación.');
+    }
+
+    if(apv > 0){
+      insights.push('• Mantienes APV activo por '+CLP(apv)+(descLegales ? ' ('+pct(apv/descLegales*100)+' de los descuentos legales).' : '.')); 
+      if(String(c.bases.regimenAPV || '').toUpperCase() === 'B'){
+        insights.push('• El APV régimen B reduce la base tributable utilizada para calcular el Impuesto Único.');
+      }else if(String(c.bases.regimenAPV || '').toUpperCase() === 'A'){
+        insights.push('• El APV régimen A puede generar bonificación estatal según las reglas vigentes.');
+      }
+    }
+
+    if(iusc > 0 && iusc > afpTotal){
+      insights.push('• El principal descuento legal corresponde al Impuesto Único'+(descLegales ? ' ('+pct(iusc/descLegales*100)+' de los descuentos legales).' : '.')); 
+    }
+
+    if(vacaciones > 0){
+      insights.push('• Esta liquidación incorpora compensación por vacaciones calculada sobre la Mejor Variable.');
+    }
+
+    if(feriados > 0){
+      insights.push('• Se registran pagos asociados a feriados trabajados.');
+    }
+
+    if(secuencias > 0){
+      insights.push('• La liquidación incluye compensación por secuencias operacionales prolongadas.');
+    }
+
+    if(variables > 0 && ingresosFijos > 0 && variables > ingresosFijos){
+      insights.push('• Las remuneraciones variables superan a los ingresos fijos durante este período.');
+    }
+
+    return insights;
   }
-
-  if(productividad>0 && variables>0){
-    const pctProd=((productividad/variables)*100).toFixed(1);
-    insights.push({tipo:'productividad',prioridad:1,texto:`El Bono de Productividad representa el ${pctProd}% de las variables registradas.`});
-  }
-
-  if(iusc>0 && descLegales>0){
-    const pctIusc=((iusc/descLegales)*100).toFixed(1);
-    insights.push({tipo:'iusc',prioridad:2,texto:`El IUSC representa el ${pctIusc}% de los descuentos legales.`});
-  }
-
-  if(apv>0) insights.push({tipo:'apv',prioridad:2,texto:'Mantienes APV activo, contribuyendo a reducir parcialmente el impacto tributario.'});
-  if(vacaciones>0) insights.push({tipo:'vacaciones',prioridad:3,texto:'La liquidación incorpora compensación por vacaciones calculada sobre la Mejor Variable.'});
-  if(feriados>0) insights.push({tipo:'feriados',prioridad:3,texto:'Se registran pagos asociados a feriados trabajados durante el período.'});
-  if(secuencias>0) insights.push({tipo:'secuencias',prioridad:3,texto:'La liquidación incorpora compensación por secuencias operacionales prolongadas.'});
-
-  return insights.sort((a,b)=>a.prioridad-b.prioridad);
-}
-
 
   function factorTributario(){
     const c=buildContext();
