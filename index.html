@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.7.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.7.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.8.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.8.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -5483,6 +5483,271 @@ function setIuscRetValue(monto){
 
   setTimeout(bindMiCopilotHotfix, 100);
   setTimeout(bindMiCopilotHotfix, 500);
+})();
+</script>
+
+
+<script>
+/* === RemuTool v1.2.8.f.w.t — Modo Guiado Fase 1: mensajes y validaciones suaves === */
+(function(){
+  const $ = (s, root=document) => root.querySelector(s);
+  const $$ = (s, root=document) => Array.from(root.querySelectorAll(s));
+
+  function parseCLP(v){
+    if(v == null) return 0;
+    const s = String(v)
+      .replace(/\s/g,'')
+      .replace(/\$/g,'')
+      .replace(/\./g,'')
+      .replace(/,/g,'.');
+    const n = Number(s.replace(/[^0-9.-]/g,''));
+    return Number.isFinite(n) ? Math.round(n) : 0;
+  }
+
+  function byKey(k){
+    return document.querySelector('[data-key="'+k+'"]');
+  }
+
+  function valueKey(k){
+    return parseCLP(byKey(k)?.value);
+  }
+
+  function getTextValue(sel){
+    const el = $(sel);
+    return (el?.value || el?.textContent || '').trim();
+  }
+
+  function getStep(){
+    return document.body.getAttribute('data-guide-step') || 'base';
+  }
+
+  function setGuideCopy(step){
+    const title = $('#guideStepTitle');
+    const desc = $('#guideStepDesc');
+
+    const copy = {
+      base: [
+        'Ingresos',
+        'Ingresa los haberes fijos principales. La UF se mantiene con el botón de actualización al último valor disponible del mes previo.'
+      ],
+      variables: [
+        'Variables del mes',
+        'Ingresa solo los montos efectivamente pagados por la empresa: productividad, vacaciones, feriados o secuencias si aparecen en la liquidación.'
+      ],
+      descuentos: [
+        'Descuentos',
+        'Revisa cotizaciones, salud, APV, sindicato y otros descuentos. El IUSC se calcula automáticamente con los datos ingresados.'
+      ],
+      resultado: [
+        'Resultado',
+        'Revisa imponible, tributable, Impuesto Único y líquido final. Si quieres análisis o explicación, usa MiCopilot.'
+      ]
+    };
+
+    const selected = copy[step] || copy.base;
+    if(title) title.textContent = selected[0];
+    if(desc) desc.textContent = selected[1];
+
+    $$('.guide-step').forEach(btn => {
+      const labels = {
+        base: '1. Ingresos',
+        variables: '2. Variables',
+        descuentos: '3. Descuentos',
+        resultado: '4. Resultado'
+      };
+      if(labels[btn.dataset.guideStep]) btn.textContent = labels[btn.dataset.guideStep];
+    });
+  }
+
+  function clearGuideMarks(){
+    $$('.guide-field-missing,.guide-field-ok').forEach(el => {
+      el.classList.remove('guide-field-missing','guide-field-ok');
+    });
+  }
+
+  function markField(key, status){
+    const input = byKey(key);
+    if(!input) return;
+    input.classList.remove('guide-field-missing','guide-field-ok');
+    input.classList.add(status === 'warn' ? 'guide-field-missing' : 'guide-field-ok');
+  }
+
+  function addMessage(messages, text){
+    if(text && !messages.includes(text)) messages.push(text);
+  }
+
+  function updateGuideSmart(){
+    const list = $('#guideSmartList');
+    const badge = $('#guideSmartBadge');
+    if(!list || !badge) return;
+
+    const step = getStep();
+    const messages = [];
+    let level = 'ok';
+
+    clearGuideMarks();
+
+    const sueldo = valueKey('haber.sueldo_base');
+    const grat = valueKey('haber.gratificacion');
+    const antig = valueKey('haber.antiguedad');
+    const prod = valueKey('haber.bono_prod');
+    const vac = valueKey('haber.bono_vacaciones');
+    const fer = valueKey('haber.feriados');
+    const sec = valueKey('haber.secuencia_9_10');
+
+    const afp = valueKey('desc.afp10');
+    const salud = valueKey('desc.salud7');
+    const apv = valueKey('desc.apv');
+    const iuscRet = valueKey('desc.iusc_ret');
+    const uf = parseCLP(getTextValue('#ufVal') || getTextValue('#ufInput'));
+    const mejorVariable = parseCLP(getTextValue('#bcActiveBase') || getTextValue('#ferVariableActiva') || getTextValue('#secVariableActiva'));
+
+    if(step === 'base'){
+      if(!sueldo && !grat && !antig){
+        level = 'info';
+        addMessage(messages, 'Ingresa los haberes fijos principales para iniciar una simulación representativa.');
+        ['haber.sueldo_base','haber.gratificacion','haber.antiguedad'].forEach(k => markField(k,'warn'));
+      } else {
+        addMessage(messages, 'Haberes base registrados. Puedes continuar con las variables del mes.');
+        ['haber.sueldo_base','haber.gratificacion','haber.antiguedad'].forEach(k => {
+          if(valueKey(k)>0) markField(k,'ok');
+        });
+      }
+
+      if(!uf){
+        level = 'warn';
+        addMessage(messages, 'UF no detectada. Usa el botón de actualización para cargar el último valor disponible del mes previo o ingrésala manualmente.');
+      } else {
+        addMessage(messages, 'UF cargada para los cálculos con tope legal.');
+      }
+    }
+
+    if(step === 'variables'){
+      if(!prod && !vac && !fer && !sec){
+        level = 'info';
+        addMessage(messages, 'No hay variables ingresadas. Esto está bien si la liquidación del mes no tuvo productividad, vacaciones, feriados ni secuencias.');
+      } else {
+        addMessage(messages, 'Variables ingresadas. Verifica que correspondan a montos pagados por la empresa, no a días o cantidades.');
+      }
+
+      if(vac > 0){
+        addMessage(messages, 'Vacaciones: el usuario ingresa el monto pagado. El tope de convenio corresponde al equivalente de hasta 15 días, pero RemuTool no bloquea el valor ingresado.');
+        if(mejorVariable > 0){
+          const maxVacRef = mejorVariable * 0.0333 * 15;
+          if(vac > maxVacRef * 1.05){
+            level = 'warn';
+            markField('haber.bono_vacaciones','warn');
+            addMessage(messages, 'El monto de vacaciones parece superar el equivalente referencial de 15 días sobre la Mejor Variable. Revisa que el monto ingresado sea el informado por la empresa.');
+          } else {
+            markField('haber.bono_vacaciones','ok');
+          }
+        }
+      }
+
+      if(fer > 0){
+        addMessage(messages, 'Feriados: ingresa el monto pagado por la empresa. El cálculo de referencia usa 6,6% según convenio.');
+        markField('haber.feriados','ok');
+      }
+
+      if(sec > 0){
+        addMessage(messages, 'Secuencia 9/10: ingresa el monto pagado o calculado según corresponda. Referencia: 3,3% para día 9 y 5% para día 10.');
+        markField('haber.secuencia_9_10','ok');
+      }
+
+      if(prod > 0){
+        addMessage(messages, 'Productividad registrada como variable del mes.');
+        markField('haber.bono_prod','ok');
+      }
+    }
+
+    if(step === 'descuentos'){
+      if(!afp && !salud && !apv && !iuscRet){
+        level = 'info';
+        addMessage(messages, 'Aún no se observan descuentos principales ingresados o calculados. Revisa AFP, salud, APV y otros descuentos antes de cerrar la simulación.');
+      } else {
+        addMessage(messages, 'Descuentos principales disponibles para el cálculo.');
+      }
+
+      if(apv > 0){
+        addMessage(messages, 'APV activo. Verifica régimen A/B y monto ingresado antes de revisar el efecto tributario.');
+        markField('desc.apv','ok');
+      }
+
+      if(salud > 0) markField('desc.salud7','ok');
+      if(afp > 0) markField('desc.afp10','ok');
+    }
+
+    if(step === 'resultado'){
+      addMessage(messages, 'Resultado listo para revisión. El análisis detallado debe hacerse desde MiCopilot si el usuario quiere profundizar.');
+      if(!uf){
+        level = 'warn';
+        addMessage(messages, 'UF no detectada. Revisa este dato antes de usar la simulación como referencia final.');
+      }
+    }
+
+    if(messages.length === 0){
+      addMessage(messages, 'Sin observaciones para este paso.');
+    }
+
+    badge.classList.remove('warn','info');
+    if(level === 'warn'){
+      badge.classList.add('warn');
+      badge.textContent = 'Revisar';
+    } else if(level === 'info'){
+      badge.classList.add('info');
+      badge.textContent = 'Info';
+    } else {
+      badge.textContent = 'Listo';
+    }
+
+    list.innerHTML = messages.map(m => '<li>'+m+'</li>').join('');
+  }
+
+  function refreshGuide(){
+    const step = getStep();
+    setGuideCopy(step);
+    updateGuideSmart();
+  }
+
+  function bindGuidePolish(){
+    refreshGuide();
+
+    document.addEventListener('click', ev => {
+      if(ev.target?.classList?.contains('guide-step') ||
+         ev.target?.id === 'guideNextTop' ||
+         ev.target?.id === 'guidePrevTop' ||
+         ev.target?.id === 'guideNextBottom' ||
+         ev.target?.id === 'guidePrevBottom' ||
+         ev.target?.id === 'modeGuided' ||
+         ev.target?.id === 'modeClassic'){
+        setTimeout(refreshGuide, 80);
+      }
+    }, true);
+
+    document.addEventListener('input', () => {
+      if(document.body.classList.contains('mode-guided')) {
+        setTimeout(updateGuideSmart, 40);
+      }
+    }, true);
+
+    document.addEventListener('change', () => {
+      if(document.body.classList.contains('mode-guided')) {
+        setTimeout(updateGuideSmart, 40);
+      }
+    }, true);
+
+    const obs = new MutationObserver(() => {
+      if(document.body.classList.contains('mode-guided')) refreshGuide();
+    });
+
+    obs.observe(document.body, {attributes:true, attributeFilter:['data-guide-step','class']});
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindGuidePolish);
+  } else {
+    bindGuidePolish();
+  }
 })();
 </script>
 
