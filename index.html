@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.5.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.5.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.6.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.6.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -297,7 +297,7 @@ input[readonly]{opacity:.9}
 }
 
 
-/* ===== v.1.2.5.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
+/* ===== v.1.2.6.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
 
 /* Tipografía & espaciado global */
 body{ line-height:1.5; letter-spacing:.1px; }
@@ -1076,7 +1076,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UI polish v.1.2.5.f.w.t: KPIs centrados y botones APV consistentes === */
+/* === UI polish v.1.2.6.f.w.t: KPIs centrados y botones APV consistentes === */
 #kpiWrap.kpi-wrap{
   max-width: 980px !important;
   margin-left: auto !important;
@@ -1129,7 +1129,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UF automática y compacta v.1.2.5.f.w.t === */
+/* === UF automática y compacta v.1.2.6.f.w.t === */
 .compact-uf{
   padding:14px 16px;
 }
@@ -3764,7 +3764,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <footer class="footer">
-<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.5.f.w.t</div>
+<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.6.f.w.t</div>
 <div class="footer-text">
     Herramienta desarrollada para apoyar al usuario en la comprensión de su liquidación mensual con fines demostrativos.<br/>
     Los resultados mostrados son referenciales y no constituyen información oficial.
@@ -3804,7 +3804,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <script>
-// v.1.2.5.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
+// v.1.2.6.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
 (function(){
   const ids = ['kpiTH','kpiDL','kpiDV','kpiAL','kpiLP','kpiDelta'];
   const els = ids.map(id=>document.getElementById(id)).filter(Boolean);
@@ -4858,7 +4858,7 @@ function setIuscRetValue(monto){
 </aside>
 
 <script>
-/* === RemuTool v1.2.5.f.w.t — MiCopilot v0.8 insights automáticos local === */
+/* === RemuTool v1.2.6.f.w.t — MiCopilot v0.9 Diagnostic Engine local === */
 (function(){
   const $ = (s,root=document)=>root.querySelector(s);
   const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
@@ -4964,7 +4964,7 @@ function setIuscRetValue(monto){
     const iusc = c.descuentos['IUSC'];
     const topV = topEntries(c.variables,1)[0];
     const topD = topEntries(c.descuentos,1)[0];
-    const insights = generarInsightsRemuTool(c);
+    let insights = generarInsightsRemuTool(c);
     let lines = [];
     if(totalFijos>0) lines.push('Ingresos fijos: '+CLP(totalFijos)+' entre sueldo base, gratificación y antigüedad.');
     else lines.push('Aún no hay ingresos fijos ingresados. Completa sueldo base, gratificación y antigüedad para una lectura más precisa.');
@@ -5024,8 +5024,29 @@ function setIuscRetValue(monto){
   function principalDescuento(){
     const c=buildContext();
     const top=topEntries(c.descuentos,1)[0];
+    const totalDesc=sum(c.descuentos);
     if(!top) return 'Aún no hay descuentos calculados o ingresados para analizar.';
-    return 'El descuento que más impacta esta simulación es '+top[0]+' por '+CLP(top[1])+'.';
+    const share = totalDesc ? ' ('+pct(top[1]/totalDesc*100)+' de los descuentos registrados)' : '';
+    return 'El descuento que más impacta esta simulación es '+top[0]+' por '+CLP(top[1])+share+'.';
+  }
+
+  function mayorImpacto(){
+    const c=buildContext();
+    const topVar=topEntries(c.variables,1)[0];
+    const topDesc=topEntries(c.descuentos,1)[0];
+    const totalFijos=sum(c.ingresosFijos);
+    const totalVars=sum(c.variables);
+    let lines=[];
+    if(topVar) lines.push('Principal ingreso variable: '+topVar[0]+' por '+CLP(topVar[1])+'.');
+    if(topDesc) lines.push('Principal descuento: '+topDesc[0]+' por '+CLP(topDesc[1])+'.');
+    if(c.descuentos['IUSC']>0 && c.descuentos['IUSC'] === (topDesc?.[1]||0)) lines.push('En esta simulación, la mayor presión sobre el resultado final viene por carga tributaria.');
+    if(totalVars>0 && totalFijos>0){
+      const p = totalVars/(totalFijos+totalVars)*100;
+      lines.push('Las variables representan '+pct(p)+' de tus haberes totales.');
+    }
+    if(!lines.length) return 'Aún no hay suficiente información para identificar el componente de mayor impacto.';
+    return lines.join('
+');
   }
 
 
@@ -5184,14 +5205,56 @@ function setIuscRetValue(monto){
     return lines.join('\n');
   }
 
+
+  function escenarioAumentoAPV(q){
+    const c=buildContext();
+    const apv=c.descuentos['APV']||0;
+    const trib=c.resultados.tributable||0;
+    const iusc=c.descuentos['IUSC']||0;
+    const n=norm(q);
+    const nums = String(q||'').match(/[0-9][0-9\.\,]*/g) || [];
+    let monto = nums.length ? parseCLP(nums[nums.length-1]) : 0;
+    let lines=[];
+    if(apv>0) lines.push('Actualmente registras APV por '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'.');
+    else lines.push('Actualmente no registras APV en esta simulación.');
+    if(monto>0) lines.push('Si aumentas el APV en '+CLP(monto)+', en régimen B normalmente disminuiría la renta tributable usada para calcular el Impuesto Único, sujeto a topes y condiciones aplicables.');
+    else lines.push('Si aumentas el APV en régimen B, normalmente disminuiría la renta tributable usada para calcular el Impuesto Único, sujeto a topes y condiciones aplicables.');
+    if(trib) lines.push('Renta tributable actual: '+CLP(trib)+'.');
+    if(iusc) lines.push('Impuesto Único actual calculado: '+CLP(iusc)+'.');
+    lines.push('Para una simulación exacta, ingresa el nuevo monto APV directamente en RemuTool y revisa el IUSC recalculado.');
+    return lines.join('
+');
+  }
+
+  function variacionMensual(){
+    const c=buildContext();
+    const totalFijos=sum(c.ingresosFijos);
+    const totalVars=sum(c.variables);
+    const topV=topEntries(c.variables,1)[0];
+    const topD=topEntries(c.descuentos,1)[0];
+    let lines=['No tengo un mes anterior cargado para comparar directamente.'];
+    if(totalVars>0 && topV) lines.push('Dentro de esta simulación, el principal factor que puede explicar una liquidación más alta es '+topV[0]+' por '+CLP(topV[1])+'.');
+    if(topD) lines.push('El principal factor que reduce el líquido es '+topD[0]+' por '+CLP(topD[1])+'.');
+    if(totalFijos>0) lines.push('Ingresos fijos actuales: '+CLP(totalFijos)+'.');
+    if(totalVars>0) lines.push('Variables actuales: '+CLP(totalVars)+'.');
+    lines.push('Para explicar con precisión por qué ganaste más o menos, será necesario comparar esta simulación con otro mes.');
+    return lines.join('
+');
+  }
+
   function classifyIntent(n){
     const asksCalc = n.includes('como se calcula') || n.includes('como se calculan') || n.includes('calculo') || n.includes('formula') || n.includes('como funciona');
-    const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('bajo') || n.includes('aumento') || n.includes('disminuyo') || n.includes('genera') || n.includes('principal') || n.includes('mayor') || n.includes('mas');
+    const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('aumento') || n.includes('disminuyo') || n.includes('genera') || n.includes('principal') || n.includes('mayor') || n.includes('mas') || n.includes('inflando') || n.includes('incrementa') || n.includes('influye');
     if(n.includes('analiza') && (n.includes('variable') || n.includes('variables'))) return 'variables_analisis';
     if(n.includes('principal') && (n.includes('variable') || n.includes('ingreso variable'))) return 'principal_variable';
     if(n.includes('principal') && n.includes('descuento')) return 'principal_descuento';
     if(n.includes('descuento') && (n.includes('afecta') || n.includes('impacta') || n.includes('mayor') || n.includes('mas') || n.includes('principal'))) return 'principal_descuento';
-    if((n.includes('genera') || n.includes('causa') || n.includes('factor')) && (n.includes('impuesto') || n.includes('iusc'))) return 'factor_tributario';
+    if((n.includes('mayor impacto') || n.includes('impacta mas') || n.includes('impacto mas') || n.includes('componente') || n.includes('concepto')) && (n.includes('impact') || n.includes('afecta'))) return 'mayor_impacto';
+    if((n.includes('que esta') || n.includes('que esta')) && (n.includes('inflando') || n.includes('aumentando')) && (n.includes('impuesto') || n.includes('iusc'))) return 'factor_tributario';
+    if((n.includes('genera') || n.includes('causa') || n.includes('factor') || n.includes('influye') || n.includes('incrementa') || n.includes('inflando')) && (n.includes('impuesto') || n.includes('iusc'))) return 'factor_tributario';
+    if(n.includes('que pasaria') && n.includes('apv')) return 'apv_escenario';
+    if((n.includes('aumento') || n.includes('aumentara') || n.includes('subo') || n.includes('subir') || n.includes('incremento')) && n.includes('apv')) return 'apv_escenario';
+    if((n.includes('gane') || n.includes('gano') || n.includes('liquido')) && (n.includes('mas') || n.includes('menos') || n.includes('subio') || n.includes('bajo'))) return 'variacion_mensual';
     if(asksCalc) return 'calculo';
     if((asksAnalysis) && (n.includes('iusc') || n.includes('impuesto'))) return 'iusc_alto';
     if(n.includes('apv') && (n.includes('afecta') || n.includes('impacto') || n.includes('impuesto'))) return 'apv_impacto';
@@ -5212,6 +5275,9 @@ function setIuscRetValue(monto){
     if(intent==='principal_variable') return principalVariable();
     if(intent==='principal_descuento') return principalDescuento();
     if(intent==='factor_tributario') return factorTributario();
+    if(intent==='mayor_impacto') return mayorImpacto();
+    if(intent==='apv_escenario') return escenarioAumentoAPV(s);
+    if(intent==='variacion_mensual') return variacionMensual();
     if(intent==='calculo') return explainCalculo(s);
     if(intent==='iusc_alto') return explainIuscAlto();
     if(intent==='apv_impacto') return explainApvImpact();
