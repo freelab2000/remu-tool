@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.6.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.6.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.7.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.7.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4900,15 +4900,16 @@ function setIuscRetValue(monto){
       <button class="ai-prompt-btn" type="button" data-ai-prompt="variables">📈 Analiza mis variables</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="comparar">🔁 Comparar simulaciones</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="alertas">⚠️ Alertas inteligentes</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="auditor">🧭 Auditar liquidación</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
     <div class="ai-chat">
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
-• ¿Qué cambió respecto a la simulación anterior?
+• Audita mi liquidación
 • Muéstrame alertas inteligentes
-• ¿Cómo puedo mejorar mi líquido?</span></div>
+• ¿Qué cambió respecto a la simulación anterior?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
       <div class="ai-query-row">
         <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
@@ -5332,6 +5333,7 @@ function setIuscRetValue(monto){
     if(asksHere) return 'contexto_paso';
     if(n.includes('comparar') || n.includes('comparacion') || n.includes('que cambio') || n.includes('que cambió') || n.includes('cambio respecto') || n.includes('vs anterior') || n.includes('mes anterior') || n.includes('simulacion anterior') || n.includes('simulación anterior') || n.includes('respecto anterior')) return 'comparacion';
     if(n.includes('alerta') || n.includes('alertas') || n.includes('riesgo') || n.includes('revisa algo raro') || n.includes('algo raro')) return 'alertas';
+    if(n.includes('auditar') || n.includes('auditoria') || n.includes('auditoría') || n.includes('esta correcta') || n.includes('esta bien') || n.includes('revision general') || n.includes('revisión general') || n.includes('liquidacion correcta') || n.includes('liquidación correcta') || n.includes('hay errores') || n.includes('inconsistencia') || n.includes('inconsistencias')) return 'auditoria';
     if((n.includes('mejorar') || n.includes('aumentar') || n.includes('subir')) && (n.includes('liquido') || n.includes('sueldo') || n.includes('pago'))) return 'recom_liquido';
     if(n.includes('que deberia revisar') || n.includes('que revisar') || n.includes('revisar en esta liquidacion') || n.includes('recomendacion') || n.includes('recomiendas')) return 'recom_revision';
     if((n.includes('que esta') || n.includes('que factor') || n.includes('que componente')) && (n.includes('aumentando') || n.includes('subiendo') || n.includes('incrementando') || n.includes('impuesto'))) return 'recom_impuesto';
@@ -5502,6 +5504,134 @@ function setIuscRetValue(monto){
       '',
       'Estas alertas no reemplazan la revisión de la liquidación real; sirven para dirigir la revisión hacia los factores de mayor impacto.'
     ].join('\n');
+  }
+
+
+  function auditarLiquidacion(){
+    const c = buildContext();
+    const checks = [];
+    const ok = [];
+
+    const haberes = (c.resultados.totalHaberes || (sum(c.ingresosFijos)+sum(c.variables))) || 0;
+    const fijos = sum(c.ingresosFijos);
+    const vars = sum(c.variables);
+    const descLeg = c.resultados.descuentosLegales || sum(c.descuentos);
+    const descVarios = c.resultados.descuentosVarios || 0;
+    const liquido = c.resultados.liquido || 0;
+    const trib = c.resultados.tributable || 0;
+
+    const apv = c.descuentos['APV'] || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const afp10 = c.descuentos['AFP 10%'] || 0;
+    const salud7 = c.descuentos['Salud 7%'] || 0;
+    const seguroCesantia = c.descuentos['Seguro Cesantía'] || 0;
+
+    const prod = c.variables['Bono Productividad'] || 0;
+    const vac = c.variables['Bono Vacaciones'] || 0;
+    const fer = c.variables['Compensación Feriados'] || 0;
+    const sec = c.variables['Secuencia 9/10'] || 0;
+
+    function addCheck(text){ checks.push(text); }
+    function addOk(text){ ok.push(text); }
+
+    if(!haberes){
+      return 'No puedo auditar la liquidación porque aún no veo haberes cargados. Ingresa sueldo base, gratificación, variables y descuentos para poder revisar consistencia.';
+    }
+
+    if(fijos <= 0){
+      addCheck('No veo haberes fijos cargados. Revisa sueldo base, gratificación y antigüedad.');
+    }else{
+      addOk('Haberes fijos cargados: ' + CLP(fijos) + '.');
+    }
+
+    if(vars > 0 && haberes > 0 && vars/haberes >= 0.35){
+      addCheck('Variables altas: representan ' + pct(vars/haberes*100) + ' de los haberes. Verifica productividad, feriados, vacaciones y secuencias.');
+    }else if(vars > 0){
+      addOk('Variables cargadas dentro de un rango razonable respecto de los haberes: ' + pct(vars/haberes*100) + '.');
+    }
+
+    if(prod > 0 && vars > 0 && prod/vars >= 0.80){
+      addCheck('Productividad concentra ' + pct(prod/vars*100) + ' de las variables. Revisa que el monto coincida con la liquidación real.');
+    }
+
+    if(vac > 0){
+      addCheck('Vacaciones cargadas: confirma que ingresaste el monto pagado por la empresa, no los días tomados. El cálculo de referencia considera hasta 15 días.');
+    }
+
+    if(fer > 0){
+      addCheck('Feriados cargados: verifica que el monto corresponda al pago informado para el período.');
+    }
+
+    if(sec > 0){
+      addCheck('Secuencia 9/10 cargada: confirma si corresponde a día 9, día 10 o ambos según la liquidación.');
+    }
+
+    if(apv > 0){
+      if(descLeg > 0 && apv/descLeg >= 0.30){
+        addCheck('APV relevante: ' + CLP(apv) + ' representa ' + pct(apv/descLeg*100) + ' de los descuentos legales. Revisa monto y régimen A/B.');
+      }else{
+        addOk('APV cargado: ' + CLP(apv) + '.');
+      }
+    }
+
+    if(iusc > 0){
+      if(descLeg > 0 && iusc/descLeg >= 0.25){
+        addCheck('IUSC relevante: ' + CLP(iusc) + ' representa ' + pct(iusc/descLeg*100) + ' de los descuentos legales. Revisa renta tributable y variables del mes.');
+      }else{
+        addOk('IUSC calculado: ' + CLP(iusc) + '.');
+      }
+    }
+
+    if(afp10 <= 0){
+      addCheck('AFP 10% no aparece cargada o calculada. Revisa si falta un dato base.');
+    }else{
+      addOk('AFP 10% presente: ' + CLP(afp10) + '.');
+    }
+
+    if(salud7 <= 0){
+      addCheck('Salud 7% no aparece cargada o calculada. Revisa si falta un dato base.');
+    }else{
+      addOk('Salud 7% presente: ' + CLP(salud7) + '.');
+    }
+
+    if(descVarios > 0 && haberes > 0 && descVarios/haberes >= 0.15){
+      addCheck('Descuentos varios altos: equivalen a ' + pct(descVarios/haberes*100) + ' de los haberes. Revisa sindicato, préstamos, anticipos u otros descuentos.');
+    }
+
+    if(liquido > haberes){
+      addCheck('El líquido aparece mayor que los haberes. Esto normalmente indica un dato mal ingresado o una clasificación incorrecta.');
+    }
+
+    if(trib > haberes && haberes > 0){
+      addCheck('La renta tributable aparece mayor que los haberes. Revisa bases imponibles, variables y descuentos asociados.');
+    }
+
+    const pair = getComparePair();
+    if(pair.prev){
+      const top = topSnapshotChange(pair.prev, pair.cur);
+      if(top && Math.abs(top.diff) >= 100000){
+        addCheck('Cambio relevante versus simulación anterior: ' + top.name + ' ' + (top.diff > 0 ? 'subió ' : 'bajó ') + CLP(Math.abs(top.diff)) + '.');
+      }
+    }
+
+    const lines = ['Auditoría inteligente de la liquidación:', ''];
+
+    if(checks.length){
+      lines.push('Puntos a revisar:');
+      checks.forEach(x => lines.push('• ' + x));
+    }else{
+      lines.push('No detecto inconsistencias relevantes con los datos actuales.');
+    }
+
+    if(ok.length){
+      lines.push('');
+      lines.push('Elementos consistentes:');
+      ok.slice(0,5).forEach(x => lines.push('• ' + x));
+    }
+
+    lines.push('');
+    lines.push('Criterio: esta auditoría no declara errores; solo prioriza puntos que conviene contrastar con la liquidación real.');
+    return lines.join('\n');
   }
 
   function compararSimulaciones(){
@@ -5760,6 +5890,7 @@ function setIuscRetValue(monto){
     if(intent==='contexto_paso') return explainContextoPaso();
     if(intent==='comparacion') return compararSimulaciones();
     if(intent==='alertas') return alertasInteligentes();
+    if(intent==='auditoria') return auditarLiquidacion();
     if(intent==='recom_liquido') return recomendarMejorarLiquido();
     if(intent==='recom_revision') return recomendarRevision();
     if(intent==='recom_impuesto') return recomendarImpuesto();
@@ -5788,7 +5919,7 @@ function setIuscRetValue(monto){
       .trim();
   }
 
-  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué cambió respecto a la simulación anterior?\n• Muéstrame alertas inteligentes\n• ¿Cómo puedo mejorar mi líquido?';
+  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• Audita mi liquidación\n• Muéstrame alertas inteligentes\n• ¿Qué cambió respecto a la simulación anterior?';
   let aiHistory = [];
 
   function escapeHtml(value){
@@ -5844,7 +5975,7 @@ function setIuscRetValue(monto){
     addMessage('user', question);
     const intent = classifyIntent(norm(question));
     setResponse(answerQuestion(question));
-    if(intent !== 'comparacion' && intent !== 'alertas') captureBaseline();
+    if(intent !== 'comparacion' && intent !== 'alertas' && intent !== 'auditoria') captureBaseline();
     if(input){ input.value=''; input.placeholder='Pregunta algo sobre tu liquidación...'; setTimeout(()=>input.focus(),30); }
   }
   function openPanel(){ $('#aiContextOverlay')?.classList.add('open'); $('#aiContextPanel')?.classList.add('open'); updateStatus(); setTimeout(()=>$('#aiUserQuestion')?.focus(),120); }
@@ -5892,6 +6023,10 @@ function setIuscRetValue(monto){
       if(t.dataset.aiPrompt==='alertas'){
         addMessage('user','Alertas inteligentes');
         setResponse(alertasInteligentes());
+      }
+      if(t.dataset.aiPrompt==='auditor'){
+        addMessage('user','Auditar liquidación');
+        setResponse(auditarLiquidacion());
       }
       if(t.dataset.aiPrompt==='descuentos'){
         addMessage('user','Analiza mis descuentos');
@@ -6303,5 +6438,7 @@ function setIuscRetValue(monto){
 <!-- RemuTool v1.3.1.f.w.t: MiCopilot Core corrective build; uses original internal router, no external intercept. -->
 
 <!-- RemuTool v1.3.6.f.w.t: MiCopilot v1.5 Snapshots estables + Alertas inteligentes. -->
+
+<!-- RemuTool v1.3.7.f.w.t: MiCopilot v1.6 Auditor Inteligente. -->
 </body>
 </html>
