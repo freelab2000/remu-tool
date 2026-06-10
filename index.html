@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.8.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.8.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.0.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.0.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4840,6 +4840,7 @@ function setIuscRetValue(monto){
     </div>
     <div class="ai-prompts" aria-label="Consultas sugeridas">
       <button class="ai-prompt-btn" type="button" data-ai-prompt="liquidacion">💰 Explícame mi liquidación</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="variables">📈 Analiza mis variables</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
@@ -5354,6 +5355,7 @@ function setIuscRetValue(monto){
     if(t?.id==='aiContextClose' || t?.id==='aiContextOverlay') closePanel();
     if(t?.dataset?.aiPrompt){
       if(t.dataset.aiPrompt==='liquidacion') setResponse(explainLiquidacion());
+      if(t.dataset.aiPrompt==='variables') setResponse(analyzeVariables());
       if(t.dataset.aiPrompt==='descuentos') setResponse(analyzeDescuentos());
       if(t.dataset.aiPrompt==='concepto'){
         const input=$('#aiUserQuestion');
@@ -5747,6 +5749,155 @@ function setIuscRetValue(monto){
     document.addEventListener('DOMContentLoaded', bindGuidePolish);
   } else {
     bindGuidePolish();
+  }
+})();
+</script>
+
+
+<script>
+/* === RemuTool v1.3.0.f.w.t — MiCopilot v1.0 Core Routing + UX === */
+(function(){
+  function $(s, root=document){ return root.querySelector(s); }
+
+  function safeCall(fnName){
+    try{
+      if(typeof window[fnName] === 'function') return window[fnName]();
+    }catch(e){
+      console.warn('[MiCopilot v1.0]', fnName, e);
+    }
+    return null;
+  }
+
+  function normalizeQuestion(q){
+    return String(q || '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .trim();
+  }
+
+  function resolveMiCopilotQuestion(q){
+    const n = normalizeQuestion(q);
+
+    if(!n){
+      return 'Escribe una pregunta o elige una consulta sugerida.';
+    }
+
+    // Rutas de análisis principales
+    if(
+      n.includes('explicame mi liquidacion') ||
+      n.includes('explica mi liquidacion') ||
+      n.includes('resumen liquidacion') ||
+      n.includes('analiza mi liquidacion') ||
+      n === 'liquidacion'
+    ){
+      return safeCall('explainLiquidacion');
+    }
+
+    if(
+      n.includes('analiza mis variables') ||
+      n.includes('variables') ||
+      n.includes('productividad') ||
+      n.includes('vacaciones') ||
+      n.includes('feriados') ||
+      n.includes('secuencia')
+    ){
+      return safeCall('analyzeVariables');
+    }
+
+    if(
+      n.includes('analiza mis descuentos') ||
+      n.includes('descuentos') ||
+      n.includes('apv') ||
+      n.includes('afp') ||
+      n.includes('salud') ||
+      n.includes('impuesto unico') ||
+      n.includes('iusc') ||
+      n.includes('tributable')
+    ){
+      // Si la pregunta es conceptual, dejamos que el motor existente responda mejor.
+      if(
+        n.startsWith('que es') ||
+        n.startsWith('que significa') ||
+        n.startsWith('como funciona') ||
+        n.startsWith('como se calcula') ||
+        n.includes('mejor variable')
+      ){
+        const answer = safeExistingAnswer(q);
+        if(answer) return answer;
+      }
+      return safeCall('analyzeDescuentos');
+    }
+
+    const answer = safeExistingAnswer(q);
+    if(answer) return answer;
+
+    return 'Puedo ayudarte con liquidación, variables, descuentos, APV, IUSC, AFP, Mejor Variable, vacaciones, feriados o secuencias. Escribe el concepto o elige una consulta sugerida.';
+  }
+
+  function safeExistingAnswer(q){
+    try{
+      if(typeof window.answerQuestion === 'function'){
+        return window.answerQuestion(q);
+      }
+    }catch(e){
+      console.warn('[MiCopilot v1.0] answerQuestion', e);
+    }
+    return null;
+  }
+
+  function setResponseV10(text){
+    const box = $('#aiResponseBox');
+    if(!box) return;
+    box.textContent = text || 'No pude generar una respuesta con los datos actuales.';
+  }
+
+  function askV10(){
+    const input = $('#aiUserQuestion');
+    if(!input) return;
+    const q = input.value || '';
+    const response = resolveMiCopilotQuestion(q);
+    setResponseV10(response);
+    input.value = '';
+    setTimeout(()=>input.focus(), 40);
+  }
+
+  function bindV10(){
+    document.addEventListener('click', function(ev){
+      const t = ev.target;
+
+      if(t && t.dataset && t.dataset.aiPrompt){
+        if(t.dataset.aiPrompt === 'variables'){
+          ev.preventDefault();
+          ev.stopPropagation();
+          setResponseV10(safeCall('analyzeVariables'));
+          const input = $('#aiUserQuestion');
+          if(input){ input.value=''; setTimeout(()=>input.focus(),40); }
+          return;
+        }
+      }
+
+      if(t && t.id === 'aiAskBtn'){
+        ev.preventDefault();
+        ev.stopPropagation();
+        askV10();
+        return;
+      }
+    }, true);
+
+    document.addEventListener('keydown', function(ev){
+      if(ev.key === 'Enter' && document.activeElement && document.activeElement.id === 'aiUserQuestion'){
+        ev.preventDefault();
+        ev.stopPropagation();
+        askV10();
+      }
+    }, true);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindV10);
+  }else{
+    bindV10();
   }
 })();
 </script>
