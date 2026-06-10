@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.4.0.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.4.0.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.4.1.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.4.1.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -5229,7 +5229,122 @@ function setIuscRetValue(monto){
     return 'Para identificar qué genera tu impuesto necesito que la simulación tenga renta tributable e Impuesto Único calculados.';
   }
 
-  function explainConcept(q){
+  
+function explainComparison(q){
+    const n = norm(q || '');
+
+    const asksDiff = (
+      n.includes('diferencia') ||
+      n.includes('diferencias') ||
+      n.includes('comparar') ||
+      n.includes('compara') ||
+      n.includes('versus') ||
+      n.includes(' vs ')
+    );
+
+    if(!asksDiff) return null;
+
+    const has = (words) => words.some(w => n.includes(norm(w)));
+
+    const imponible = has(['imponible','renta imponible','base imponible']);
+    const tributable = has(['tributable','renta tributable','base tributable','rli']);
+    if(imponible && tributable){
+      return [
+        'Diferencia entre renta imponible y renta tributable:',
+        '',
+        '• Renta imponible: es la base usada para calcular cotizaciones previsionales y de salud, como AFP, salud, cesantía y otros descuentos previsionales.',
+        '• Renta tributable: es la base usada para calcular el Impuesto Único de Segunda Categoría.',
+        '',
+        'En simple: la imponible mira cotizaciones; la tributable mira impuestos.',
+        '',
+        'Pueden ser distintas porque algunos beneficios, como APV régimen B, pueden rebajar la base tributable sin necesariamente cambiar la base imponible.'
+      ].join('\n');
+    }
+
+    const afp = has(['afp','afp 10','fondo pensiones','fondo de pensiones','cotizacion afp','cotización afp']);
+    const comision = has(['comision afp','comisión afp','comision de afp','comisión de afp']);
+    if(afp && comision){
+      return [
+        'Diferencia entre AFP 10% y comisión AFP:',
+        '',
+        '• AFP 10%: es la cotización obligatoria que va a tu fondo de pensiones.',
+        '• Comisión AFP: es el cobro que realiza la administradora por gestionar tu cuenta.',
+        '',
+        'En simple: el 10% es ahorro previsional; la comisión es costo de administración.'
+      ].join('\n');
+    }
+
+    const apvA = has(['apv a','regimen a','régimen a']);
+    const apvB = has(['apv b','regimen b','régimen b']);
+    if(apvA && apvB){
+      return [
+        'Diferencia entre APV régimen A y APV régimen B:',
+        '',
+        '• Régimen A: busca una bonificación estatal sobre el ahorro, según condiciones y topes legales.',
+        '• Régimen B: permite rebajar la base tributable para calcular el Impuesto Único, dentro de los límites legales.',
+        '',
+        'En simple: régimen A premia el ahorro con bonificación; régimen B apunta a reducir carga tributaria actual.'
+      ].join('\n');
+    }
+
+    const fijos = has(['haberes fijos','ingresos fijos','fijos']);
+    const variables = has(['haberes variables','ingresos variables','variables']);
+    if(fijos && variables){
+      return [
+        'Diferencia entre haberes fijos y variables:',
+        '',
+        '• Haberes fijos: ingresos estables del mes, como sueldo base, gratificación y antigüedad.',
+        '• Haberes variables: ingresos que cambian mes a mes, como productividad, vacaciones, feriados o secuencias.',
+        '',
+        'En simple: los fijos explican la base normal de la liquidación; las variables explican gran parte de las diferencias entre meses.'
+      ].join('\n');
+    }
+
+    const sec9 = has(['secuencia 9','dia 9','día 9','9 dias','9 días']);
+    const sec10 = has(['secuencia 10','dia 10','día 10','10 dias','10 días']);
+    if(sec9 && sec10){
+      return [
+        'Diferencia entre secuencia 9 y secuencia 10:',
+        '',
+        '• Secuencia 9: compensación operacional de referencia aproximada de 3,3% de la remuneración base.',
+        '• Secuencia 10: compensación operacional de referencia aproximada de 5% de la remuneración base.',
+        '',
+        'En simple: ambas compensan secuencias prolongadas, pero la secuencia 10 tiene mayor impacto económico.'
+      ].join('\n');
+    }
+
+    const legal = has(['descuento legal','descuentos legales','legal']);
+    const varios = has(['descuento vario','descuentos varios','varios','otros descuentos']);
+    if(legal && varios){
+      return [
+        'Diferencia entre descuentos legales y descuentos varios:',
+        '',
+        '• Descuentos legales: cotizaciones e impuestos obligatorios, como AFP, salud, cesantía e IUSC.',
+        '• Descuentos varios: descuentos particulares o pactados, como sindicato, préstamos, anticipos u otros.',
+        '',
+        'En simple: los legales vienen por norma; los varios dependen de situaciones personales o acuerdos específicos.'
+      ].join('\n');
+    }
+
+    const salud = has(['salud 7','7 salud','7% salud','cotizacion salud','cotización salud','salud']);
+    const adicional = has(['cotizacion adicional','cotización adicional','adicional salud','plan isapre','valor plan']);
+    if(salud && adicional){
+      return [
+        'Diferencia entre salud 7% y cotización adicional de salud:',
+        '',
+        '• Salud 7%: es la cotización legal obligatoria sobre la renta imponible.',
+        '• Cotización adicional: es el monto extra cuando el plan de salud cuesta más que el 7% legal.',
+        '',
+        'En simple: el 7% es obligatorio; el adicional depende del valor del plan contratado.'
+      ].join('\n');
+    }
+
+    return null;
+  }
+
+function explainConcept(q){
+    const cmp = explainComparison(q);
+    if(cmp) return cmp;
     const n = norm(q || '');
     const aliases = [
       ['sueldo base',['sueldo base','base sueldo']],
@@ -5267,7 +5382,7 @@ function setIuscRetValue(monto){
     for(const [key, words] of aliases){
       if(words.some(w => n.includes(norm(w)))) return KB[key];
     }
-    return 'Puedo explicar conceptos de RemuTool como sueldo base, gratificación, antigüedad, APV, APV A/B, AFP, comisión AFP, Trabajo Pesado, Cesantía, Salud, IUSC, renta imponible, renta tributable, Vacaciones, Feriados, Secuencias, Productividad, Mejor Variable, Sindicato o Préstamos.';
+    return 'Puedo explicar conceptos de RemuTool y también comparar pares como imponible vs tributable, AFP 10% vs comisión AFP, APV A vs APV B, haberes fijos vs variables, secuencia 9 vs 10, salud 7% vs adicional, o descuentos legales vs varios.';
   }
 
   function explainCalculo(q){
@@ -6496,5 +6611,7 @@ function setIuscRetValue(monto){
 <!-- RemuTool v1.3.8.f.w.t: MiCopilot v1.8 RC, pulido de comparación y base estable previa a v2.0. -->
 
 <!-- RemuTool v1.4.0.f.w.t: MiCopilot v1.9 Fase 1, KB completa de conceptos base. -->
+
+<!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 </body>
 </html>
