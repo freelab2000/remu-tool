@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.8.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.8.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.4.0.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.4.0.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4993,18 +4993,37 @@ function setIuscRetValue(monto){
   }
 
   const KB = {
-    'apv': 'El APV es un ahorro previsional voluntario. En RemuTool se ingresa como descuento y, si está en régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.',
-    'afp': 'La AFP corresponde a la cotización previsional obligatoria. RemuTool calcula el 10% y la comisión sobre la base imponible, considerando los topes vigentes.',
-    'iusc': 'El Impuesto Único es el impuesto mensual aplicado a la renta tributable. RemuTool lo calcula identificando el tramo, aplicando la tasa y restando la rebaja correspondiente.',
-    'imponible': 'El imponible es la base sobre la cual se calculan cotizaciones como AFP, salud y cesantía. En RemuTool surge de los haberes imponibles ingresados.',
-    'tributable': 'El tributable es la base utilizada para calcular el Impuesto Único. Normalmente corresponde al imponible menos descuentos legales y APV régimen B cuando aplica.',
-    'mejor variable': 'La Mejor Variable es una base de cálculo utilizada para determinados beneficios del convenio. RemuTool compara el promedio variable de los últimos 3 meses con el promedio de los últimos 12 meses y utiliza el mayor valor.',
-    'vacaciones': 'El bono de vacaciones busca fomentar el uso efectivo de vacaciones y compensar parcialmente la pérdida de variables. En RemuTool se calcula usando la Mejor Variable.',
-    'feriados': 'La compensación de feriados corresponde al beneficio de convenio por prestar servicios en días feriados. RemuTool usa el monto pagado por la empresa; la referencia de convenio es 6,6% de la remuneración aplicable.',
-    'secuencia': 'La compensación por secuencias reconoce períodos operacionales prolongados. En RemuTool se considera como variable y se calcula sobre remuneración bruta según las reglas del convenio.',
-    'productividad': 'El Bono de Productividad es una remuneración variable asociada a las horas de vuelo del mes. Depende de cargo, nivel y tramo de horas definido en la tabla vigente del convenio.',
-    'salud': 'La cotización de salud corresponde al 7% legal sobre base imponible, con tope. Si existe Isapre, puede haber cotización adicional según el valor del plan.',
-    'cesantia': 'El seguro de cesantía es una cotización destinada a proteger al trabajador ante pérdida de empleo. RemuTool calcula el aporte del trabajador según la base imponible y tope correspondiente.'
+    'sueldo base': 'El Sueldo Base es la remuneración fija principal pactada para el cargo. En RemuTool forma parte de los haberes fijos y sirve como una de las bases para otros cálculos.',
+    'gratificacion': 'La Gratificación Legal Mensual es un haber fijo asociado a la participación legal en utilidades. En RemuTool se ingresa como parte de los haberes fijos.',
+    'antiguedad': 'La Asignación de Antigüedad es un haber fijo asociado al tiempo de servicio reconocido. En RemuTool se suma a los haberes fijos del mes.',
+    'haberes fijos': 'Los Haberes Fijos son los ingresos estables del mes, como sueldo base, gratificación y antigüedad. Son la base inicial para revisar una liquidación.',
+    'haberes variables': 'Los Haberes Variables son pagos que pueden cambiar mes a mes, como productividad, vacaciones, feriados o secuencias. Suelen explicar las principales diferencias entre liquidaciones.',
+    'apv': 'APV significa Ahorro Previsional Voluntario. Permite complementar el ahorro para jubilación y, dependiendo del régimen elegido, puede generar beneficios tributarios o bonificaciones estatales.',
+    'apv a': 'El APV régimen A está orientado a obtener una bonificación estatal sobre el ahorro, bajo las condiciones y topes legales correspondientes.',
+    'apv b': 'El APV régimen B permite rebajar la base tributable usada para calcular el Impuesto Único, dentro de los límites legales. En RemuTool es el régimen por defecto si se busca efecto tributario inmediato.',
+    'afp': 'La AFP corresponde a la cotización previsional obligatoria destinada a financiar tu pensión futura. RemuTool calcula el 10% sobre la renta imponible, considerando los topes vigentes.',
+    'fondo pensiones': 'El Fondo de Pensiones corresponde al 10% obligatorio destinado a tu cuenta individual de AFP. Es distinto de la comisión AFP.',
+    'comision afp': 'La Comisión AFP es el cobro porcentual que realiza la administradora por gestionar tu fondo previsional. Es independiente del 10% destinado al fondo de pensiones.',
+    'trabajo pesado': 'Trabajo Pesado corresponde a una cotización previsional adicional aplicable a actividades calificadas como de mayor desgaste físico o psicológico. En RemuTool se registra como descuento legal.',
+    'cesantia': 'El Seguro de Cesantía es una cotización obligatoria destinada a financiar prestaciones económicas en caso de pérdida del empleo. El aporte del trabajador se calcula sobre la renta imponible.',
+    'salud': 'La cotización obligatoria de salud corresponde al 7% de la renta imponible y financia la cobertura de salud del trabajador, ya sea en Fonasa o Isapre.',
+    'cotizacion adicional salud': 'La cotización adicional de salud corresponde al monto que excede el 7% obligatorio cuando el plan de salud contratado tiene un valor superior a la cotización legal mínima.',
+    'isapre': 'Isapre es una institución de salud previsional privada. En RemuTool puede existir una cotización adicional si el valor del plan supera el 7% legal.',
+    'fonasa': 'Fonasa es el sistema público de salud. La cotización legal obligatoria corresponde al 7% de la renta imponible.',
+    'imponible': 'La renta imponible corresponde a la base utilizada para calcular cotizaciones previsionales y de salud. No todos los haberes necesariamente forman parte de esta base.',
+    'tributable': 'La renta tributable corresponde a la base usada para calcular el Impuesto Único de Segunda Categoría. Puede diferir de la renta imponible por beneficios tributarios, como APV régimen B.',
+    'iusc': 'El Impuesto Único de Segunda Categoría es el impuesto mensual aplicado a las rentas del trabajo dependiente. Se calcula sobre la renta tributable usando tablas progresivas.',
+    'base tributable': 'La base tributable es el monto sobre el cual se calcula el Impuesto Único. En RemuTool se ve afectada por ingresos tributables y beneficios como APV régimen B.',
+    'tramo tributario': 'El tramo tributario es el rango de renta definido por la tabla del Impuesto Único. A mayor renta tributable, puede aplicarse una tasa marginal mayor.',
+    'vacaciones': 'En RemuTool las vacaciones se consideran remuneración variable cuando existe un monto pagado por la empresa. Como referencia, el cálculo utiliza hasta 15 días, aunque se hayan tomado más días.',
+    'feriados': 'Los feriados trabajados generan una compensación económica adicional. Como referencia de cálculo, RemuTool utiliza aproximadamente un 6,6% de la remuneración base por feriado compensado.',
+    'secuencia 9': 'La secuencia de 9 días corresponde a una compensación operacional contemplada en convenio. Como referencia, RemuTool utiliza aproximadamente un 3,3% de la remuneración base.',
+    'secuencia 10': 'La secuencia de 10 días corresponde a una compensación operacional contemplada en convenio. Como referencia, RemuTool utiliza aproximadamente un 5% de la remuneración base.',
+    'secuencia': 'Las secuencias operacionales prolongadas pueden generar compensaciones adicionales. En RemuTool se separan como secuencia 9 y secuencia 10.',
+    'productividad': 'El Bono de Productividad corresponde a una remuneración variable asociada al desempeño operacional. Normalmente es uno de los componentes variables más relevantes de la liquidación.',
+    'mejor variable': 'La Mejor Variable corresponde al mecanismo usado para determinar ciertas bases de cálculo comparando promedios variables de distintos períodos y utilizando el valor más favorable.',
+    'sindicato': 'El descuento sindical corresponde al aporte asociado a la afiliación sindical. En RemuTool aparece dentro de descuentos varios o descuentos no legales según corresponda.',
+    'prestamo': 'Los préstamos o anticipos son descuentos particulares que reducen el líquido a pagar. No necesariamente afectan la renta imponible o tributable.'
   };
 
   function updateStatus(){
@@ -5211,18 +5230,44 @@ function setIuscRetValue(monto){
   }
 
   function explainConcept(q){
-    const normalized = norm(q);
+    const n = norm(q || '');
     const aliases = [
-      ['mejor variable',['mejor variable','variable']],
-      ['apv',['apv']], ['afp',['afp']], ['iusc',['iusc','impuesto','impuesto unico']],
-      ['imponible',['imponible']], ['tributable',['tributable','rli']], ['vacaciones',['vacaciones']],
-      ['feriados',['feriado','feriados']], ['secuencia',['secuencia','secuencias']],
-      ['productividad',['productividad','bono productividad']], ['salud',['salud','isapre','fonasa']], ['cesantia',['cesantia','afc']]
+      ['sueldo base',['sueldo base','base sueldo']],
+      ['gratificacion',['gratificacion','gratificación','grat legal','gratificacion legal','gratificación legal']],
+      ['antiguedad',['antiguedad','antigüedad','asignacion antiguedad','asignación antigüedad']],
+      ['haberes fijos',['haberes fijos','ingresos fijos','fijos']],
+      ['haberes variables',['haberes variables','ingresos variables','variables']],
+      ['apv b',['apv b','regimen b','régimen b']],
+      ['apv a',['apv a','regimen a','régimen a']],
+      ['apv',['apv','ahorro previsional voluntario']],
+      ['comision afp',['comision afp','comisión afp','comision de afp','comisión de afp']],
+      ['fondo pensiones',['fondo pensiones','fondo de pensiones','afp 10','10 afp','cotizacion afp','cotización afp']],
+      ['afp',['afp']],
+      ['trabajo pesado',['trabajo pesado','trab pesado','descuento trabajo pesado']],
+      ['cesantia',['cesantia','cesantía','seguro cesantia','seguro cesantía','afc']],
+      ['cotizacion adicional salud',['cotizacion adicional','cotización adicional','adicional salud','cotizacion adicional salud','cotización adicional salud','plan isapre','valor plan']],
+      ['salud',['salud','salud 7','7 salud','7% salud','cotizacion salud','cotización salud']],
+      ['isapre',['isapre']],
+      ['fonasa',['fonasa']],
+      ['imponible',['imponible','renta imponible','base imponible']],
+      ['tributable',['tributable','renta tributable','rli']],
+      ['base tributable',['base tributable']],
+      ['tramo tributario',['tramo tributario','tramo impuesto']],
+      ['iusc',['iusc','impuesto unico','impuesto único','impuesto segunda categoria','impuesto segunda categoría','impuesto']],
+      ['vacaciones',['vacaciones','pago vacaciones','bono vacaciones']],
+      ['feriados',['feriado','feriados','feriado trabajado','feriados trabajados','compensacion feriados','compensación feriados']],
+      ['secuencia 10',['secuencia 10','dia 10','día 10','10 dias','10 días']],
+      ['secuencia 9',['secuencia 9','dia 9','día 9','9 dias','9 días']],
+      ['secuencia',['secuencia','secuencias']],
+      ['productividad',['productividad','bono productividad']],
+      ['mejor variable',['mejor variable','mejorvariable','promedio variable','base mejor variable']],
+      ['sindicato',['sindicato','descuento sindical','cuota sindical']],
+      ['prestamo',['prestamo','préstamo','prestamos','préstamos','anticipo','anticipos']]
     ];
-    for(const [key,words] of aliases){
-      if(words.some(w=>normalized.includes(w))) return KB[key];
+    for(const [key, words] of aliases){
+      if(words.some(w => n.includes(norm(w)))) return KB[key];
     }
-    return 'Puedo explicar conceptos de RemuTool como APV, AFP, IUSC, imponible, tributable, Mejor Variable, Vacaciones, Feriados, Secuencias o Productividad. Escribe el concepto que quieres revisar.';
+    return 'Puedo explicar conceptos de RemuTool como sueldo base, gratificación, antigüedad, APV, APV A/B, AFP, comisión AFP, Trabajo Pesado, Cesantía, Salud, IUSC, renta imponible, renta tributable, Vacaciones, Feriados, Secuencias, Productividad, Mejor Variable, Sindicato o Préstamos.';
   }
 
   function explainCalculo(q){
@@ -6449,5 +6494,7 @@ function setIuscRetValue(monto){
 <!-- RemuTool v1.3.7.f.w.t: MiCopilot v1.6 Auditor Inteligente. -->
 
 <!-- RemuTool v1.3.8.f.w.t: MiCopilot v1.8 RC, pulido de comparación y base estable previa a v2.0. -->
+
+<!-- RemuTool v1.4.0.f.w.t: MiCopilot v1.9 Fase 1, KB completa de conceptos base. -->
 </body>
 </html>
