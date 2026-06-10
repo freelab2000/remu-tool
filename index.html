@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.3.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.3.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.4.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.4.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4905,8 +4905,8 @@ function setIuscRetValue(monto){
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
 • ¿Qué debo ingresar aquí?
-• ¿Qué es la Mejor Variable?
-• ¿Cómo afecta mi APV?</span></div>
+• ¿Qué debería revisar en esta liquidación?
+• ¿Cómo puedo mejorar mi líquido?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
       <div class="ai-query-row">
         <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
@@ -5328,6 +5328,9 @@ function setIuscRetValue(monto){
     const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('aumento') || n.includes('disminuyo') || n.includes('genera') || n.includes('principal') || n.includes('mayor') || n.includes('mas') || n.includes('inflando') || n.includes('incrementa') || n.includes('influye');
     const asksHere = n.includes('aqui') || n.includes('este paso') || n.includes('esta seccion') || n.includes('que debo ingresar') || n.includes('que ingreso') || n.includes('que reviso') || n.includes('ayuda') || n.includes('donde estoy') || n.includes('como sigo') || n.includes('continuar');
     if(asksHere) return 'contexto_paso';
+    if((n.includes('mejorar') || n.includes('aumentar') || n.includes('subir')) && (n.includes('liquido') || n.includes('sueldo') || n.includes('pago'))) return 'recom_liquido';
+    if(n.includes('que deberia revisar') || n.includes('que revisar') || n.includes('revisar en esta liquidacion') || n.includes('recomendacion') || n.includes('recomiendas')) return 'recom_revision';
+    if((n.includes('que esta') || n.includes('que factor') || n.includes('que componente')) && (n.includes('aumentando') || n.includes('subiendo') || n.includes('incrementando') || n.includes('impuesto'))) return 'recom_impuesto';
     if(n.includes('analiza') && (n.includes('variable') || n.includes('variables'))) return 'variables_analisis';
     if(n.includes('principal') && (n.includes('variable') || n.includes('ingreso variable'))) return 'principal_variable';
     if(n.includes('principal') && n.includes('descuento')) return 'principal_descuento';
@@ -5349,6 +5352,115 @@ function setIuscRetValue(monto){
     return 'concepto';
   }
 
+
+
+  function recomendarMejorarLiquido(){
+    const c = buildContext();
+    const topDesc = topEntries(c.descuentos, 3);
+    const topVar = topEntries(c.variables, 1)[0];
+    const apv = c.descuentos['APV'] || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const liquido = c.resultados.liquido || 0;
+    let lines = [];
+
+    lines.push('Para mejorar el líquido debes distinguir entre descuentos obligatorios y decisiones modificables.');
+    if(liquido) lines.push('Líquido actual estimado por RemuTool: ' + CLP(liquido) + '.');
+
+    if(topDesc.length){
+      lines.push('');
+      lines.push('Factores que más reducen tu líquido hoy:');
+      topDesc.forEach((d,i)=> lines.push((i+1)+'. '+d[0]+': '+CLP(d[1])));
+    }
+
+    lines.push('');
+    if(apv > 0){
+      lines.push('El APV es el principal factor voluntario/modificable si quieres aumentar líquido inmediato. Si reduces APV, sube el líquido, pero disminuye tu ahorro previsional y puede aumentar la carga tributaria según régimen.');
+    }else{
+      lines.push('No veo APV ingresado. La mayoría de los descuentos principales son legales u obligatorios, por lo que no son realmente ajustables desde la liquidación.');
+    }
+
+    if(iusc > 0){
+      lines.push('El Impuesto Único no se ajusta manualmente: depende de la renta tributable, especialmente de variables altas del mes.');
+    }
+
+    if(topVar){
+      lines.push('Tu principal fuente variable es '+topVar[0]+' por '+CLP(topVar[1])+'. Cuando esa variable sube, normalmente también aumenta la base afecta a impuesto.');
+    }
+
+    lines.push('');
+    lines.push('Recomendación práctica: no reduzcas APV solo para subir líquido sin evaluar el efecto previsional y tributario. Usa RemuTool para simular el nuevo monto antes de decidir.');
+    return lines.join('\n');
+  }
+
+  function recomendarRevision(){
+    const c = buildContext();
+    const topVar = topEntries(c.variables, 1)[0];
+    const topDesc = topEntries(c.descuentos, 1)[0];
+    const apv = c.descuentos['APV'] || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const vars = sum(c.variables);
+    const fijos = sum(c.ingresosFijos);
+    let lines = ['Yo revisaría esta liquidación en este orden:'];
+
+    lines.push('');
+    lines.push('1. Haberes fijos: que sueldo base, gratificación y antigüedad coincidan con la liquidación.');
+    if(topVar){
+      lines.push('2. Variables: el principal componente variable es '+topVar[0]+' por '+CLP(topVar[1])+'. Verifica ese monto primero.');
+    }else{
+      lines.push('2. Variables: no veo variables relevantes cargadas. Si el mes tuvo productividad, feriados, vacaciones o secuencia, revisa que estén ingresadas.');
+    }
+
+    if(apv > 0){
+      lines.push('3. APV: tienes APV por '+CLP(apv)+'. Confirma monto y régimen A/B.');
+    }else{
+      lines.push('3. APV: no veo APV ingresado. Si tienes APV por planilla, falta cargarlo.');
+    }
+
+    if(topDesc){
+      lines.push('4. Descuentos: el mayor descuento registrado es '+topDesc[0]+' por '+CLP(topDesc[1])+'.');
+    }
+
+    if(iusc > 0){
+      lines.push('5. IUSC: revisa si el impuesto tiene sentido contra la renta tributable calculada ('+CLP(c.resultados.tributable || 0)+').');
+    }
+
+    if(vars > 0 && fijos > 0){
+      lines.push('');
+      lines.push('Dato relevante: las variables representan '+pct(vars/(vars+fijos)*100)+' de tus haberes. Si hay diferencia contra la liquidación real, probablemente está en variables.');
+    }
+
+    return lines.join('\n');
+  }
+
+  function recomendarImpuesto(){
+    const c = buildContext();
+    const trib = c.resultados.tributable || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const topVar = topEntries(c.variables, 1)[0];
+    const apv = c.descuentos['APV'] || 0;
+    let lines = [];
+
+    if(!trib || !iusc){
+      return 'Para explicar qué aumenta tu impuesto necesito que la simulación tenga renta tributable e Impuesto Único calculados.';
+    }
+
+    lines.push('Tu Impuesto Único se explica principalmente por la renta tributable calculada.');
+    lines.push('Renta tributable actual: '+CLP(trib)+'.');
+    lines.push('Impuesto Único calculado: '+CLP(iusc)+'.');
+
+    if(topVar){
+      lines.push('');
+      lines.push('El principal factor que aumenta esa base es '+topVar[0]+' por '+CLP(topVar[1])+'.');
+    }
+
+    if(apv > 0){
+      lines.push('El APV por '+CLP(apv)+' ayuda a modificar la base tributable según el régimen seleccionado. En régimen B normalmente reduce la base usada para calcular el impuesto.');
+    }
+
+    lines.push('');
+    lines.push('Interpretación: si el mes tiene alta productividad, feriados, vacaciones o secuencias, el IUSC puede subir aunque el descuento APV esté activo.');
+    return lines.join('\n');
+  }
 
   function currentGuideStep(){
     return document.body.getAttribute('data-guide-step') || 'base';
@@ -5438,6 +5550,9 @@ function setIuscRetValue(monto){
     const n = norm(s);
     const intent = classifyIntent(n);
     if(intent==='contexto_paso') return explainContextoPaso();
+    if(intent==='recom_liquido') return recomendarMejorarLiquido();
+    if(intent==='recom_revision') return recomendarRevision();
+    if(intent==='recom_impuesto') return recomendarImpuesto();
     if(intent==='variables_analisis') return analyzeVariables();
     if(intent==='principal_variable') return principalVariable();
     if(intent==='principal_descuento') return principalDescuento();
@@ -5463,7 +5578,7 @@ function setIuscRetValue(monto){
       .trim();
   }
 
-  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué debo ingresar aquí?\n• ¿Qué es la Mejor Variable?\n• ¿Cómo afecta mi APV?';
+  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué debo ingresar aquí?\n• ¿Qué debería revisar en esta liquidación?\n• ¿Cómo puedo mejorar mi líquido?';
   let aiHistory = [];
 
   function escapeHtml(value){
