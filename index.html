@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.2.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.2.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.3.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.3.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4904,9 +4904,9 @@ function setIuscRetValue(monto){
     <div class="ai-chat">
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
+• ¿Qué debo ingresar aquí?
 • ¿Qué es la Mejor Variable?
-• ¿Cómo afecta mi APV?
-• ¿Cómo se calculan las Vacaciones?</span></div>
+• ¿Cómo afecta mi APV?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
       <div class="ai-query-row">
         <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
@@ -5326,6 +5326,8 @@ function setIuscRetValue(monto){
   function classifyIntent(n){
     const asksCalc = n.includes('como se calcula') || n.includes('como se calculan') || n.includes('calculo') || n.includes('formula') || n.includes('como funciona');
     const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('aumento') || n.includes('disminuyo') || n.includes('genera') || n.includes('principal') || n.includes('mayor') || n.includes('mas') || n.includes('inflando') || n.includes('incrementa') || n.includes('influye');
+    const asksHere = n.includes('aqui') || n.includes('este paso') || n.includes('esta seccion') || n.includes('que debo ingresar') || n.includes('que ingreso') || n.includes('que reviso') || n.includes('ayuda') || n.includes('donde estoy') || n.includes('como sigo') || n.includes('continuar');
+    if(asksHere) return 'contexto_paso';
     if(n.includes('analiza') && (n.includes('variable') || n.includes('variables'))) return 'variables_analisis';
     if(n.includes('principal') && (n.includes('variable') || n.includes('ingreso variable'))) return 'principal_variable';
     if(n.includes('principal') && n.includes('descuento')) return 'principal_descuento';
@@ -5347,11 +5349,95 @@ function setIuscRetValue(monto){
     return 'concepto';
   }
 
+
+  function currentGuideStep(){
+    return document.body.getAttribute('data-guide-step') || 'base';
+  }
+
+  function explainContextoPaso(){
+    const step = currentGuideStep();
+    const c = ctx();
+
+    if(step === 'base'){
+      return [
+        'Estás en Ingresos.',
+        '',
+        'Aquí debes ingresar los haberes fijos principales de la liquidación:',
+        '• Sueldo base.',
+        '• Gratificación legal mensual.',
+        '• Asignación de antigüedad, si corresponde.',
+        '',
+        'No ingreses aquí productividad, vacaciones, feriados, secuencias ni descuentos. Esos van en los pasos siguientes.',
+        '',
+        c.fijos > 0
+          ? 'Con los datos actuales, tus ingresos fijos suman ' + CLP(c.fijos) + '.'
+          : 'Aún no veo ingresos fijos cargados.'
+      ].join('\n');
+    }
+
+    if(step === 'variables'){
+      return [
+        'Estás en Variables del mes.',
+        '',
+        'Aquí debes ingresar solo montos efectivamente pagados por la empresa:',
+        '• Bono de productividad.',
+        '• Bono de vacaciones.',
+        '• Compensación de feriados.',
+        '• Secuencia 9/10 si aparece en la liquidación.',
+        '',
+        'Clave: en vacaciones se ingresa el monto pagado, no los días tomados.',
+        '',
+        c.variables > 0
+          ? 'Con los datos actuales, tus variables suman ' + CLP(c.variables) + '.'
+          : 'Aún no veo variables cargadas.'
+      ].join('\n');
+    }
+
+    if(step === 'descuentos'){
+      return [
+        'Estás en Descuentos.',
+        '',
+        'Aquí debes revisar cotizaciones y descuentos de la liquidación:',
+        '• AFP y comisión.',
+        '• Salud.',
+        '• APV y régimen A/B.',
+        '• Sindicato u otros descuentos.',
+        '• Impuesto Único calculado por RemuTool.',
+        '',
+        c.apv > 0
+          ? 'Actualmente tienes APV ingresado por ' + CLP(c.apv) + '. Si está en régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.'
+          : 'No veo APV ingresado en esta simulación.'
+      ].join('\n');
+    }
+
+    if(step === 'resultado'){
+      return [
+        'Estás en Resultado.',
+        '',
+        'Aquí revisas el cierre de la simulación:',
+        '• Total de haberes.',
+        '• Descuentos legales.',
+        '• Descuentos varios.',
+        '• Alcance líquido.',
+        '• Líquido a pagar.',
+        '',
+        'Si quieres entender el resultado, puedes preguntarme:',
+        '• ¿Por qué mi Impuesto Único es alto?',
+        '• ¿Cuál es mi principal descuento?',
+        '• ¿Cuál es mi principal variable?',
+        '• Explícame mi liquidación.'
+      ].join('\n');
+    }
+
+    return 'Puedo ayudarte según el paso actual del Modo Guiado: ingresos, variables, descuentos o resultado.';
+  }
+
   function answerQuestion(q){
     const s = (q||'').trim();
     if(!s) return 'Escribe una consulta sobre tu liquidación o elige una opción sugerida.';
     const n = norm(s);
     const intent = classifyIntent(n);
+    if(intent==='contexto_paso') return explainContextoPaso();
     if(intent==='variables_analisis') return analyzeVariables();
     if(intent==='principal_variable') return principalVariable();
     if(intent==='principal_descuento') return principalDescuento();
@@ -5377,7 +5463,7 @@ function setIuscRetValue(monto){
       .trim();
   }
 
-  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué es la Mejor Variable?\n• ¿Cómo afecta mi APV?\n• ¿Cómo se calculan las Vacaciones?';
+  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué debo ingresar aquí?\n• ¿Qué es la Mejor Variable?\n• ¿Cómo afecta mi APV?';
   let aiHistory = [];
 
   function escapeHtml(value){
