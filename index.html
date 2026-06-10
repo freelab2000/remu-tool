@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.6.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.6.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.6.1.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.6.1.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -297,7 +297,7 @@ input[readonly]{opacity:.9}
 }
 
 
-/* ===== v.1.2.6.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
+/* ===== v.1.2.6.1.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
 
 /* Tipografía & espaciado global */
 body{ line-height:1.5; letter-spacing:.1px; }
@@ -1076,7 +1076,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UI polish v.1.2.6.f.w.t: KPIs centrados y botones APV consistentes === */
+/* === UI polish v.1.2.6.1.f.w.t: KPIs centrados y botones APV consistentes === */
 #kpiWrap.kpi-wrap{
   max-width: 980px !important;
   margin-left: auto !important;
@@ -1129,7 +1129,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UF automática y compacta v.1.2.6.f.w.t === */
+/* === UF automática y compacta v.1.2.6.1.f.w.t === */
 .compact-uf{
   padding:14px 16px;
 }
@@ -3764,7 +3764,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <footer class="footer">
-<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.6.f.w.t</div>
+<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.6.1.f.w.t</div>
 <div class="footer-text">
     Herramienta desarrollada para apoyar al usuario en la comprensión de su liquidación mensual con fines demostrativos.<br/>
     Los resultados mostrados son referenciales y no constituyen información oficial.
@@ -3804,7 +3804,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <script>
-// v.1.2.6.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
+// v.1.2.6.1.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
 (function(){
   const ids = ['kpiTH','kpiDL','kpiDV','kpiAL','kpiLP','kpiDelta'];
   const els = ids.map(id=>document.getElementById(id)).filter(Boolean);
@@ -4858,7 +4858,7 @@ function setIuscRetValue(monto){
 </aside>
 
 <script>
-/* === RemuTool v1.2.6.f.w.t — MiCopilot v0.9 Diagnostic Engine local === */
+/* === RemuTool v1.2.6.f.w.t — MiCopilot v0.9.1 Diagnostic Engine Hotfix local === */
 (function(){
   const $ = (s,root=document)=>root.querySelector(s);
   const $$ = (s,root=document)=>Array.from(root.querySelectorAll(s));
@@ -5045,8 +5045,7 @@ function setIuscRetValue(monto){
       lines.push('Las variables representan '+pct(p)+' de tus haberes totales.');
     }
     if(!lines.length) return 'Aún no hay suficiente información para identificar el componente de mayor impacto.';
-    return lines.join('
-');
+    return lines.join('\\n');
   }
 
 
@@ -5222,8 +5221,7 @@ function setIuscRetValue(monto){
     if(trib) lines.push('Renta tributable actual: '+CLP(trib)+'.');
     if(iusc) lines.push('Impuesto Único actual calculado: '+CLP(iusc)+'.');
     lines.push('Para una simulación exacta, ingresa el nuevo monto APV directamente en RemuTool y revisa el IUSC recalculado.');
-    return lines.join('
-');
+    return lines.join('\\n');
   }
 
   function variacionMensual(){
@@ -5238,8 +5236,7 @@ function setIuscRetValue(monto){
     if(totalFijos>0) lines.push('Ingresos fijos actuales: '+CLP(totalFijos)+'.');
     if(totalVars>0) lines.push('Variables actuales: '+CLP(totalVars)+'.');
     lines.push('Para explicar con precisión por qué ganaste más o menos, será necesario comparar esta simulación con otro mes.');
-    return lines.join('
-');
+    return lines.join('\\n');
   }
 
   function classifyIntent(n){
