@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.1.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.1.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.2.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.2.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4824,6 +4824,63 @@ function setIuscRetValue(monto){
 
 <!-- MiCopilot v0.7 — análisis comparativo local -->
 <div id="aiContextOverlay" aria-hidden="true"></div>
+
+<style>
+/* === RemuTool v1.3.2.f.w.t — MiCopilot v1.1 Chat History === */
+.ai-chat-toolbar{
+  display:flex;
+  justify-content:flex-end;
+  margin:8px 0 10px;
+}
+.ai-clear-btn{
+  border:1px solid rgba(148,163,184,.28);
+  background:rgba(15,23,42,.55);
+  color:#cbd5e1;
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:12px;
+  font-weight:800;
+  cursor:pointer;
+}
+.ai-clear-btn:hover{
+  border-color:rgba(90,169,255,.55);
+  color:#eaf2ff;
+}
+.ai-response.ai-history{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  white-space:normal;
+}
+.ai-msg{
+  border:1px solid rgba(148,163,184,.16);
+  border-radius:14px;
+  padding:10px 12px;
+  line-height:1.45;
+}
+.ai-msg-user{
+  background:rgba(90,169,255,.10);
+  border-color:rgba(90,169,255,.28);
+}
+.ai-msg-assistant{
+  background:rgba(15,23,42,.38);
+}
+.ai-msg-head{
+  display:block;
+  font-size:12px;
+  font-weight:900;
+  margin-bottom:6px;
+  color:#dbeafe;
+}
+.ai-msg-body{
+  white-space:pre-wrap;
+}
+.ai-response-empty{
+  color:#9fb0c7;
+  white-space:pre-wrap;
+}
+</style>
+
 <aside id="aiContextPanel" role="dialog" aria-modal="true" aria-labelledby="aiContextTitle">
   <div class="ai-panel-head">
     <div>
@@ -4845,11 +4902,12 @@ function setIuscRetValue(monto){
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
     <div class="ai-chat">
-      <div id="aiResponseBox" class="ai-response"><span class="muted-line">Puedes comenzar con una de estas consultas:
+      <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
 • ¿Qué es la Mejor Variable?
 • ¿Cómo afecta mi APV?
 • ¿Cómo se calculan las Vacaciones?</span></div>
+      <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
       <div class="ai-query-row">
         <input id="aiUserQuestion" type="text" placeholder="Pregunta algo sobre tu liquidación..." autocomplete="off" />
         <button class="ai-send-btn" id="aiAskBtn" type="button">Consultar</button>
@@ -5319,10 +5377,60 @@ function setIuscRetValue(monto){
       .trim();
   }
 
-  function setResponse(text){ const box=$('#aiResponseBox'); if(box) box.textContent=cleanAnswer(text); }
+  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué es la Mejor Variable?\n• ¿Cómo afecta mi APV?\n• ¿Cómo se calculan las Vacaciones?';
+  let aiHistory = [];
+
+  function escapeHtml(value){
+    return String(value || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function renderHistory(){
+    const box = $('#aiResponseBox');
+    if(!box) return;
+    box.classList.add('ai-history');
+    if(!aiHistory.length){
+      box.innerHTML = '<span class="ai-response-empty">'+escapeHtml(AI_EMPTY)+'</span>';
+      return;
+    }
+    box.innerHTML = aiHistory.map(msg => {
+      const head = msg.role === 'user' ? 'Tú' : 'MiCopilot';
+      const cls = msg.role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant';
+      return '<div class="ai-msg '+cls+'"><span class="ai-msg-head">'+head+'</span><div class="ai-msg-body">'+escapeHtml(msg.text)+'</div></div>';
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function addMessage(role, text){
+    const cleaned = cleanAnswer(text);
+    if(!cleaned) return;
+    aiHistory.push({ role, text: cleaned });
+    if(aiHistory.length > 20) aiHistory = aiHistory.slice(-20);
+    renderHistory();
+  }
+
+  function clearAiChat(){
+    aiHistory = [];
+    renderHistory();
+  }
+
+  function setResponse(text){
+    addMessage('assistant', text);
+  }
+
   function askAndClear(){
     const input = $('#aiUserQuestion');
-    const question = input?.value || '';
+    const question = cleanAnswer(input?.value || '');
+    if(!question){
+      setResponse('Escribe una consulta sobre tu liquidación o elige una opción sugerida.');
+      if(input) setTimeout(()=>input.focus(),30);
+      return;
+    }
+    addMessage('user', question);
     setResponse(answerQuestion(question));
     if(input){ input.value=''; input.placeholder='Pregunta algo sobre tu liquidación...'; setTimeout(()=>input.focus(),30); }
   }
@@ -5354,15 +5462,26 @@ function setIuscRetValue(monto){
     if(t?.id==='btnMiCopilotGlobal' || t?.id==='btnAiIusc') openPanel();
     if(t?.id==='aiContextClose' || t?.id==='aiContextOverlay') closePanel();
     if(t?.dataset?.aiPrompt){
-      if(t.dataset.aiPrompt==='liquidacion') setResponse(explainLiquidacion());
-      if(t.dataset.aiPrompt==='variables') setResponse(analyzeVariables());
-      if(t.dataset.aiPrompt==='descuentos') setResponse(analyzeDescuentos());
+      if(t.dataset.aiPrompt==='liquidacion'){
+        addMessage('user','Explícame mi liquidación');
+        setResponse(explainLiquidacion());
+      }
+      if(t.dataset.aiPrompt==='variables'){
+        addMessage('user','Analiza mis variables');
+        setResponse(analyzeVariables());
+      }
+      if(t.dataset.aiPrompt==='descuentos'){
+        addMessage('user','Analiza mis descuentos');
+        setResponse(analyzeDescuentos());
+      }
       if(t.dataset.aiPrompt==='concepto'){
         const input=$('#aiUserQuestion');
+        addMessage('user','Explícame un concepto');
         if(input){ input.value=''; input.placeholder='Ej: APV, IUSC, Mejor Variable, Feriados...'; input.focus(); }
         setResponse('Escribe el concepto que quieres revisar. Ejemplos: APV, Impuesto Único, Mejor Variable, Feriados, Productividad.');
       }
     }
+    if(t?.id==='aiClearChatBtn') clearAiChat();
     if(t?.id==='aiAskBtn') askAndClear();
   });
 
@@ -5371,6 +5490,8 @@ function setIuscRetValue(monto){
     if(ev.key==='Enter' && document.activeElement?.id==='aiUserQuestion'){ ev.preventDefault(); askAndClear(); }
   });
   document.addEventListener('input', updateStatus);
+  document.addEventListener('DOMContentLoaded', renderHistory);
+  setTimeout(renderHistory, 100);
 })();
 </script>
 
