@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.4.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.3.4.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.3.5.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.3.5.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4898,13 +4898,14 @@ function setIuscRetValue(monto){
     <div class="ai-prompts" aria-label="Consultas sugeridas">
       <button class="ai-prompt-btn" type="button" data-ai-prompt="liquidacion">💰 Explícame mi liquidación</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="variables">📈 Analiza mis variables</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="comparar">🔁 Comparar simulaciones</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
     <div class="ai-chat">
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
-• ¿Qué debo ingresar aquí?
+• ¿Qué cambió respecto a la simulación anterior?
 • ¿Qué debería revisar en esta liquidación?
 • ¿Cómo puedo mejorar mi líquido?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
@@ -5328,6 +5329,7 @@ function setIuscRetValue(monto){
     const asksAnalysis = n.includes('por que') || n.includes('porque') || n.includes('afecta') || n.includes('impacto') || n.includes('impacta') || n.includes('alto') || n.includes('bajo') || n.includes('subio') || n.includes('aumento') || n.includes('disminuyo') || n.includes('genera') || n.includes('principal') || n.includes('mayor') || n.includes('mas') || n.includes('inflando') || n.includes('incrementa') || n.includes('influye');
     const asksHere = n.includes('aqui') || n.includes('este paso') || n.includes('esta seccion') || n.includes('que debo ingresar') || n.includes('que ingreso') || n.includes('que reviso') || n.includes('ayuda') || n.includes('donde estoy') || n.includes('como sigo') || n.includes('continuar');
     if(asksHere) return 'contexto_paso';
+    if(n.includes('comparar') || n.includes('comparacion') || n.includes('que cambio') || n.includes('que cambió') || n.includes('cambio respecto') || n.includes('vs anterior') || n.includes('mes anterior') || n.includes('simulacion anterior') || n.includes('simulación anterior') || n.includes('respecto anterior')) return 'comparacion';
     if((n.includes('mejorar') || n.includes('aumentar') || n.includes('subir')) && (n.includes('liquido') || n.includes('sueldo') || n.includes('pago'))) return 'recom_liquido';
     if(n.includes('que deberia revisar') || n.includes('que revisar') || n.includes('revisar en esta liquidacion') || n.includes('recomendacion') || n.includes('recomiendas')) return 'recom_revision';
     if((n.includes('que esta') || n.includes('que factor') || n.includes('que componente')) && (n.includes('aumentando') || n.includes('subiendo') || n.includes('incrementando') || n.includes('impuesto'))) return 'recom_impuesto';
@@ -5353,6 +5355,115 @@ function setIuscRetValue(monto){
   }
 
 
+
+
+  let aiLastSnapshot = null;
+
+  function snapshotActual(){
+    const c = buildContext();
+    return {
+      totalHaberes: c.resultados.totalHaberes || 0,
+      liquido: c.resultados.liquido || 0,
+      tributable: c.resultados.tributable || 0,
+      imponible: c.resultados.imponible || 0,
+      iusc: c.descuentos['IUSC'] || 0,
+      apv: c.descuentos['APV'] || 0,
+      productividad: c.variables['Bono Productividad'] || 0,
+      vacaciones: c.variables['Bono Vacaciones'] || 0,
+      feriados: c.variables['Compensación Feriados'] || 0,
+      secuencia: c.variables['Secuencia 9/10'] || 0,
+      variables: sum(c.variables),
+      descuentosLegales: c.resultados.descuentosLegales || sum(c.descuentos),
+      descuentosVarios: c.resultados.descuentosVarios || 0
+    };
+  }
+
+  function snapshotHasData(s){
+    return !!s && (s.totalHaberes > 0 || s.liquido > 0 || s.tributable > 0 || s.variables > 0);
+  }
+
+  function diffLine(label, before, after){
+    before = Number(before)||0;
+    after = Number(after)||0;
+    const d = after - before;
+    if(Math.abs(d) < 1) return null;
+    const arrow = d > 0 ? '↑' : '↓';
+    return label + ': ' + arrow + ' ' + CLP(Math.abs(d)) + ' (' + CLP(before) + ' → ' + CLP(after) + ')';
+  }
+
+  function topSnapshotChange(prev, cur){
+    const items = [
+      ['Bono Productividad', prev.productividad, cur.productividad],
+      ['Bono Vacaciones', prev.vacaciones, cur.vacaciones],
+      ['Compensación Feriados', prev.feriados, cur.feriados],
+      ['Secuencia 9/10', prev.secuencia, cur.secuencia],
+      ['APV', prev.apv, cur.apv],
+      ['IUSC', prev.iusc, cur.iusc],
+      ['Renta tributable', prev.tributable, cur.tributable]
+    ].map(x => ({name:x[0], before:Number(x[1])||0, after:Number(x[2])||0, diff:(Number(x[2])||0)-(Number(x[1])||0)}))
+     .filter(x => Math.abs(x.diff) > 0)
+     .sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+    return items[0] || null;
+  }
+
+  function compararSimulaciones(){
+    const cur = snapshotActual();
+    const prev = aiLastSnapshot;
+
+    if(!snapshotHasData(prev)){
+      aiLastSnapshot = cur;
+      return [
+        'No tengo una simulación anterior guardada para comparar.',
+        '',
+        'Acabo de guardar la simulación actual como referencia.',
+        'Modifica algún dato y vuelve a preguntarme “qué cambió” o usa “Comparar simulaciones”.'
+      ].join('\n');
+    }
+
+    const lines = ['Comparación con la simulación anterior:', ''];
+    const main = [
+      diffLine('Líquido a pagar', prev.liquido, cur.liquido),
+      diffLine('Total haberes', prev.totalHaberes, cur.totalHaberes),
+      diffLine('Variables', prev.variables, cur.variables),
+      diffLine('Renta tributable', prev.tributable, cur.tributable),
+      diffLine('IUSC', prev.iusc, cur.iusc),
+      diffLine('APV', prev.apv, cur.apv)
+    ].filter(Boolean);
+
+    if(!main.length){
+      lines.push('No detecto cambios relevantes respecto de la simulación anterior.');
+      aiLastSnapshot = cur;
+      return lines.join('\n');
+    }
+
+    main.forEach(x => lines.push('• '+x));
+
+    const top = topSnapshotChange(prev, cur);
+    if(top){
+      lines.push('');
+      lines.push('Principal cambio detectado:');
+      lines.push(top.name + ': ' + (top.diff > 0 ? 'subió ' : 'bajó ') + CLP(Math.abs(top.diff)) + '.');
+    }
+
+    lines.push('');
+    if(cur.liquido > prev.liquido){
+      lines.push('Interpretación: el líquido subió principalmente por aumento de haberes/variables o reducción de descuentos.');
+    }else if(cur.liquido < prev.liquido){
+      lines.push('Interpretación: el líquido bajó principalmente por menor ingreso, mayor APV/descuentos o mayor carga tributaria.');
+    }else{
+      lines.push('Interpretación: el líquido se mantuvo prácticamente igual.');
+    }
+
+    if(cur.iusc > prev.iusc){
+      lines.push('El IUSC aumentó; revisa si subieron variables o renta tributable.');
+    }
+    if(cur.apv !== prev.apv){
+      lines.push('El APV cambió, por lo que puede alterar tanto el líquido inmediato como la base tributable según régimen.');
+    }
+
+    aiLastSnapshot = cur;
+    return lines.join('\n');
+  }
 
   function recomendarMejorarLiquido(){
     const c = buildContext();
@@ -5550,6 +5661,7 @@ function setIuscRetValue(monto){
     const n = norm(s);
     const intent = classifyIntent(n);
     if(intent==='contexto_paso') return explainContextoPaso();
+    if(intent==='comparacion') return compararSimulaciones();
     if(intent==='recom_liquido') return recomendarMejorarLiquido();
     if(intent==='recom_revision') return recomendarRevision();
     if(intent==='recom_impuesto') return recomendarImpuesto();
@@ -5578,7 +5690,7 @@ function setIuscRetValue(monto){
       .trim();
   }
 
-  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué debo ingresar aquí?\n• ¿Qué debería revisar en esta liquidación?\n• ¿Cómo puedo mejorar mi líquido?';
+  const AI_EMPTY = 'Puedes comenzar con una de estas consultas:\n\n• ¿Qué cambió respecto a la simulación anterior?\n• ¿Qué debería revisar en esta liquidación?\n• ¿Cómo puedo mejorar mi líquido?';
   let aiHistory = [];
 
   function escapeHtml(value){
@@ -5632,7 +5744,9 @@ function setIuscRetValue(monto){
       return;
     }
     addMessage('user', question);
+    const intent = classifyIntent(norm(question));
     setResponse(answerQuestion(question));
+    if(intent !== 'comparacion') aiLastSnapshot = snapshotActual();
     if(input){ input.value=''; input.placeholder='Pregunta algo sobre tu liquidación...'; setTimeout(()=>input.focus(),30); }
   }
   function openPanel(){ $('#aiContextOverlay')?.classList.add('open'); $('#aiContextPanel')?.classList.add('open'); updateStatus(); setTimeout(()=>$('#aiUserQuestion')?.focus(),120); }
@@ -5666,20 +5780,28 @@ function setIuscRetValue(monto){
       if(t.dataset.aiPrompt==='liquidacion'){
         addMessage('user','Explícame mi liquidación');
         setResponse(explainLiquidacion());
+        aiLastSnapshot = snapshotActual();
       }
       if(t.dataset.aiPrompt==='variables'){
         addMessage('user','Analiza mis variables');
         setResponse(analyzeVariables());
+        aiLastSnapshot = snapshotActual();
+      }
+      if(t.dataset.aiPrompt==='comparar'){
+        addMessage('user','Comparar simulaciones');
+        setResponse(compararSimulaciones());
       }
       if(t.dataset.aiPrompt==='descuentos'){
         addMessage('user','Analiza mis descuentos');
         setResponse(analyzeDescuentos());
+        aiLastSnapshot = snapshotActual();
       }
       if(t.dataset.aiPrompt==='concepto'){
         const input=$('#aiUserQuestion');
         addMessage('user','Explícame un concepto');
         if(input){ input.value=''; input.placeholder='Ej: APV, IUSC, Mejor Variable, Feriados...'; input.focus(); }
         setResponse('Escribe el concepto que quieres revisar. Ejemplos: APV, Impuesto Único, Mejor Variable, Feriados, Productividad.');
+        aiLastSnapshot = snapshotActual();
       }
     }
     if(t?.id==='aiClearChatBtn') clearAiChat();
