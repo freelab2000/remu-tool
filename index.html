@@ -4997,7 +4997,7 @@ function setIuscRetValue(monto){
       }
     }
 
-    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
+    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
     if(c.faltantes.length) lines.push('\nCompleta los datos pendientes para obtener un análisis más preciso.');
     return cleanAnswer(lines.join('\n'));
   }
@@ -5013,8 +5013,9 @@ function setIuscRetValue(monto){
     if(top) lines.push('\nEl descuento de mayor impacto corresponde a '+top[0]+' por '+CLP(top[1])+(descLegales ? ' ('+pct(top[1]/descLegales*100)+' de los descuentos legales).' : '.'));
     const apv = c.descuentos['APV'];
     if(apv>0) lines.push('APV ingresado: '+CLP(apv)+' en régimen '+c.bases.regimenAPV+'. Si es régimen B, puede reducir la base tributable usada para calcular el Impuesto Único.');
-    const insights = generarInsightsRemuTool(c).filter(x => x.includes('APV') || x.includes('descuento') || x.includes('Impuesto Único'));
-    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
+    const insights = generarInsightsRemuTool(c).map(i => i.texto)
+  .filter(x => x.includes('APV') || x.includes('descuento') || x.includes('Impuesto Único'));
+    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
     return cleanAnswer(lines.join('\n'));
   }
 
@@ -5033,7 +5034,7 @@ function setIuscRetValue(monto){
     if(totalHaberes>0) lines.push('En conjunto, las variables representan '+pct(totalVars/totalHaberes*100)+' de los haberes totales.');
     if(c.descuentos['IUSC']>0) lines.push('Estas variables aumentan la base afecta a cálculo y pueden incidir en el Impuesto Único calculado.');
     const insights = generarInsightsRemuTool(c).filter(x => x.includes('variables') || x.includes('Productividad') || x.includes('vacaciones') || x.includes('feriados') || x.includes('secuencias'));
-    if(insights.length) lines.push('\nObservaciones:\n'+insights.join('\n'));
+    if(insights.length) lines.push('\nObservaciones:\n' + insights.map(i => i.texto).join('\n'));
     return cleanAnswer(lines.join('\n'));
   }
 
