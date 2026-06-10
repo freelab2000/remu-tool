@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.6.1.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.2.6.1.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.2.6.2.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.1.2.6.2.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -297,7 +297,7 @@ input[readonly]{opacity:.9}
 }
 
 
-/* ===== v.1.2.6.1.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
+/* ===== v.1.2.6.2.f.w.t — UI polish: micro-animaciones + tipografía/espaciado ===== */
 
 /* Tipografía & espaciado global */
 body{ line-height:1.5; letter-spacing:.1px; }
@@ -1076,7 +1076,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UI polish v.1.2.6.1.f.w.t: KPIs centrados y botones APV consistentes === */
+/* === UI polish v.1.2.6.2.f.w.t: KPIs centrados y botones APV consistentes === */
 #kpiWrap.kpi-wrap{
   max-width: 980px !important;
   margin-left: auto !important;
@@ -1129,7 +1129,7 @@ body{ line-height:1.5; letter-spacing:.1px; }
 
 
 <style>
-/* === UF automática y compacta v.1.2.6.1.f.w.t === */
+/* === UF automática y compacta v.1.2.6.2.f.w.t === */
 .compact-uf{
   padding:14px 16px;
 }
@@ -3764,7 +3764,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <footer class="footer">
-<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.6.1.f.w.t</div>
+<div class="footer-title">Simulador Liquidación de Sueldo Versión v.1.2.6.2.f.w.t</div>
 <div class="footer-text">
     Herramienta desarrollada para apoyar al usuario en la comprensión de su liquidación mensual con fines demostrativos.<br/>
     Los resultados mostrados son referenciales y no constituyen información oficial.
@@ -3804,7 +3804,7 @@ function setIuscRetValue(monto){
 })();
 </script>
 <script>
-// v.1.2.6.1.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
+// v.1.2.6.2.f.w.t — micro-animación: pulso suave cuando cambian los KPIs
 (function(){
   const ids = ['kpiTH','kpiDL','kpiDV','kpiAL','kpiLP','kpiDelta'];
   const els = ids.map(id=>document.getElementById(id)).filter(Boolean);
@@ -5336,6 +5336,120 @@ function setIuscRetValue(monto){
     if(ev.key==='Enter' && document.activeElement?.id==='aiUserQuestion'){ ev.preventDefault(); askAndClear(); }
   });
   document.addEventListener('input', updateStatus);
+})();
+</script>
+
+
+
+<script>
+/* === MiCopilot v0.9.2 HOTFIX: apertura/cierre defensiva del panel === */
+(function(){
+  function $(id){ return document.getElementById(id); }
+
+  function forceOpenMiCopilot(){
+    var overlay = $('aiContextOverlay');
+    var panel = $('aiContextPanel');
+    var input = $('aiUserQuestion');
+    var status = $('aiDataStatus');
+
+    if(!panel){
+      console.warn('[MiCopilot] No se encontró #aiContextPanel');
+      return;
+    }
+
+    if(overlay){
+      overlay.classList.add('open');
+      overlay.style.display = 'block';
+      overlay.setAttribute('aria-hidden','false');
+    }
+
+    panel.classList.add('open');
+    panel.style.display = 'flex';
+    panel.style.transform = 'translateX(0)';
+    panel.style.visibility = 'visible';
+    panel.style.opacity = '1';
+    panel.setAttribute('aria-hidden','false');
+
+    try{
+      if(typeof updateStatus === 'function') updateStatus();
+    }catch(_){ }
+
+    if(status && !status.textContent.trim()){
+      status.textContent = '🟢 MiCopilot listo';
+    }
+
+    setTimeout(function(){ if(input) input.focus(); }, 120);
+  }
+
+  function forceCloseMiCopilot(){
+    var overlay = $('aiContextOverlay');
+    var panel = $('aiContextPanel');
+
+    if(overlay){
+      overlay.classList.remove('open');
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden','true');
+    }
+
+    if(panel){
+      panel.classList.remove('open');
+      panel.style.transform = 'translateX(100%)';
+      panel.setAttribute('aria-hidden','true');
+      setTimeout(function(){
+        if(!panel.classList.contains('open')) panel.style.display = '';
+      }, 190);
+    }
+  }
+
+  function bindMiCopilotHotfix(){
+    var btn = $('btnMiCopilotGlobal');
+    var close = $('aiContextClose');
+    var overlay = $('aiContextOverlay');
+
+    if(btn && !btn.dataset.micopilotHotfixBound){
+      btn.dataset.micopilotHotfixBound = '1';
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        forceOpenMiCopilot();
+      }, true);
+      btn.onclick = function(ev){
+        if(ev){ ev.preventDefault(); ev.stopPropagation(); }
+        forceOpenMiCopilot();
+        return false;
+      };
+    }
+
+    if(close && !close.dataset.micopilotHotfixBound){
+      close.dataset.micopilotHotfixBound = '1';
+      close.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        forceCloseMiCopilot();
+      }, true);
+    }
+
+    if(overlay && !overlay.dataset.micopilotHotfixBound){
+      overlay.dataset.micopilotHotfixBound = '1';
+      overlay.addEventListener('click', function(ev){
+        ev.preventDefault();
+        ev.stopPropagation();
+        forceCloseMiCopilot();
+      }, true);
+    }
+  }
+
+  window.forceOpenMiCopilot = forceOpenMiCopilot;
+  window.forceCloseMiCopilot = forceCloseMiCopilot;
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindMiCopilotHotfix);
+  }else{
+    bindMiCopilotHotfix();
+  }
+
+  setTimeout(bindMiCopilotHotfix, 100);
+  setTimeout(bindMiCopilotHotfix, 500);
 })();
 </script>
 
