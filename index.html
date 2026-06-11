@@ -1519,6 +1519,14 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 }
 </style>
 
+
+<style>
+/* RemuTool v2.0 Fase 1D — legibilidad KB en MiCopilot */
+.micopilot-answer, .mi-response, .bot-message, .chat-bubble, .ai-message {
+  line-height: 1.42;
+}
+</style>
+
 </head>
 <body>
 <div class="wrap">
@@ -5527,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-1C',
+  version: 'v2.0.0-fase-1D',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -5846,6 +5854,7 @@ window.REMUTOOL_KB_V2_META = {
   
 
 
+
 function stripHtmlKBv2(html){
     if(!html) return '';
     return String(html)
@@ -5861,7 +5870,6 @@ function stripHtmlKBv2(html){
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
       .replace(/&#39;/g, "'")
-      .replace(/\n{3,}/g, '\n\n')
       .trim();
   }
 
@@ -5886,44 +5894,132 @@ function stripHtmlKBv2(html){
     );
   }
 
+  function tidyKBv2Text(raw){
+    let s = String(raw || '');
+
+    // Normalización básica.
+    s = s
+      .replace(/\r/g, '\n')
+      .replace(/\t/g, ' ')
+      .replace(/[ ]{2,}/g, ' ')
+      .replace(/\n[ ]+/g, '\n')
+      .replace(/[ ]+\n/g, '\n');
+
+    // Reconstruye cortes excesivos heredados de HTML/listas.
+    const lines = s.split('\n').map(x => x.trim()).filter(Boolean);
+    const out = [];
+
+    const headingWords = [
+      'base legal','qué es','que es','régimen a','regimen a','régimen b','regimen b',
+      'topes','cálculo general','calculo general','uso en el cálculo','uso en el calculo',
+      'fundamento legal','tratamiento tributario','observación','observaciones',
+      'ejemplo','ejemplos','en simple','importante','consideraciones','corresponde a',
+      'diferencia','beneficio','efecto','aplicación','aplicacion'
+    ];
+
+    function isShortHeading(line){
+      const n = norm(line.replace(/:$/,''));
+      return line.length <= 44 && headingWords.some(h => n === norm(h) || n.startsWith(norm(h)));
+    }
+
+    function isBullet(line){
+      return /^([•\-–]|\d+[\.\)])\s+/.test(line);
+    }
+
+    for(let i=0; i<lines.length; i++){
+      let line = lines[i]
+        .replace(/^[-–]\s+/, '• ')
+        .replace(/^•\s*/, '• ')
+        .replace(/\s+([,.;:])/g, '$1')
+        .trim();
+
+      if(!line) continue;
+
+      // Junta líneas de una sola palabra o muy cortas que quedaron cortadas.
+      if(out.length && !isBullet(line) && !isShortHeading(line)){
+        const prev = out[out.length - 1];
+        const prevIsHeading = isShortHeading(prev);
+        const prevEndsHard = /[.;:)]$/.test(prev);
+        const currentLooksContinuation = line.length < 80 && /^[a-záéíóúñü0-9,(]/i.test(line);
+
+        if(!prevIsHeading && !prevEndsHard && currentLooksContinuation){
+          out[out.length - 1] = (prev + ' ' + line).replace(/[ ]{2,}/g, ' ');
+          continue;
+        }
+      }
+
+      out.push(line);
+    }
+
+    // Segunda pasada: separar subtítulos y limpiar puntos huérfanos.
+    const final = [];
+    for(const line of out){
+      const clean = line.trim();
+      if(!clean || clean === '.' || clean === '•') continue;
+
+      if(isShortHeading(clean)){
+        if(final.length && final[final.length-1] !== '') final.push('');
+        final.push(clean.replace(/:$/, '') + ':');
+      }else{
+        final.push(clean);
+      }
+    }
+
+    return final.join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/:\n•/g, ':\n•')
+      .trim();
+  }
+
   function formatKBv2Entry(entry){
     if(!entry) return null;
 
     const title = entry.title || entry.name || entry.id || entry.key || 'Concepto RemuTool';
-    const main = getKBv2MainText(entry);
+    const main = tidyKBv2Text(getKBv2MainText(entry));
 
     const parts = [];
-    const mainTrim = String(main || '').trim();
 
-    // Si el texto ya parte con el título, no duplicarlo.
-    if(mainTrim && norm(mainTrim).startsWith(norm(title))){
-      parts.push(mainTrim);
+    // Título principal compacto.
+    const titleLine = String(title).trim();
+    const mainStartsWithTitle = main && norm(main).startsWith(norm(titleLine));
+
+    if(mainStartsWithTitle){
+      parts.push(main);
     }else{
-      parts.push(String(title).trim());
-      if(mainTrim) parts.push('', mainTrim);
+      parts.push(titleLine);
+      if(main) parts.push('', main);
     }
 
     const details = entry.details || entry.detalles || entry.argumentos || entry.notes || entry.notas;
     if(Array.isArray(details) && details.length){
       parts.push('', 'Detalles clave:');
-      details.filter(Boolean).forEach(d => parts.push('• ' + cleanKBTextV2(d).trim()));
+      details.filter(Boolean).forEach(d => {
+        const t = tidyKBv2Text(cleanKBTextV2(d));
+        if(t) parts.push('• ' + t);
+      });
     }else{
-      const detailText = cleanKBTextV2(details);
-      if(detailText) parts.push('', detailText.trim());
+      const detailText = tidyKBv2Text(cleanKBTextV2(details));
+      if(detailText) parts.push('', detailText);
     }
 
     const examples = entry.examples || entry.ejemplos;
     if(Array.isArray(examples) && examples.length){
       parts.push('', 'Ejemplos:');
-      examples.filter(Boolean).forEach(e => parts.push('• ' + cleanKBTextV2(e).trim()));
+      examples.filter(Boolean).forEach(e => {
+        const t = tidyKBv2Text(cleanKBTextV2(e));
+        if(t) parts.push('• ' + t);
+      });
     }
 
     const related = entry.related || entry.relacionados;
     if(Array.isArray(related) && related.length){
-      parts.push('', 'Conceptos relacionados: ' + related.join(', ') + '.');
+      parts.push('', 'Relacionado: ' + related.join(', ') + '.');
     }
 
-    return parts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+    return parts.join('\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .replace(/[ ]{2,}/g, ' ')
+      .trim();
   }
 
   function entryTextForSearchV2(entry){
@@ -5976,7 +6072,6 @@ function stripHtmlKBv2(html){
 
         const isComparison = (entry.category === 'comparativas') || norm(id).includes('vs') || norm(title).includes(' vs ');
 
-        // Las comparativas deben ganar cuando la pregunta pide diferencia/comparar.
         if(isComparison && (n.includes('diferencia') || n.includes('comparar') || n.includes('compara') || n.includes(' vs ') || n.includes('versus'))){
           score += 80;
         }
@@ -5986,7 +6081,6 @@ function stripHtmlKBv2(html){
           if(!na) continue;
           if(n === na) score = Math.max(score, 220);
           if(n.includes(na)) score = Math.max(score, 180 + Math.min(na.length, 40));
-          // Coincidencia por palabras importantes del alias.
           const aw = na.split(/\s+/).filter(w => w.length >= 2 && !['que','qué','hay','entre','cual','cuál','diferencia','comparar','compara'].includes(w));
           if(aw.length >= 2 && aw.every(w => n.includes(w))){
             score = Math.max(score, 140 + aw.length * 8);
@@ -7413,10 +7507,12 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1C, KB Profesional v2 conectada con extracción definitionText/definitionHtml y prioridad para comparativas. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 1D, KB Profesional v2 conectada con formateo de respuestas, limpieza de saltos y subtítulos legibles. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
 </body>
 </html>
