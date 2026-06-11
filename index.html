@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.1.4.1.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.1.4.1.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.0.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.0.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4919,6 +4919,620 @@ function setIuscRetValue(monto){
   </div>
 </aside>
 
+
+<script>
+/* === RemuTool v2.0.0.f.w.t — Fase 1A: KB Profesional Integrada ===
+   La KB queda cargada como fuente profesional independiente.
+   En esta fase NO reemplaza todavía al motor actual de MiCopilot.
+*/
+/* RemuTool v2.0 — Knowledge Base Profesional
+   Fuente: index antiguo v1.1.1.f.w.t con secciones de ayuda '?'.
+   Estado: Fase 1 - estructura y contenido base rescatado.
+*/
+
+const REMUTOOL_KB_V2 = {
+  "SIND_UCCL": {
+    "id": "SIND_UCCL",
+    "sourceHelpId": "sind-uccl",
+    "category": "descuentos",
+    "title": "Desc. Sind. Pil UCCL",
+    "aliases": [
+      "sindicato",
+      "descuento sindical",
+      "desc sind pil uccl",
+      "cuota sindical",
+      "sind pil uccl"
+    ],
+    "definitionText": "Desc. Sind. Pil UCCL\nCuota mensual de 0,33% del sueldo base mensual o cuota mensual extraordinaria que puede llegar a un 0,5% del sueldo base mensual por el tiempo determinado que se haya establecido. Fuente Estatutos SPLC vigentes.",
+    "definitionHtml": "\n<h2>Desc. Sind. Pil UCCL</h2>\n<p>Cuota mensual de 0,33% del sueldo base mensual o cuota mensual extraordinaria que puede llegar a un 0,5% del sueldo base mensual por el tiempo determinado que se haya establecido. Fuente Estatutos SPLC vigentes.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "IUSC_RET": {
+    "id": "IUSC_RET",
+    "sourceHelpId": "iusc-ret",
+    "category": "tributacion",
+    "title": "Impuesto Único Retenido (IUSC)",
+    "aliases": [
+      "iusc",
+      "impuesto unico",
+      "impuesto único",
+      "impuesto unico retenido",
+      "impuesto único retenido",
+      "impuesto segunda categoria",
+      "impuesto segunda categoría"
+    ],
+    "definitionText": "Impuesto Único Retenido (IUSC)\nBase legal:\nArt. 42 N.º 1 y Art. 43 N.º 1 del DL 824 (Ley sobre Impuesto a la Renta).\nGrava las\nrentas del trabajo dependiente\n. El\nempleador\ncalcula y\nretiene mensualmente\nsegún la tabla progresiva del SII.\nBase:\nRenta tributable mensual luego de las cotizaciones obligatorias.\nCálculo:\nse aplica factor y rebaja del tramo vigente del mes.\nRegularización:\nsi hay otras rentas, se ajusta en el IGC anual.",
+    "definitionHtml": "\n<h2>Impuesto Único Retenido (IUSC)</h2>\n<p><b>Base legal:</b> Art. 42 N.º 1 y Art. 43 N.º 1 del DL 824 (Ley sobre Impuesto a la Renta).</p>\n<p>Grava las <b>rentas del trabajo dependiente</b>. El <b>empleador</b> calcula y <b>retiene mensualmente</b> según la tabla progresiva del SII.</p>\n<ul>\n<li><b>Base:</b> Renta tributable mensual luego de las cotizaciones obligatorias.</li>\n<li><b>Cálculo:</b> se aplica factor y rebaja del tramo vigente del mes.</li>\n<li><b>Regularización:</b> si hay otras rentas, se ajusta en el IGC anual.</li>\n</ul>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "APV": {
+    "id": "APV",
+    "sourceHelpId": "apv",
+    "category": "apv",
+    "title": "APV — Ahorro Previsional Voluntario (Chile)",
+    "aliases": [
+      "apv",
+      "ahorro previsional voluntario",
+      "apv regimen a",
+      "apv régimen a",
+      "apv regimen b",
+      "apv régimen b"
+    ],
+    "definitionText": "APV — Ahorro Previsional Voluntario (Chile)\nBase legal:\nDL 3.500; normativa de la Superintendencia de Pensiones y del SII.\nQué es:\nAporte voluntario para incrementar el ahorro previsional.\nRégimen A:\nRebaja inmediata de la base imponible afecta a IUSC/IGC. En el retiro, el total (capital + rentabilidad) tributa como renta.\nTopes:\n50 UF mensuales / 600 UF anuales.\nRégimen B:\nNo reduce la base imponible; otorga diferimiento. Los rescates tributan aplicando crédito por impuesto retenido.\nTopes:\n50 UF mensuales / 600 UF anuales.\nNo confundir con Depósitos Convenidos ni APV Colectivo.",
+    "definitionHtml": "\n<h2>APV — Ahorro Previsional Voluntario (Chile)</h2>\n<p><b>Base legal:</b> DL 3.500; normativa de la Superintendencia de Pensiones y del SII.</p>\n<ul>\n<li><b>Qué es:</b> Aporte voluntario para incrementar el ahorro previsional.</li>\n<li><b>Régimen A:</b> Rebaja inmediata de la base imponible afecta a IUSC/IGC. En el retiro, el total (capital + rentabilidad) tributa como renta. <b>Topes:</b> 50 UF mensuales / 600 UF anuales.</li>\n<li><b>Régimen B:</b> No reduce la base imponible; otorga diferimiento. Los rescates tributan aplicando crédito por impuesto retenido. <b>Topes:</b> 50 UF mensuales / 600 UF anuales.</li>\n<li>No confundir con Depósitos Convenidos ni APV Colectivo.</li>\n</ul>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "APV_GUIA": {
+    "id": "APV_GUIA",
+    "sourceHelpId": "apv-guia",
+    "category": "apv",
+    "title": "Guía APV paso a paso",
+    "aliases": [
+      "guia apv",
+      "guía apv",
+      "apv a o b",
+      "diferencia apv a b",
+      "apv regimen a vs b",
+      "apv régimen a vs b",
+      "tasa marginal",
+      "donde contratar apv"
+    ],
+    "definitionText": "Guía APV paso a paso\n🎯 Paso 1: ¿Qué es el APV y para qué sirve?\nEl\nAPV (Ahorro Previsional Voluntario)\nes un ahorro extra para reforzar tu pensión. No solo inviertes: el Estado te premia con\nbeneficios tributarios\nque pueden aumentar mucho tu ahorro final.\nExisten dos regímenes:\nRégimen A\n: te entrega una\nbonificación del 15%\ndel aporte acogido (con tope anual), que se deposita directamente en tu cuenta APV.\nRégimen B\n:\nrebaja tu impuesto mensual\n, disminuyendo la base tributable (tu RLI) sobre la que se calcula el Impuesto Único.\nLos dos funcionan; la pregunta clave es\ncuál conviene más según tu sueldo, tramo de impuesto y horizonte de ahorro\n.\n🎯 Paso 2: ¿Qué es la tasa marginal y dónde la veo en esta app?\nLa\ntasa marginal\nes el concepto más importante para elegir entre APV A o B.\n🔍\n¿Qué significa?\nEs el\nporcentaje de impuesto\nque pagas por el\núltimo peso\nque ganas. No es tu impuesto promedio ni el total retenido; es el\ntramo exacto\nde la tabla en el que quedas.\n📍\n¿Dónde la encuentro aquí?\nEn esta herramienta aparece en dos lugares:\nEn la\ntabla IUSC\ndel final, donde ves los tramos y tasas mensuales.\nEn el comparador APV, dentro del recuadro que dice\n“Tu tasa marginal actual”\n.\n🏛️ Paso 3: ¿Dónde puedo contratar APV?\nEl APV no es exclusivo de las AFP. Puedes contratarlo en:\nAFP\nFondos A–E, costos generalmente bajos, esquema simple y regulado.\nCompañías de seguros\nAPV combinado con seguros de vida o protección. Ojo:\ncomisiones suelen ser más altas\n.\nAdministradoras de fondos / plataformas\n(bancos, AGF, Fintual, Racional, etc.)\nPortafolios globales, indexados; comisiones bajas o medias, muy interesantes para el largo plazo.\n👉 Regla: a mayor horizonte de tiempo,\nmás importante es elegir bajas comisiones\n.\n🅰️ Paso 4: Entender el Régimen A (bonificación 15%)\n🔍\nCómo funciona\nEl Estado te entrega una\nbonificación del 15%\nanual sobre los aportes acogidos, con tope de\n6 UTM al año\n. Esa bonificación se deposita una vez al año directamente en tu\ncuenta APV A\n.\n👍\nVentajas\nAumenta tu ahorro sin tocar tu flujo mensual.\nSimple de entender: aportas, el Estado agrega un 15% extra (hasta el tope).\nInteresante para tramos de impuesto bajos o medios, o para aportes moderados.\n⚠️\nDesventajas\nLa bonificación tiene un tope anual (6 UTM).\nSi retiras anticipadamente, podrías tener que\ndevolver parte de esa bonificación\ny pagar impuesto.\n🎯\n¿Para quién suele ser atractivo?\nPersonas que quieren\naportar montos pequeños o medios\ny no están en tramos muy altos de impuesto.\n🅱️ Paso 5: Entender el Régimen B (rebaja tributaria)\n🔍\nCómo funciona\nTu aporte de APV\nreduce la base tributable\n(RLI) → pagas\nmenos impuesto hoy\n, equivalente a tu tasa marginal.\nEjemplo simple\n:\nEstás en tramo 30% y aportas $200.000 en APV B. El beneficio tributario del mes ronda los\n$60.000\nde impuesto que\nno pagas\n(aprox.).\n👍\nVentajas\nBeneficio inmediato y fuerte en tramos altos.\nIdeal para tasas marginales de 23%, 30%, 35%.\nAportes grandes aprovechan muy bien el beneficio.\n⚠️\nDesventajas\nSi estás en tramo bajo, el beneficio es pequeño.\nAl retirar, el APV B paga un\nimpuesto especial\nsegún normas del SII.\n🎯\n¿Para quién suele ser atractivo?\nTramos altos, personas de\n45–55 años\ny quienes pueden hacer\naportes grandes\nde forma constante.\n🚪 Paso 6: ¿Qué pasa si retiro el APV antes de tiempo?\nAl retirar APV, siempre hay efecto tributario:\nEn\nRégimen A\n, el retiro se suma a tus ingresos del año y puede aumentar tu\nGlobal Complementario\n. Si el retiro es grande, puedes subir de tramo y pagar más. Además, en ciertos casos debes\nreintegrar bonificaciones\n.\nEn\nRégimen B\n, el rescate paga un\nimpuesto especial\n, donde se reconocen como crédito las rebajas de impuesto que obtuviste al aportar.\nRegla práctica: el APV está pensado para\nlargo plazo\n. Si planeas retirar en poco tiempo, es mejor simular bien el impacto.\n📏 Paso 7: Topes y montos de aporte\nEn la legislación real existen topes (por ejemplo,\n6 UTM\nde bonificación A al año y hasta\n600 UF\nanuales con beneficio en B). Esta herramienta no fiscaliza esos límites, pero te ayuda a ver el\nefecto mensual\nen tu impuesto.\n👉 Si aportas montos muy grandes en B, parte del beneficio podría verse luego como\ndevolución\nen la Operación Renta. Es importante considerar cuánto de eso volverías a invertir.\n⏳ Paso 8: Estrategia si tienes ~30 años\nTienes muchas décadas por delante: el foco es\nacumular capital\n.\nImporta mucho más la\nconstancia de aporte\ny las\ncomisiones bajas\n.\nAmbos regímenes pueden servir; si estás en tramos medios/altos, B suele aprovechar mejor el mayor plazo.\n⌛ Paso 9: Estrategia si estás entre 45 y 55 años\nTe queda menos tiempo hasta la jubilación, pero probablemente estás en\ntramos de impuesto más altos\n.\nEl beneficio del Régimen B puede ser muy potente, sobre todo con\naportes altos\n.\nEs clave planificar\ncuándo\ny\ncómo\nvas a retirar esos fondos para no concentrar demasiados rescates en un solo año.\n🔁 Paso 10: Traspasos entre instituciones (sin gatillar retiro)\nPuedes\nmover tu APV\nentre instituciones (AFP, bancos, AGF, compañías de seguros, plataformas) mediante\ntraspasos\nque no se consideran retiro, por lo que no gatillan impuestos.\nLo que no puedes hacer es cambiar el\nrégimen\nde un aporte ya hecho: si nació A, seguirá siendo A; si nació B, seguirá siendo B. Lo que sí puedes hacer es que los\nnuevos aportes\nvayan al régimen que hoy te convenga más.\n🧮 Paso 11: Cómo usar esta aplicación como simulador\nLa idea es que uses esta herramienta como una\ncalculadora de escenarios\n:\nCambia el\nsueldo base\ny los haberes.\nPrueba distintos montos de\nAPV\ny cambia entre Régimen A y B.\nMira cómo cambia el\nImpuesto Único retenido\n, el\nlíquido a pagar\ny la\nrecomendación del comparador APV\n.\nAsí puedes ver, con números,\ncómo afectaría el APV a tu sueldo líquido y a tus impuestos\nantes de tomar decisiones reales.",
+    "definitionHtml": "\n<h2>Guía APV paso a paso</h2>\n<h3>🎯 Paso 1: ¿Qué es el APV y para qué sirve?</h3>\n<p>El <b>APV (Ahorro Previsional Voluntario)</b> es un ahorro extra para reforzar tu pensión. No solo inviertes: el Estado te premia con <b>beneficios tributarios</b> que pueden aumentar mucho tu ahorro final.</p>\n<p>Existen dos regímenes:</p>\n<ul>\n<li><b>Régimen A</b>: te entrega una <b>bonificación del 15%</b> del aporte acogido (con tope anual), que se deposita directamente en tu cuenta APV.</li>\n<li><b>Régimen B</b>: <b>rebaja tu impuesto mensual</b>, disminuyendo la base tributable (tu RLI) sobre la que se calcula el Impuesto Único.</li>\n</ul>\n<p>Los dos funcionan; la pregunta clave es <b>cuál conviene más según tu sueldo, tramo de impuesto y horizonte de ahorro</b>.</p>\n<h3>🎯 Paso 2: ¿Qué es la tasa marginal y dónde la veo en esta app?</h3>\n<p>La <b>tasa marginal</b> es el concepto más importante para elegir entre APV A o B.</p>\n<p>🔍 <b>¿Qué significa?</b><br/>\n  Es el <b>porcentaje de impuesto</b> que pagas por el <b>último peso</b> que ganas. No es tu impuesto promedio ni el total retenido; es el <b>tramo exacto</b> de la tabla en el que quedas.</p>\n<p>📍 <b>¿Dónde la encuentro aquí?</b><br/>\n  En esta herramienta aparece en dos lugares:</p>\n<ul>\n<li>En la <b>tabla IUSC</b> del final, donde ves los tramos y tasas mensuales.</li>\n<li>En el comparador APV, dentro del recuadro que dice <b>“Tu tasa marginal actual”</b>.</li>\n</ul>\n<h3>🏛️ Paso 3: ¿Dónde puedo contratar APV?</h3>\n<p>El APV no es exclusivo de las AFP. Puedes contratarlo en:</p>\n<ul>\n<li><b>AFP</b><br/>Fondos A–E, costos generalmente bajos, esquema simple y regulado.</li>\n<li><b>Compañías de seguros</b><br/>APV combinado con seguros de vida o protección. Ojo: <b>comisiones suelen ser más altas</b>.</li>\n<li><b>Administradoras de fondos / plataformas</b> (bancos, AGF, Fintual, Racional, etc.)<br/>Portafolios globales, indexados; comisiones bajas o medias, muy interesantes para el largo plazo.</li>\n</ul>\n<p>👉 Regla: a mayor horizonte de tiempo, <b>más importante es elegir bajas comisiones</b>.</p>\n<h3>🅰️ Paso 4: Entender el Régimen A (bonificación 15%)</h3>\n<p>🔍 <b>Cómo funciona</b><br/>\n  El Estado te entrega una <b>bonificación del 15%</b> anual sobre los aportes acogidos, con tope de <b>6 UTM al año</b>. Esa bonificación se deposita una vez al año directamente en tu <b>cuenta APV A</b>.</p>\n<p>👍 <b>Ventajas</b></p>\n<ul>\n<li>Aumenta tu ahorro sin tocar tu flujo mensual.</li>\n<li>Simple de entender: aportas, el Estado agrega un 15% extra (hasta el tope).</li>\n<li>Interesante para tramos de impuesto bajos o medios, o para aportes moderados.</li>\n</ul>\n<p>⚠️ <b>Desventajas</b></p>\n<ul>\n<li>La bonificación tiene un tope anual (6 UTM).</li>\n<li>Si retiras anticipadamente, podrías tener que <b>devolver parte de esa bonificación</b> y pagar impuesto.</li>\n</ul>\n<p>🎯 <b>¿Para quién suele ser atractivo?</b><br/>\n  Personas que quieren <b>aportar montos pequeños o medios</b> y no están en tramos muy altos de impuesto.</p>\n<h3>🅱️ Paso 5: Entender el Régimen B (rebaja tributaria)</h3>\n<p>🔍 <b>Cómo funciona</b><br/>\n  Tu aporte de APV <b>reduce la base tributable</b> (RLI) → pagas <b>menos impuesto hoy</b>, equivalente a tu tasa marginal.</p>\n<p><b>Ejemplo simple</b>:<br/>\n  Estás en tramo 30% y aportas $200.000 en APV B. El beneficio tributario del mes ronda los <b>$60.000</b> de impuesto que <b>no pagas</b> (aprox.).</p>\n<p>👍 <b>Ventajas</b></p>\n<ul>\n<li>Beneficio inmediato y fuerte en tramos altos.</li>\n<li>Ideal para tasas marginales de 23%, 30%, 35%.</li>\n<li>Aportes grandes aprovechan muy bien el beneficio.</li>\n</ul>\n<p>⚠️ <b>Desventajas</b></p>\n<ul>\n<li>Si estás en tramo bajo, el beneficio es pequeño.</li>\n<li>Al retirar, el APV B paga un <b>impuesto especial</b> según normas del SII.</li>\n</ul>\n<p>🎯 <b>¿Para quién suele ser atractivo?</b><br/>\n  Tramos altos, personas de <b>45–55 años</b> y quienes pueden hacer <b>aportes grandes</b> de forma constante.</p>\n<h3>🚪 Paso 6: ¿Qué pasa si retiro el APV antes de tiempo?</h3>\n<p>Al retirar APV, siempre hay efecto tributario:</p>\n<ul>\n<li>En <b>Régimen A</b>, el retiro se suma a tus ingresos del año y puede aumentar tu <b>Global Complementario</b>. Si el retiro es grande, puedes subir de tramo y pagar más. Además, en ciertos casos debes <b>reintegrar bonificaciones</b>.</li>\n<li>En <b>Régimen B</b>, el rescate paga un <b>impuesto especial</b>, donde se reconocen como crédito las rebajas de impuesto que obtuviste al aportar.</li>\n</ul>\n<p>Regla práctica: el APV está pensado para <b>largo plazo</b>. Si planeas retirar en poco tiempo, es mejor simular bien el impacto.</p>\n<h3>📏 Paso 7: Topes y montos de aporte</h3>\n<p>En la legislación real existen topes (por ejemplo, <b>6 UTM</b> de bonificación A al año y hasta <b>600 UF</b> anuales con beneficio en B). Esta herramienta no fiscaliza esos límites, pero te ayuda a ver el <b>efecto mensual</b> en tu impuesto.</p>\n<p>👉 Si aportas montos muy grandes en B, parte del beneficio podría verse luego como <b>devolución</b> en la Operación Renta. Es importante considerar cuánto de eso volverías a invertir.</p>\n<h3>⏳ Paso 8: Estrategia si tienes ~30 años</h3>\n<ul>\n<li>Tienes muchas décadas por delante: el foco es <b>acumular capital</b>.</li>\n<li>Importa mucho más la <b>constancia de aporte</b> y las <b>comisiones bajas</b>.</li>\n<li>Ambos regímenes pueden servir; si estás en tramos medios/altos, B suele aprovechar mejor el mayor plazo.</li>\n</ul>\n<h3>⌛ Paso 9: Estrategia si estás entre 45 y 55 años</h3>\n<ul>\n<li>Te queda menos tiempo hasta la jubilación, pero probablemente estás en <b>tramos de impuesto más altos</b>.</li>\n<li>El beneficio del Régimen B puede ser muy potente, sobre todo con <b>aportes altos</b>.</li>\n<li>Es clave planificar <b>cuándo</b> y <b>cómo</b> vas a retirar esos fondos para no concentrar demasiados rescates en un solo año.</li>\n</ul>\n<h3>🔁 Paso 10: Traspasos entre instituciones (sin gatillar retiro)</h3>\n<p>Puedes <b>mover tu APV</b> entre instituciones (AFP, bancos, AGF, compañías de seguros, plataformas) mediante <b>traspasos</b> que no se consideran retiro, por lo que no gatillan impuestos.</p>\n<p>Lo que no puedes hacer es cambiar el <b>régimen</b> de un aporte ya hecho: si nació A, seguirá siendo A; si nació B, seguirá siendo B. Lo que sí puedes hacer es que los <b>nuevos aportes</b> vayan al régimen que hoy te convenga más.</p>\n<h3>🧮 Paso 11: Cómo usar esta aplicación como simulador</h3>\n<p>La idea es que uses esta herramienta como una <b>calculadora de escenarios</b>:</p>\n<ul>\n<li>Cambia el <b>sueldo base</b> y los haberes.</li>\n<li>Prueba distintos montos de <b>APV</b> y cambia entre Régimen A y B.</li>\n<li>Mira cómo cambia el <b>Impuesto Único retenido</b>, el <b>líquido a pagar</b> y la <b>recomendación del comparador APV</b>.</li>\n</ul>\n<p>Así puedes ver, con números, <b>cómo afectaría el APV a tu sueldo líquido y a tus impuestos</b> antes de tomar decisiones reales.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "ADICIONAL": {
+    "id": "ADICIONAL",
+    "sourceHelpId": "adicional",
+    "category": "salud",
+    "title": "Cotización Adicional de Salud",
+    "aliases": [
+      "cotizacion adicional",
+      "cotización adicional",
+      "cotizacion adicional salud",
+      "cotización adicional salud",
+      "adicional salud"
+    ],
+    "definitionText": "Cotización Adicional de Salud\nPago adicional de salud (p. ej.,\nplan Isapre\n) que complementa el 7% legal. No reduce la base imponible previsional.",
+    "definitionHtml": "\n<h2>Cotización Adicional de Salud</h2>\n<p>Pago adicional de salud (p. ej., <b>plan Isapre</b>) que complementa el 7% legal. No reduce la base imponible previsional.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "ISAPRE7": {
+    "id": "ISAPRE7",
+    "sourceHelpId": "isapre7",
+    "category": "salud",
+    "title": "7% Legal de Salud (Isapre/Fonasa)",
+    "aliases": [
+      "salud 7",
+      "7% salud",
+      "cotizacion salud",
+      "cotización salud",
+      "isapre",
+      "fonasa"
+    ],
+    "definitionText": "7% Legal de Salud (Isapre/Fonasa)\nDescuento legal de\n7%\npara salud. En Isapre, se descuenta hasta el tope legal y puede complementarse con un\nplan adicional\n. En Fonasa, corresponde al 7% hasta el tope de salud vigente.",
+    "definitionHtml": "\n<h2>7% Legal de Salud (Isapre/Fonasa)</h2>\n<p>Descuento legal de <b>7%</b> para salud. En Isapre, se descuenta hasta el tope legal y puede complementarse con un <b>plan adicional</b>. En Fonasa, corresponde al 7% hasta el tope de salud vigente.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "PLAN_UF": {
+    "id": "PLAN_UF",
+    "sourceHelpId": "plan-uf",
+    "category": "salud",
+    "title": "Valor del Plan Isapre (UF)",
+    "aliases": [
+      "valor plan isapre",
+      "plan isapre",
+      "plan uf",
+      "valor plan uf"
+    ],
+    "definitionText": "Valor del Plan Isapre (UF)\nEste campo representa el\nprecio pactado de tu plan\nen\nUF\n(por ejemplo, 22,42 UF), tal como suele aparecer en la liquidación real.\nLa cotización obligatoria de salud es el\n7% legal\n(calculado sobre el imponible con tope). Si el\nplan (en CLP)\nes mayor que el 7% legal, la diferencia se descuenta como\nCotización Adicional\n.\nFórmula:\nCotización adicional = max(0, PlanUF × UF − 7% legal).",
+    "definitionHtml": "\n<h2>Valor del Plan Isapre (UF)</h2>\n<p>Este campo representa el <b>precio pactado de tu plan</b> en <b>UF</b> (por ejemplo, 22,42 UF), tal como suele aparecer en la liquidación real.</p>\n<p>La cotización obligatoria de salud es el <b>7% legal</b> (calculado sobre el imponible con tope). Si el <b>plan (en CLP)</b> es mayor que el 7% legal, la diferencia se descuenta como <b>Cotización Adicional</b>.</p>\n<p><b>Fórmula:</b> Cotización adicional = max(0, PlanUF × UF − 7% legal).</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "AFP_COMISION": {
+    "id": "AFP_COMISION",
+    "sourceHelpId": "afp-comision",
+    "category": "prevision",
+    "title": "Comisión AFP",
+    "aliases": [
+      "comision afp porcentaje",
+      "comisión afp porcentaje",
+      "porcentaje comision afp"
+    ],
+    "definitionText": "Comisión AFP\nCorresponde al\nporcentaje de comisión\nque cobra la AFP por administrar los fondos, calculado sobre la base imponible. No incrementa el ahorro previsional.",
+    "definitionHtml": "\n<h2>Comisión AFP</h2>\n<p>Corresponde al <b>porcentaje de comisión</b> que cobra la AFP por administrar los fondos, calculado sobre la base imponible. No incrementa el ahorro previsional.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "SUELDO_BASE": {
+    "id": "SUELDO_BASE",
+    "sourceHelpId": "sueldo-base",
+    "category": "ingresos_fijos",
+    "title": "Sueldo Base",
+    "aliases": [
+      "sueldo base",
+      "base sueldo"
+    ],
+    "definitionText": "Sueldo Base\nRemuneración fija pactada en el contrato individual; constituye la base de cálculo para cotizaciones y otros beneficios.\nFundamento:\nCódigo del Trabajo, art. 42 letra a).",
+    "definitionHtml": "\n<h2>Sueldo Base</h2>\n<p>Remuneración fija pactada en el contrato individual; constituye la base de cálculo para cotizaciones y otros beneficios.</p>\n<small><b>Fundamento:</b> Código del Trabajo, art. 42 letra a).</small>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "GRATIFICACION": {
+    "id": "GRATIFICACION",
+    "sourceHelpId": "gratificacion",
+    "category": "ingresos_fijos",
+    "title": "Gratificación Legal",
+    "aliases": [
+      "gratificacion",
+      "gratificación",
+      "gratificacion legal",
+      "gratificación legal"
+    ],
+    "definitionText": "Gratificación Legal\nLa\ngratificación\nes una participación legal de los trabajadores en los resultados de la empresa. Existen dos modalidades reconocidas por el\nCódigo del Trabajo\n:\nModalidades\nArtículo 47 — Utilidades líquidas:\nAplica cuando la empresa obtiene utilidades netas. Se distribuye el\n30 %\nde dichas utilidades entre los trabajadores, proporcionalmente a sus remuneraciones.\nArtículo 50 — Pago mensual garantizado:\nPermite al empleador pagar mensualmente el\n25 %\nde la remuneración devengada, con un\ntope anual de 4,75 Ingresos Mínimos Mensuales (IMM)\n. Es la modalidad\nmás utilizada en la práctica\ny la que aplica en esta calculadora.\nLímite anual\nEl pago total anual no puede exceder el equivalente a\n4,75 IMM\n. Con el\nIMM vigente 2026 = $539.000\n, el tope legal anual es:\n4,75 × 539.000 =\n$2.560.250\nEste tope se divide entre 12 meses para obtener el máximo mensual permitido:\n$2.560.250 ÷ 12 =\n$213.354\nPor tanto, bajo la modalidad del\nArtículo 50\n, la gratificación mensual corresponde al\n25 %\nde la remuneración devengada, con un límite de\n$213.354\nmensuales.\nFundamento legal\nCódigo del Trabajo\n, artículos\n47 y 50\n.",
+    "definitionHtml": "\n<h2>Gratificación Legal</h2>\n<p>La <b>gratificación</b> es una participación legal de los trabajadores en los resultados de la empresa. Existen dos modalidades reconocidas por el <b>Código del Trabajo</b>:</p>\n<h3>Modalidades</h3>\n<ul>\n<li><b>Artículo 47 — Utilidades líquidas:</b> Aplica cuando la empresa obtiene utilidades netas. Se distribuye el <b>30 %</b> de dichas utilidades entre los trabajadores, proporcionalmente a sus remuneraciones.</li>\n<li><b>Artículo 50 — Pago mensual garantizado:</b> Permite al empleador pagar mensualmente el <b>25 %</b> de la remuneración devengada, con un <b>tope anual de 4,75 Ingresos Mínimos Mensuales (IMM)</b>. Es la modalidad <b>más utilizada en la práctica</b> y la que aplica en esta calculadora.</li>\n</ul>\n<h3>Límite anual</h3>\n<p>\n    El pago total anual no puede exceder el equivalente a <b>4,75 IMM</b>. Con el <b>IMM vigente 2026 = $539.000</b>, el tope legal anual es:\n  </p>\n<p class=\"kbd\">4,75 × 539.000 = <b>$2.560.250</b></p>\n<p>Este tope se divide entre 12 meses para obtener el máximo mensual permitido:</p>\n<p class=\"kbd\">$2.560.250 ÷ 12 = <b>$213.354</b></p>\n<p>Por tanto, bajo la modalidad del <b>Artículo 50</b>, la gratificación mensual corresponde al <b>25 %</b> de la remuneración devengada, con un límite de <b>$213.354</b> mensuales.</p>\n<h3>Fundamento legal</h3>\n<p><b>Código del Trabajo</b>, artículos <b>47 y 50</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "ANTIGUEDAD": {
+    "id": "ANTIGUEDAD",
+    "sourceHelpId": "antiguedad",
+    "category": "ingresos_fijos",
+    "title": "Asignación de Antigüedad (Convenio Colectivo)",
+    "aliases": [
+      "antiguedad",
+      "antigüedad",
+      "asignacion antiguedad",
+      "asignación antigüedad"
+    ],
+    "definitionText": "Asignación de Antigüedad (Convenio Colectivo)\nLa\nAsignación de Antigüedad\nes un beneficio\nestablecido por convenio colectivo\nque reconoce los años de servicio continuo en la Compañía, diferenciando su aplicación según el\ncargo\n:\nCapitán de Aeronave\nSe otorga\na partir del noveno año\nde antigüedad ininterrumpida como Tripulante de Mando.\nCorresponde a un\n1 % mensual\ndel promedio de la remuneración base (según cláusula cuarta numeral 5, excluyendo la propia asignación).\nSe\nincrementa 1 % adicional por cada año\nposterior de antigüedad continua, hasta alcanzar un\nmáximo de 30 %\nde dicha remuneración base.\nPrimer Oficial\nSe otorga\ndesde el segundo año\nde antigüedad ininterrumpida en el cargo:\n2° año:\n1 % de la remuneración base.\n3° año:\n1,5 %.\n4° año y siguientes:\nse incrementa en 1 % adicional por cada año, hasta un\nmáximo de 9 %\ndel sueldo base.\nExcepción:\nSi el Primer Oficial acumula\n12 años o más\nde antigüedad sin ascender a Capitán por razones no imputables a él, el beneficio continúa incrementándose\n1 % por año\n, hasta un\ntope máximo de 25 %\ndel sueldo base.\nTratamiento\nImponible y tributable:\nafecta cotizaciones previsionales y cálculo del IUSC.\nSe calcula sobre la\nbase remuneracional definida en la cláusula cuarta numeral 5 del convenio\n, excluyendo la propia asignación de antigüedad.\nFundamento\nConvenio Colectivo LAN Cargo\n(vigente desde octubre 2023), cláusulas\n4.1 y 4.2\n.",
+    "definitionHtml": "\n<h2>Asignación de Antigüedad (Convenio Colectivo)</h2>\n<p>La <b>Asignación de Antigüedad</b> es un beneficio <b>establecido por convenio colectivo</b> que reconoce los años de servicio continuo en la Compañía, diferenciando su aplicación según el <b>cargo</b>:</p>\n<h3>Capitán de Aeronave</h3>\n<ul>\n<li>Se otorga <b>a partir del noveno año</b> de antigüedad ininterrumpida como Tripulante de Mando.</li>\n<li>Corresponde a un <b>1 % mensual</b> del promedio de la remuneración base (según cláusula cuarta numeral 5, excluyendo la propia asignación).</li>\n<li>Se <b>incrementa 1 % adicional por cada año</b> posterior de antigüedad continua, hasta alcanzar un <b>máximo de 30 %</b> de dicha remuneración base.</li>\n</ul>\n<h3>Primer Oficial</h3>\n<ul>\n<li>Se otorga <b>desde el segundo año</b> de antigüedad ininterrumpida en el cargo:</li>\n<ul>\n<li><b>2° año:</b> 1 % de la remuneración base.</li>\n<li><b>3° año:</b> 1,5 %.</li>\n<li><b>4° año y siguientes:</b> se incrementa en 1 % adicional por cada año, hasta un <b>máximo de 9 %</b> del sueldo base.</li>\n</ul>\n<li><b>Excepción:</b> Si el Primer Oficial acumula <b>12 años o más</b> de antigüedad sin ascender a Capitán por razones no imputables a él, el beneficio continúa incrementándose <b>1 % por año</b>, hasta un <b>tope máximo de 25 %</b> del sueldo base.</li>\n</ul>\n<h3>Tratamiento</h3>\n<ul>\n<li><b>Imponible y tributable:</b> afecta cotizaciones previsionales y cálculo del IUSC.</li>\n<li>Se calcula sobre la <b>base remuneracional definida en la cláusula cuarta numeral 5 del convenio</b>, excluyendo la propia asignación de antigüedad.</li>\n</ul>\n<h3>Fundamento</h3>\n<p><b>Convenio Colectivo LAN Cargo</b> (vigente desde octubre 2023), cláusulas <b>4.1 y 4.2</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "BONO_PRODUCTIVIDAD": {
+    "id": "BONO_PRODUCTIVIDAD",
+    "sourceHelpId": "bono-productividad",
+    "category": "variables",
+    "title": "Bono de Productividad",
+    "aliases": [
+      "productividad",
+      "bono productividad"
+    ],
+    "definitionText": "Bono de Productividad\nEl\nBono de Productividad\ncorresponde al\nComponente Variable\nde la remuneración, asociado directamente a las\nhoras de vuelo (HBT)\no fracción efectivamente volada o programada, aplicándose la que sea\nmayor\n.\nSu cálculo se realiza conforme a las\ntablas de horas de vuelo\nestablecidas en el\nConvenio Colectivo vigente\n, que definen los valores progresivos por tramos de horas y cargo.\nTambién se considerará\nBono de Productividad\ncualquier otro bono o incentivo variable\nestablecido en el Convenio Colectivo vigente\nque tenga relación directa con la productividad o desempeño operacional.\nEste componente constituye\nremuneración imponible y tributable\n, integrando la base de cálculo para cotizaciones previsionales y para el Impuesto Único de Segunda Categoría (IUSC).\nFundamento\nConvenio Colectivo vigente\n.",
+    "definitionHtml": "\n<h2>Bono de Productividad</h2>\n<p>El <b>Bono de Productividad</b> corresponde al <b>Componente Variable</b> de la remuneración, asociado directamente a las <b>horas de vuelo (HBT)</b> o fracción efectivamente volada o programada, aplicándose la que sea <b>mayor</b>.</p>\n<p>Su cálculo se realiza conforme a las <b>tablas de horas de vuelo</b> establecidas en el <b>Convenio Colectivo vigente</b>, que definen los valores progresivos por tramos de horas y cargo.</p>\n<p>También se considerará <b>Bono de Productividad</b> cualquier otro bono o incentivo variable <b>establecido en el Convenio Colectivo vigente</b> que tenga relación directa con la productividad o desempeño operacional.</p>\n<p>Este componente constituye <b>remuneración imponible y tributable</b>, integrando la base de cálculo para cotizaciones previsionales y para el Impuesto Único de Segunda Categoría (IUSC).</p>\n<h3>Fundamento</h3>\n<p><b>Convenio Colectivo vigente</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "BONO_VACACIONES": {
+    "id": "BONO_VACACIONES",
+    "sourceHelpId": "bono-vacaciones",
+    "category": "variables_convenio",
+    "title": "Bono Vacaciones",
+    "aliases": [
+      "vacaciones",
+      "bono vacaciones",
+      "pago vacaciones"
+    ],
+    "definitionText": "Bono Vacaciones\nBeneficio establecido en el convenio colectivo. Corresponde al\n3,33%\nde la remuneración calculada sobre la base del\nmayor valor\nentre:\nel promedio de los últimos\n3 meses volados íntegramente\n, o\nel promedio de los\n12 meses inmediatamente anteriores\n.\nLa base considerada incluye\nSueldo Base\n,\nAsignación de Antigüedad\ny\nComponente Variable\n. Se paga por cada día efectivo de vacaciones utilizado, con un máximo de\n15 días por año calendario\n.\nCalculadora rápida\nIngresa ambos promedios y los días efectivos de vacaciones. La app usará automáticamente el mayor promedio.\nPromedio últimos 3 meses\nPromedio últimos 12 meses\nDías efectivos de vacaciones\nMayor promedio utilizado\n$0\nBono vacaciones estimado\n$0\nFórmula: mayor promedio × 3,33% × días efectivos.\nTope referencial: máximo 15 días pagados por año calendario.\nAplicar a liquidación\nFundamento\nConvenio Colectivo vigente\n, cláusula de bono de vacaciones.",
+    "definitionHtml": "\n<h2>Bono Vacaciones</h2>\n<p>Beneficio establecido en el convenio colectivo. Corresponde al <b>3,33%</b> de la remuneración calculada sobre la base del <b>mayor valor</b> entre:</p>\n<ul>\n<li>el promedio de los últimos <b>3 meses volados íntegramente</b>, o</li>\n<li>el promedio de los <b>12 meses inmediatamente anteriores</b>.</li>\n</ul>\n<p>La base considerada incluye <b>Sueldo Base</b>, <b>Asignación de Antigüedad</b> y <b>Componente Variable</b>. Se paga por cada día efectivo de vacaciones utilizado, con un máximo de <b>15 días por año calendario</b>.</p>\n<div class=\"vac-calc\">\n<h3>Calculadora rápida</h3>\n<p class=\"small muted\">Ingresa ambos promedios y los días efectivos de vacaciones. La app usará automáticamente el mayor promedio.</p>\n<label class=\"vac-field\">\n<span>Promedio últimos 3 meses</span>\n<input id=\"vacProm3\" inputmode=\"numeric\" placeholder=\"$0\" type=\"text\"/>\n</label>\n<label class=\"vac-field\">\n<span>Promedio últimos 12 meses</span>\n<input id=\"vacProm12\" inputmode=\"numeric\" placeholder=\"$0\" type=\"text\"/>\n</label>\n<label class=\"vac-field\">\n<span>Días efectivos de vacaciones</span>\n<input id=\"vacDias\" inputmode=\"numeric\" max=\"15\" min=\"0\" placeholder=\"0\" step=\"1\" type=\"number\"/>\n</label>\n<div class=\"vac-result\">\n<div><span>Mayor promedio utilizado</span><strong id=\"vacMayor\">$0</strong></div>\n<div><span>Bono vacaciones estimado</span><strong id=\"vacMonto\">$0</strong></div>\n</div>\n<p class=\"formula\">Fórmula: mayor promedio × 3,33% × días efectivos.</p>\n<p class=\"small muted\" id=\"vacAviso\">Tope referencial: máximo 15 días pagados por año calendario.</p>\n<button class=\"vac-apply\" id=\"vacApply\" type=\"button\">Aplicar a liquidación</button>\n</div>\n<h3>Fundamento</h3>\n<p><b>Convenio Colectivo vigente</b>, cláusula de bono de vacaciones.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "FERIADOS_TRABAJADOS": {
+    "id": "FERIADOS_TRABAJADOS",
+    "sourceHelpId": "feriados-trabajados",
+    "category": "variables_convenio",
+    "title": "Compensación Feriados Trabajados",
+    "aliases": [
+      "feriados",
+      "feriado trabajado",
+      "feriados trabajados",
+      "compensacion feriados",
+      "compensación feriados"
+    ],
+    "definitionText": "Compensación Feriados Trabajados\nPago adicional asociado a la prestación de servicios durante días feriados. En esta herramienta se calcula de forma asistida usando la\nBase de Cálculo\ndefinida en el convenio colectivo.\nFórmula aplicada:\n(Sueldo Base + Asignación de Antigüedad +\nmayor promedio de Remuneración Variable\n) ×\n6,6%\n× cantidad de feriados trabajados.\nCalculadora rápida\nLa app toma automáticamente el sueldo base y la asignación de antigüedad que ya ingresaste en Haberes. Solo debes ingresar el mayor promedio variable.\nSueldo Base detectado\n$0\nAsignación de Antigüedad detectada\n$0\nMayor promedio Remuneración Variable\nIngresa aquí el\nmayor valor\nentre el promedio de la Remuneración Variable de los últimos\n3 meses íntegramente volados\ny el promedio de los últimos\n12 meses anteriores\n.\nCantidad de feriados trabajados\nBase de cálculo utilizada\n$0\n6,6% por feriado\n$0\nTotal compensación feriados\n$0\nFórmula: (sueldo base + antigüedad + mayor promedio variable 3m/12m) × 6,6% × feriados trabajados.\nAplicar a liquidación\nVer cláusula completa del convenio\nCompensación de Feriados trabajados\nEn conformidad con lo dispuesto en el artículo 152 ter del Código del Trabajo, si los roles de vuelo implicaren la prestación de servicios durante días feriados, el empleador deberá otorgar los respectivos descansos adicionales dentro de los siguientes sesenta días, pudiendo, con todo, acordarse su compensación en dinero, pero con un recargo no inferior al señalado en el artículo 32 del mismo cuerpo legal.\nA partir de octubre de 2023, las partes acuerdan que la Empresa compensará dicho día feriado en el que se prestó servicios, con el recargo bruto equivalente al\n6,6 %\nde su Remuneración, de acuerdo a lo indicado en la cláusula cuarta numeral 5, cantidad que en caso alguno podrá ser inferior a la que corresponda por aplicación de lo dispuesto en el artículo 32 del Código del Trabajo.\n5. Base de Cálculo\nA partir de octubre de 2023, para los efectos de la base de cálculo que aplique de acuerdo a lo indicado en la respectiva cláusula de los conceptos indicados en el presente numeral, adicional al Sueldo Base y la Asignación de antigüedad en caso de corresponder, se considerará para la remuneración variable el mayor valor que resulte entre el promedio de la Remuneración Variable de los tres últimos meses íntegramente volados y el promedio de la remuneración variable de los últimos 12 meses anteriores, pagando el monto mayor que resulte de la comparación.\nPara un mejor entendimiento se aplicará el mayor valor de la base de cálculo entre el promedio de los últimos 12 anteriores y 3 últimos meses trabajados íntegramente. Así, a modo de ejemplo, si en un mes se utilizan vacaciones y/o licencia médica, ese mes no se considera trabajado íntegramente.\nNota de uso\nEste cálculo requiere ingresar manualmente el\nmayor promedio de Remuneración Variable\n, porque la herramienta no dispone del historial de los últimos 3 o 12 meses. El sueldo base y la antigüedad sí se leen automáticamente desde los Haberes ya ingresados.",
+    "definitionHtml": "\n<h2>Compensación Feriados Trabajados</h2>\n<p>Pago adicional asociado a la prestación de servicios durante días feriados. En esta herramienta se calcula de forma asistida usando la <b>Base de Cálculo</b> definida en el convenio colectivo.</p>\n<p><b>Fórmula aplicada:</b> (Sueldo Base + Asignación de Antigüedad + <b>mayor promedio de Remuneración Variable</b>) × <b>6,6%</b> × cantidad de feriados trabajados.</p>\n<div class=\"fer-calc\">\n<h3>Calculadora rápida</h3>\n<p class=\"small muted\">La app toma automáticamente el sueldo base y la asignación de antigüedad que ya ingresaste en Haberes. Solo debes ingresar el mayor promedio variable.</p>\n<div class=\"fer-info\">\n<span>Sueldo Base detectado</span>\n<strong id=\"ferSueldoBase\">$0</strong>\n</div>\n<div class=\"fer-info\">\n<span>Asignación de Antigüedad detectada</span>\n<strong id=\"ferAntiguedad\">$0</strong>\n</div>\n<label class=\"fer-field\">\n<span>Mayor promedio Remuneración Variable</span>\n<input id=\"ferVariableProm\" inputmode=\"numeric\" placeholder=\"$0\" type=\"text\"/>\n</label>\n<p class=\"small muted fer-note\">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>\n<label class=\"fer-field\">\n<span>Cantidad de feriados trabajados</span>\n<input id=\"ferDias\" inputmode=\"numeric\" min=\"0\" placeholder=\"0\" step=\"1\" type=\"number\"/>\n</label>\n<div class=\"fer-result\">\n<div><span>Base de cálculo utilizada</span><strong id=\"ferBaseCalculo\">$0</strong></div>\n<div><span>6,6% por feriado</span><strong id=\"ferPorDia\">$0</strong></div>\n<div><span>Total compensación feriados</span><strong id=\"ferTotal\">$0</strong></div>\n</div>\n<p class=\"formula\">Fórmula: (sueldo base + antigüedad + mayor promedio variable 3m/12m) × 6,6% × feriados trabajados.</p>\n<button class=\"fer-apply\" id=\"ferApply\" type=\"button\">Aplicar a liquidación</button>\n</div>\n<details class=\"convenio-box\">\n<summary>Ver cláusula completa del convenio</summary>\n<div class=\"convenio-text\">\n<p><b>Compensación de Feriados trabajados</b></p>\n<p>En conformidad con lo dispuesto en el artículo 152 ter del Código del Trabajo, si los roles de vuelo implicaren la prestación de servicios durante días feriados, el empleador deberá otorgar los respectivos descansos adicionales dentro de los siguientes sesenta días, pudiendo, con todo, acordarse su compensación en dinero, pero con un recargo no inferior al señalado en el artículo 32 del mismo cuerpo legal.</p>\n<p>A partir de octubre de 2023, las partes acuerdan que la Empresa compensará dicho día feriado en el que se prestó servicios, con el recargo bruto equivalente al <b>6,6 %</b> de su Remuneración, de acuerdo a lo indicado en la cláusula cuarta numeral 5, cantidad que en caso alguno podrá ser inferior a la que corresponda por aplicación de lo dispuesto en el artículo 32 del Código del Trabajo.</p>\n<p><b>5. Base de Cálculo</b></p>\n<p>A partir de octubre de 2023, para los efectos de la base de cálculo que aplique de acuerdo a lo indicado en la respectiva cláusula de los conceptos indicados en el presente numeral, adicional al Sueldo Base y la Asignación de antigüedad en caso de corresponder, se considerará para la remuneración variable el mayor valor que resulte entre el promedio de la Remuneración Variable de los tres últimos meses íntegramente volados y el promedio de la remuneración variable de los últimos 12 meses anteriores, pagando el monto mayor que resulte de la comparación.</p>\n<p>Para un mejor entendimiento se aplicará el mayor valor de la base de cálculo entre el promedio de los últimos 12 anteriores y 3 últimos meses trabajados íntegramente. Así, a modo de ejemplo, si en un mes se utilizan vacaciones y/o licencia médica, ese mes no se considera trabajado íntegramente.</p>\n</div>\n</details>\n<h3>Nota de uso</h3>\n<p>Este cálculo requiere ingresar manualmente el <b>mayor promedio de Remuneración Variable</b>, porque la herramienta no dispone del historial de los últimos 3 o 12 meses. El sueldo base y la antigüedad sí se leen automáticamente desde los Haberes ya ingresados.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "SECUENCIA_9_10": {
+    "id": "SECUENCIA_9_10",
+    "sourceHelpId": "secuencia-9-10",
+    "category": "variables_convenio",
+    "title": "Compensación Secuencia días 9 y 10",
+    "aliases": [
+      "secuencia",
+      "secuencia 9",
+      "secuencia 10",
+      "dia 9",
+      "día 9",
+      "dia 10",
+      "día 10"
+    ],
+    "definitionText": "Compensación Secuencia días 9 y 10\nCompensación asociada a la programación de secuencias continuas de trabajo en aviones cargueros, según anexo al convenio colectivo vigente desde abril de 2025.\nFórmula aplicada:\nBase de cálculo convenio × porcentaje total acumulado del mes.\nCalculadora rápida\nLa app toma automáticamente el sueldo base y la asignación de antigüedad ya ingresados. Solo debes ingresar el mayor promedio variable y la cantidad de secuencias programadas en el mes.\nSueldo Base detectado\n$0\nAsignación de Antigüedad detectada\n$0\nMayor promedio Remuneración Variable\nIngresa aquí el\nmayor valor\nentre el promedio de la Remuneración Variable de los últimos\n3 meses íntegramente volados\ny el promedio de los últimos\n12 meses anteriores\n.\nCantidad de secuencias de 9 días\nCantidad de secuencias de 10 días\nBase de cálculo utilizada\n$0\n9 días: cantidad × 3,3%\n0,0%\n10 días: cantidad × 4,8%\n0,0%\nPorcentaje total aplicado\n0,0%\nTotal compensación secuencia\n$0\nCada secuencia de 9 días paga 3,3%. Cada secuencia de 10 días paga 4,8% acumulado, equivalente a 3,3% del noveno día + 1,5% del décimo día.\nAplicar a liquidación\nVer cláusula completa del anexo\n7. Programación de días trabajados\nEn la programación del Rol de Vuelo a que se refiere el art. 152 ter H inc. 2° del Código del Trabajo, la Empresa se compromete a no efectuar secuencias de hasta 9 y/o 10 días continuos de labores efectivas de vuelo en aviones cargueros, excepto en las condiciones que se establecen a continuación.\nA partir de abril de 2025, en aquellos meses en los que la Empresa programe secuencias de 9 ó 10 días continuos de trabajo, se pagará al trabajador los siguientes bonos, según se indica a continuación:\n(i)\nUn bono bruto equivalente al\n3,3%\nde la Remuneración Bruta mensual del trabajador en caso que se programe\n9 días continuos de trabajo\n, el que se pagará conjuntamente con las remuneraciones del mes siguiente. Se considerará para este efecto la base de cálculo indicada en la Cláusula Cuarta numeral 5.\n(ii)\nUn bono bruto equivalente al\n1,5%\nde la Remuneración Bruta mensual del trabajador en caso que se programe\n10 días continuos de trabajo\n, el que se pagará conjuntamente con las remuneraciones del mes siguiente. Se considerará para este efecto la base de cálculo indicada en la Cláusula Cuarta numeral 5.\nLos bonos establecidos precedentemente son\nacumulables\n, de manera tal que si, en un mismo mes calendario, la Empresa programa a un Piloto 10 días de trabajo continuos en su Rol de Vuelo, tendrá derecho al bono de\n3,3%\ndel noveno día y al bono de\n1,5%\ndel décimo día.\n5. Base de Cálculo\nA partir de octubre de 2023, para los efectos de la base de cálculo que aplique de acuerdo a lo indicado en la respectiva cláusula de los conceptos indicados en el presente numeral, adicional al Sueldo Base y la Asignación de antigüedad en caso de corresponder, se considerará para la remuneración variable el mayor valor que resulte entre el promedio de la Remuneración Variable de los tres últimos meses íntegramente volados y el promedio de la remuneración variable de los últimos 12 meses anteriores, pagando el monto mayor que resulte de la comparación.\nNota de uso\nEste cálculo permite ingresar múltiples secuencias en el mismo mes. Una secuencia de\n10 días\nya incluye el bono del noveno día más el bono del décimo día, por eso se calcula como\n4,8%\nacumulado.",
+    "definitionHtml": "\n<h2>Compensación Secuencia días 9 y 10</h2>\n<p>Compensación asociada a la programación de secuencias continuas de trabajo en aviones cargueros, según anexo al convenio colectivo vigente desde abril de 2025.</p>\n<p><b>Fórmula aplicada:</b> Base de cálculo convenio × porcentaje total acumulado del mes.</p>\n<div class=\"sec-calc\">\n<h3>Calculadora rápida</h3>\n<p class=\"small muted\">La app toma automáticamente el sueldo base y la asignación de antigüedad ya ingresados. Solo debes ingresar el mayor promedio variable y la cantidad de secuencias programadas en el mes.</p>\n<div class=\"sec-info\">\n<span>Sueldo Base detectado</span>\n<strong id=\"secSueldoBase\">$0</strong>\n</div>\n<div class=\"sec-info\">\n<span>Asignación de Antigüedad detectada</span>\n<strong id=\"secAntiguedad\">$0</strong>\n</div>\n<label class=\"sec-field\">\n<span>Mayor promedio Remuneración Variable</span>\n<input id=\"secVariableProm\" inputmode=\"numeric\" placeholder=\"$0\" type=\"text\"/>\n</label>\n<p class=\"small muted sec-note\">Ingresa aquí el <b>mayor valor</b> entre el promedio de la Remuneración Variable de los últimos <b>3 meses íntegramente volados</b> y el promedio de los últimos <b>12 meses anteriores</b>.</p>\n<label class=\"sec-field\">\n<span>Cantidad de secuencias de 9 días</span>\n<input id=\"secCant9\" inputmode=\"numeric\" min=\"0\" placeholder=\"0\" step=\"1\" type=\"number\"/>\n</label>\n<label class=\"sec-field\">\n<span>Cantidad de secuencias de 10 días</span>\n<input id=\"secCant10\" inputmode=\"numeric\" min=\"0\" placeholder=\"0\" step=\"1\" type=\"number\"/>\n</label>\n<div class=\"sec-result\">\n<div><span>Base de cálculo utilizada</span><strong id=\"secBaseCalculo\">$0</strong></div>\n<div><span>9 días: cantidad × 3,3%</span><strong id=\"secPct9\">0,0%</strong></div>\n<div><span>10 días: cantidad × 4,8%</span><strong id=\"secPct10\">0,0%</strong></div>\n<div><span>Porcentaje total aplicado</span><strong id=\"secPctTotal\">0,0%</strong></div>\n<div><span>Total compensación secuencia</span><strong id=\"secTotal\">$0</strong></div>\n</div>\n<p class=\"formula\">Cada secuencia de 9 días paga 3,3%. Cada secuencia de 10 días paga 4,8% acumulado, equivalente a 3,3% del noveno día + 1,5% del décimo día.</p>\n<button class=\"sec-apply\" id=\"secApply\" type=\"button\">Aplicar a liquidación</button>\n</div>\n<details class=\"convenio-box\">\n<summary>Ver cláusula completa del anexo</summary>\n<div class=\"convenio-text\">\n<p><b>7. Programación de días trabajados</b></p>\n<p>En la programación del Rol de Vuelo a que se refiere el art. 152 ter H inc. 2° del Código del Trabajo, la Empresa se compromete a no efectuar secuencias de hasta 9 y/o 10 días continuos de labores efectivas de vuelo en aviones cargueros, excepto en las condiciones que se establecen a continuación.</p>\n<p>A partir de abril de 2025, en aquellos meses en los que la Empresa programe secuencias de 9 ó 10 días continuos de trabajo, se pagará al trabajador los siguientes bonos, según se indica a continuación:</p>\n<p><b>(i)</b> Un bono bruto equivalente al <b>3,3%</b> de la Remuneración Bruta mensual del trabajador en caso que se programe <b>9 días continuos de trabajo</b>, el que se pagará conjuntamente con las remuneraciones del mes siguiente. Se considerará para este efecto la base de cálculo indicada en la Cláusula Cuarta numeral 5.</p>\n<p><b>(ii)</b> Un bono bruto equivalente al <b>1,5%</b> de la Remuneración Bruta mensual del trabajador en caso que se programe <b>10 días continuos de trabajo</b>, el que se pagará conjuntamente con las remuneraciones del mes siguiente. Se considerará para este efecto la base de cálculo indicada en la Cláusula Cuarta numeral 5.</p>\n<p>Los bonos establecidos precedentemente son <b>acumulables</b>, de manera tal que si, en un mismo mes calendario, la Empresa programa a un Piloto 10 días de trabajo continuos en su Rol de Vuelo, tendrá derecho al bono de <b>3,3%</b> del noveno día y al bono de <b>1,5%</b> del décimo día.</p>\n<p><b>5. Base de Cálculo</b></p>\n<p>A partir de octubre de 2023, para los efectos de la base de cálculo que aplique de acuerdo a lo indicado en la respectiva cláusula de los conceptos indicados en el presente numeral, adicional al Sueldo Base y la Asignación de antigüedad en caso de corresponder, se considerará para la remuneración variable el mayor valor que resulte entre el promedio de la Remuneración Variable de los tres últimos meses íntegramente volados y el promedio de la remuneración variable de los últimos 12 meses anteriores, pagando el monto mayor que resulte de la comparación.</p>\n</div>\n</details>\n<h3>Nota de uso</h3>\n<p>Este cálculo permite ingresar múltiples secuencias en el mismo mes. Una secuencia de <b>10 días</b> ya incluye el bono del noveno día más el bono del décimo día, por eso se calcula como <b>4,8%</b> acumulado.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "CESANTIA": {
+    "id": "CESANTIA",
+    "sourceHelpId": "cesantia",
+    "category": "prevision",
+    "title": "Seguro de Cesantía",
+    "aliases": [
+      "cesantia",
+      "cesantía",
+      "seguro cesantia",
+      "seguro cesantía",
+      "afc"
+    ],
+    "definitionText": "Seguro de Cesantía\nEl\nSeguro de Cesantía\nse financia con aportes del trabajador y del empleador:\n0,6 %\na cargo del trabajador y\n2,4 %\na cargo del empleador (\n1,6 %\nal Seguro de Cesantía y\n0,8 %\nal Fondo de Cesantía Solidario). Las cotizaciones se efectúan durante un máximo de\n11 años por relación laboral\n.\nBase imponible topada\nen UF (ver topes de la app).\nLos fondos se administran por la AFC a nombre del trabajador.\nDescuento del aporte del empleador al término de la relación\nEn caso de término por causales legales del\nart. 161\ndel Código del Trabajo (p. ej., necesidades de la empresa o desahucio), el empleador puede\ndescontar de la indemnización por años de servicio\nel monto que aportó al Seguro de Cesantía (\n1,6 %\n) más su rentabilidad, previa liquidación emitida por la AFC.\nEste descuento\nno aplica\nal aporte del trabajador (\n0,6 %\n).\nSi el despido es declarado\ninjustificado\n, el descuento pierde fundamento y debe\nrestituirse\n.\nWeb referencia\nMás información en\nAFC Chile — Seguro de Cesantía\n.\nFundamento legal\nLey 19.728\n(Seguro de Cesantía) y\nCódigo del Trabajo, art. 161\n(necesidades de la empresa/desahucio).",
+    "definitionHtml": "\n<h2>Seguro de Cesantía</h2>\n<p>El <b>Seguro de Cesantía</b> se financia con aportes del trabajador y del empleador: <b>0,6 %</b> a cargo del trabajador y <b>2,4 %</b> a cargo del empleador (<b>1,6 %</b> al Seguro de Cesantía y <b>0,8 %</b> al Fondo de Cesantía Solidario). Las cotizaciones se efectúan durante un máximo de <b>11 años por relación laboral</b>.</p>\n<ul>\n<li><b>Base imponible topada</b> en UF (ver topes de la app).</li>\n<li>Los fondos se administran por la AFC a nombre del trabajador.</li>\n</ul>\n<h3>Descuento del aporte del empleador al término de la relación</h3>\n<p>En caso de término por causales legales del <b>art. 161</b> del Código del Trabajo (p. ej., necesidades de la empresa o desahucio), el empleador puede <b>descontar de la indemnización por años de servicio</b> el monto que aportó al Seguro de Cesantía (<b>1,6 %</b>) más su rentabilidad, previa liquidación emitida por la AFC.</p>\n<ul>\n<li>Este descuento <b>no aplica</b> al aporte del trabajador (<b>0,6 %</b>).</li>\n<li>Si el despido es declarado <b>injustificado</b>, el descuento pierde fundamento y debe <b>restituirse</b>.</li>\n</ul>\n<h3>Web referencia</h3>\n<p>Más información en <a href=\"https://www.afc.cl\" rel=\"noopener\" target=\"_blank\">AFC Chile — Seguro de Cesantía</a>.</p>\n<h3>Fundamento legal</h3>\n<p><b>Ley 19.728</b> (Seguro de Cesantía) y <b>Código del Trabajo, art. 161</b> (necesidades de la empresa/desahucio).</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "AFP10": {
+    "id": "AFP10",
+    "sourceHelpId": "afp10",
+    "category": "prevision",
+    "title": "Fondo de Pensiones AFP (10 %)",
+    "aliases": [
+      "afp",
+      "fondo pensiones",
+      "fondo de pensiones",
+      "afp 10",
+      "10% afp"
+    ],
+    "definitionText": "Fondo de Pensiones AFP (10 %)\nCorresponde a la\ncotización obligatoria del 10 %\ndestinada a la\nCuenta Individual de Capitalización\ndel trabajador en su Administradora de Fondos de Pensiones (\nAFP\n).\nEste aporte se descuenta mensualmente sobre la\nremuneración imponible\n, con los siguientes\ntopes en Unidades de Fomento (UF)\n:\nTope imponible AFP y Salud:\n89,9 UF\nTope imponible Seguro de Cesantía y Trabajo Pesado:\n135,1 UF\nCaracterísticas principales\nEs un\ndescuento obligatorio\npara todos los trabajadores dependientes.\nSe destina íntegramente a la\ncuenta individual de ahorro previsional\ndel afiliado.\nEl trabajador puede elegir libremente su\nAFP\ny el tipo de fondo (A, B, C, D o E).\nEl saldo acumulado financia las\npensiones de vejez, invalidez o sobrevivencia\n.\nTratamiento tributario\nEl monto descontado por AFP\nno constituye renta\npara efectos tributarios, ya que se resta de la base imponible del\nImpuesto Único de Segunda Categoría\n.\nFundamento legal\nDecreto Ley N.º 3.500 de 1980\ny normativa de la\nSuperintendencia de Pensiones\n.",
+    "definitionHtml": "\n<h2>Fondo de Pensiones AFP (10 %)</h2>\n<p>Corresponde a la <b>cotización obligatoria del 10 %</b> destinada a la <b>Cuenta Individual de Capitalización</b> del trabajador en su Administradora de Fondos de Pensiones (<b>AFP</b>).</p>\n<p>Este aporte se descuenta mensualmente sobre la <b>remuneración imponible</b>, con los siguientes <b>topes en Unidades de Fomento (UF)</b>:</p>\n<ul>\n<li><b>Tope imponible AFP y Salud:</b> 89,9 UF</li>\n<li><b>Tope imponible Seguro de Cesantía y Trabajo Pesado:</b> 135,1 UF</li>\n</ul>\n<h3>Características principales</h3>\n<ul>\n<li>Es un <b>descuento obligatorio</b> para todos los trabajadores dependientes.</li>\n<li>Se destina íntegramente a la <b>cuenta individual de ahorro previsional</b> del afiliado.</li>\n<li>El trabajador puede elegir libremente su <b>AFP</b> y el tipo de fondo (A, B, C, D o E).</li>\n<li>El saldo acumulado financia las <b>pensiones de vejez, invalidez o sobrevivencia</b>.</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>El monto descontado por AFP <b>no constituye renta</b> para efectos tributarios, ya que se resta de la base imponible del <b>Impuesto Único de Segunda Categoría</b>.</p>\n<h3>Fundamento legal</h3>\n<p><b>Decreto Ley N.º 3.500 de 1980</b> y normativa de la <b>Superintendencia de Pensiones</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "COMISION_AFP": {
+    "id": "COMISION_AFP",
+    "sourceHelpId": "comision-afp",
+    "category": "prevision",
+    "title": "Comisión AFP",
+    "aliases": [
+      "comision afp",
+      "comisión afp",
+      "monto comision afp",
+      "monto comisión afp"
+    ],
+    "definitionText": "Comisión AFP\nCorresponde al\nporcentaje que cobra cada Administradora de Fondos de Pensiones (AFP)\npor administrar las cotizaciones obligatorias y la cuenta individual del trabajador. Este cobro se realiza\nmensualmente\nsobre la misma\nbase imponible afectada al 10 % de cotización obligatoria\n.\nCaracterísticas principales\nLa\ncomisión\nse descuenta\nademás del 10 %\nprevisional obligatorio.\nEl porcentaje varía según la AFP (entre\n0,58 % y 1,45 %\naprox., según licitación vigente).\nSe aplica según el\ntope de 89,9 UF\n.\nNo incrementa el saldo previsional, ya que se destina íntegramente a cubrir el costo de administración de la AFP.\nEn caso de cambio de AFP, la nueva comisión se aplica desde el mes siguiente a la afiliación.\nTratamiento tributario\nAl igual que la cotización obligatoria, la comisión AFP\nno constituye renta\ny se deduce de la base imponible del\nImpuesto Único de Segunda Categoría\n.\nFundamento legal\nDecreto Ley N.º 3.500 de 1980\n, artículos\n23\ny\n24\n, y normativa de la\nSuperintendencia de Pensiones\n.",
+    "definitionHtml": "\n<h2>Comisión AFP</h2>\n<p>Corresponde al <b>porcentaje que cobra cada Administradora de Fondos de Pensiones (AFP)</b> por administrar las cotizaciones obligatorias y la cuenta individual del trabajador. Este cobro se realiza <b>mensualmente</b> sobre la misma <b>base imponible afectada al 10 % de cotización obligatoria</b>.</p>\n<h3>Características principales</h3>\n<ul>\n<li>La <b>comisión</b> se descuenta <b>además del 10 %</b> previsional obligatorio.</li>\n<li>El porcentaje varía según la AFP (entre <b>0,58 % y 1,45 %</b> aprox., según licitación vigente).</li>\n<li>Se aplica según el <b>tope de 89,9 UF</b>.</li>\n<li>No incrementa el saldo previsional, ya que se destina íntegramente a cubrir el costo de administración de la AFP.</li>\n<li>En caso de cambio de AFP, la nueva comisión se aplica desde el mes siguiente a la afiliación.</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>Al igual que la cotización obligatoria, la comisión AFP <b>no constituye renta</b> y se deduce de la base imponible del <b>Impuesto Único de Segunda Categoría</b>.</p>\n<h3>Fundamento legal</h3>\n<p><b>Decreto Ley N.º 3.500 de 1980</b>, artículos <b>23</b> y <b>24</b>, y normativa de la <b>Superintendencia de Pensiones</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "SALUD_7": {
+    "id": "SALUD_7",
+    "sourceHelpId": "salud-7",
+    "category": "salud",
+    "title": "Cotización de Salud (7 %)",
+    "aliases": [
+      "salud",
+      "salud 7",
+      "7 legal isapre",
+      "7% legal isapre",
+      "fonasa"
+    ],
+    "definitionText": "Cotización de Salud (7 %)\nCorresponde a la\ncotización legal obligatoria de salud\nequivalente al\n7 %\nde la remuneración imponible del trabajador, destinada a financiar las prestaciones de salud a través del\nFONASA\no de una\nISAPRE\n.\nCaracterísticas principales\nEs un\ndescuento obligatorio\npara todos los trabajadores dependientes y pensionados.\nEl trabajador puede optar libremente entre\nFONASA\n(régimen público) o una\nISAPRE\n(régimen privado).\nLa cotización se calcula sobre la\nbase imponible\nhasta un\ntope de 89,9 UF\n.\nEn ISAPRE, el monto puede superar el 7 % si el plan contratado exige una cotización adicional.\nEl empleador debe declarar y pagar las cotizaciones dentro de los\n10 primeros días del mes siguiente\n.\nTratamiento tributario\nEl monto descontado por salud\nno constituye renta\ny se deduce de la base imponible del\nImpuesto Único de Segunda Categoría\n. Los montos adicionales pactados sobre el 7 % pueden tener un tratamiento distinto según el plan de salud.\nFundamento legal\nD.F.L. N.º 1 (Ministerio de Salud, 2005)\n, artículos 84 y 92;\nD.L. N.º 3.500 de 1980\n; y normativa de la\nSuperintendencia de Salud\n.\nSeguro de Invalidez y Sobrevivencia (SIS)\nEl\nSIS\nfinancia las pensiones de\ninvalidez y sobrevivencia\nde los trabajadores afiliados al sistema de AFP. Su cobertura protege al afiliado y a su grupo familiar en caso de fallecimiento o pérdida total o parcial de capacidad laboral.\nCaracterísticas principales\nEl\ncosto del seguro\nes pagado por el\nempleador\n, no por el trabajador.\nSe aplica sobre la\nbase imponible previsional\ncon tope de\n89,9 UF\n.\nLas AFP contratan este seguro de manera\ncolectiva\ncon compañías de seguros.\nOtorga derecho a pensión de\ninvalidez\no de\nsobrevivencia\nsegún requisitos legales.\nTratamiento tributario\nEl aporte del empleador al SIS\nno constituye remuneración\nni renta para el trabajador.\nFundamento legal\nDecreto Ley N.º 3.500 de 1980\n, artículos\n59 a 64\n, y normativa de la\nSuperintendencia de Pensiones\n.",
+    "definitionHtml": "\n<h2>Cotización de Salud (7 %)</h2>\n<p>Corresponde a la <b>cotización legal obligatoria de salud</b> equivalente al <b>7 %</b> de la remuneración imponible del trabajador, destinada a financiar las prestaciones de salud a través del <b>FONASA</b> o de una <b>ISAPRE</b>.</p>\n<h3>Características principales</h3>\n<ul>\n<li>Es un <b>descuento obligatorio</b> para todos los trabajadores dependientes y pensionados.</li>\n<li>El trabajador puede optar libremente entre <b>FONASA</b> (régimen público) o una <b>ISAPRE</b> (régimen privado).</li>\n<li>La cotización se calcula sobre la <b>base imponible</b> hasta un <b>tope de 89,9 UF</b>.</li>\n<li>En ISAPRE, el monto puede superar el 7 % si el plan contratado exige una cotización adicional.</li>\n<li>El empleador debe declarar y pagar las cotizaciones dentro de los <b>10 primeros días del mes siguiente</b>.</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>El monto descontado por salud <b>no constituye renta</b> y se deduce de la base imponible del <b>Impuesto Único de Segunda Categoría</b>. Los montos adicionales pactados sobre el 7 % pueden tener un tratamiento distinto según el plan de salud.</p>\n<h3>Fundamento legal</h3>\n<p><b>D.F.L. N.º 1 (Ministerio de Salud, 2005)</b>, artículos 84 y 92; <b>D.L. N.º 3.500 de 1980</b>; y normativa de la <b>Superintendencia de Salud</b>.</p>\n<section class=\"help-section card anchor\" id=\"sis\">\n<h2>Seguro de Invalidez y Sobrevivencia (SIS)</h2>\n<p>El <b>SIS</b> financia las pensiones de <b>invalidez y sobrevivencia</b> de los trabajadores afiliados al sistema de AFP. Su cobertura protege al afiliado y a su grupo familiar en caso de fallecimiento o pérdida total o parcial de capacidad laboral.</p>\n<h3>Características principales</h3>\n<ul>\n<li>El <b>costo del seguro</b> es pagado por el <b>empleador</b>, no por el trabajador.</li>\n<li>Se aplica sobre la <b>base imponible previsional</b> con tope de <b>89,9 UF</b>.</li>\n<li>Las AFP contratan este seguro de manera <b>colectiva</b> con compañías de seguros.</li>\n<li>Otorga derecho a pensión de <b>invalidez</b> o de <b>sobrevivencia</b> según requisitos legales.</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>El aporte del empleador al SIS <b>no constituye remuneración</b> ni renta para el trabajador.</p>\n<h3>Fundamento legal</h3>\n<p><b>Decreto Ley N.º 3.500 de 1980</b>, artículos <b>59 a 64</b>, y normativa de la <b>Superintendencia de Pensiones</b>.</p>\n</section>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "SIS": {
+    "id": "SIS",
+    "sourceHelpId": "sis",
+    "category": "prevision",
+    "title": "Seguro de Invalidez y Sobrevivencia (SIS)",
+    "aliases": [
+      "sis",
+      "seguro invalidez sobrevivencia",
+      "seguro de invalidez y sobrevivencia"
+    ],
+    "definitionText": "Seguro de Invalidez y Sobrevivencia (SIS)\nEl\nSIS\nfinancia las pensiones de\ninvalidez y sobrevivencia\nde los trabajadores afiliados al sistema de AFP. Su cobertura protege al afiliado y a su grupo familiar en caso de fallecimiento o pérdida total o parcial de capacidad laboral.\nCaracterísticas principales\nEl\ncosto del seguro\nes pagado por el\nempleador\n, no por el trabajador.\nSe aplica sobre la\nbase imponible previsional\ncon tope de\n89,9 UF\n.\nLas AFP contratan este seguro de manera\ncolectiva\ncon compañías de seguros.\nOtorga derecho a pensión de\ninvalidez\no de\nsobrevivencia\nsegún requisitos legales.\nTratamiento tributario\nEl aporte del empleador al SIS\nno constituye remuneración\nni renta para el trabajador.\nFundamento legal\nDecreto Ley N.º 3.500 de 1980\n, artículos\n59 a 64\n, y normativa de la\nSuperintendencia de Pensiones\n.",
+    "definitionHtml": "\n<h2>Seguro de Invalidez y Sobrevivencia (SIS)</h2>\n<p>El <b>SIS</b> financia las pensiones de <b>invalidez y sobrevivencia</b> de los trabajadores afiliados al sistema de AFP. Su cobertura protege al afiliado y a su grupo familiar en caso de fallecimiento o pérdida total o parcial de capacidad laboral.</p>\n<h3>Características principales</h3>\n<ul>\n<li>El <b>costo del seguro</b> es pagado por el <b>empleador</b>, no por el trabajador.</li>\n<li>Se aplica sobre la <b>base imponible previsional</b> con tope de <b>89,9 UF</b>.</li>\n<li>Las AFP contratan este seguro de manera <b>colectiva</b> con compañías de seguros.</li>\n<li>Otorga derecho a pensión de <b>invalidez</b> o de <b>sobrevivencia</b> según requisitos legales.</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>El aporte del empleador al SIS <b>no constituye remuneración</b> ni renta para el trabajador.</p>\n<h3>Fundamento legal</h3>\n<p><b>Decreto Ley N.º 3.500 de 1980</b>, artículos <b>59 a 64</b>, y normativa de la <b>Superintendencia de Pensiones</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "TRABAJO_PESADO": {
+    "id": "TRABAJO_PESADO",
+    "sourceHelpId": "trabajo-pesado",
+    "category": "prevision",
+    "title": "Cotización por Trabajo Pesado",
+    "aliases": [
+      "trabajo pesado",
+      "cotizacion trabajo pesado",
+      "cotización trabajo pesado"
+    ],
+    "definitionText": "Cotización por Trabajo Pesado\nCorresponde a una\ncotización adicional\nque se aplica a trabajadores cuyas labores han sido calificadas como\ntrabajos pesados\npor la autoridad competente. Su finalidad es\ncompensar el mayor desgaste físico y mental\nderivado del ejercicio prolongado de dichas funciones, permitiendo anticipar la edad de jubilación.\nCaracterísticas principales\nLa calificación de “trabajo pesado” la efectúa la\nComisión Ergonómica Nacional\n(CEN) o, en su caso, la\nSuperintendencia de Pensiones\n.\nEl\nempleador\nestá obligado a enterar una cotización adicional de\n2 % o 4 %\nde la remuneración imponible, según el nivel de riesgo asignado al puesto.\nEl\ntrabajador\ndebe aportar un\n1 %\nadicional de la\nremuneración imponible\n(o\n2 %\nsi el cargo tiene calificación de riesgo alto).\nBase de cálculo:\nlas cotizaciones del 1 % o 2 % se calculan\nsobre la remuneración imponible\ny se aplican hasta el\ntope imponible de 135,1 UF\n.\nEstos aportes incrementan el saldo en la\nCuenta de Capitalización Individual\ndel trabajador.\nEl reconocimiento del beneficio permite\nanticipar la jubilación\nsegún el nivel de cotización adicional:\nCon cotización del\n1 %\n: permite adelantar la jubilación en\n1 año por cada 5 años\ncotizados bajo trabajo pesado, hasta un máximo de\n5 años\n.\nCon cotización del\n2 %\n: permite adelantar la jubilación en\n2 años por cada 5 años\ncotizados, hasta un máximo de\n10 años\n.\nTratamiento tributario\nTanto el aporte del empleador como el del trabajador\nno constituyen renta\ny se descuentan de la base imponible del\nImpuesto Único de Segunda Categoría\n.\nFundamento legal\nDecreto Ley N.º 3.500 de 1980\n, artículo 17;\nDecreto Supremo N.º 71 de 2002\ndel Ministerio del Trabajo y Previsión Social; y normativa de la\nSuperintendencia de Pensiones\n. Véase también la\nGuía de Trabajo Pesado\nde la Superintendencia de Pensiones (SP) y la\nCircular N.º 1585\nde 2002, que regulan la calificación, financiamiento y beneficios previsionales asociados a este régimen especial.",
+    "definitionHtml": "\n<h2>Cotización por Trabajo Pesado</h2>\n<p>Corresponde a una <b>cotización adicional</b> que se aplica a trabajadores cuyas labores han sido calificadas como <b>trabajos pesados</b> por la autoridad competente. Su finalidad es <b>compensar el mayor desgaste físico y mental</b> derivado del ejercicio prolongado de dichas funciones, permitiendo anticipar la edad de jubilación.</p>\n<h3>Características principales</h3>\n<ul>\n<li>La calificación de “trabajo pesado” la efectúa la <b>Comisión Ergonómica Nacional</b> (CEN) o, en su caso, la <b>Superintendencia de Pensiones</b>.</li>\n<li>El <b>empleador</b> está obligado a enterar una cotización adicional de <b>2 % o 4 %</b> de la remuneración imponible, según el nivel de riesgo asignado al puesto.</li>\n<li>El <b>trabajador</b> debe aportar un <b>1 %</b> adicional de la <b>remuneración imponible</b> (o <b>2 %</b> si el cargo tiene calificación de riesgo alto).</li>\n<li><b>Base de cálculo:</b> las cotizaciones del 1 % o 2 % se calculan <u>sobre la remuneración imponible</u> y se aplican hasta el <b>tope imponible de 135,1 UF</b>.</li>\n<li>Estos aportes incrementan el saldo en la <b>Cuenta de Capitalización Individual</b> del trabajador.</li>\n<li>El reconocimiento del beneficio permite <b>anticipar la jubilación</b> según el nivel de cotización adicional:\n      <ul>\n<li>Con cotización del <b>1 %</b>: permite adelantar la jubilación en <b>1 año por cada 5 años</b> cotizados bajo trabajo pesado, hasta un máximo de <b>5 años</b>.</li>\n<li>Con cotización del <b>2 %</b>: permite adelantar la jubilación en <b>2 años por cada 5 años</b> cotizados, hasta un máximo de <b>10 años</b>.</li>\n</ul>\n</li>\n</ul>\n<h3>Tratamiento tributario</h3>\n<p>Tanto el aporte del empleador como el del trabajador <b>no constituyen renta</b> y se descuentan de la base imponible del <b>Impuesto Único de Segunda Categoría</b>.</p>\n<h3>Fundamento legal</h3>\n<p><b>Decreto Ley N.º 3.500 de 1980</b>, artículo 17; <b>Decreto Supremo N.º 71 de 2002</b> del Ministerio del Trabajo y Previsión Social; y normativa de la <b>Superintendencia de Pensiones</b>. Véase también la <b>Guía de Trabajo Pesado</b> de la Superintendencia de Pensiones (SP) y la <b>Circular N.º 1585</b> de 2002, que regulan la calificación, financiamiento y beneficios previsionales asociados a este régimen especial.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "VALOR_UF": {
+    "id": "VALOR_UF",
+    "sourceHelpId": "valor-uf",
+    "category": "parametros",
+    "title": "Valor UF último día del mes",
+    "aliases": [
+      "uf",
+      "valor uf",
+      "uf ultimo dia",
+      "uf último día",
+      "uf referencia"
+    ],
+    "definitionText": "Valor UF último día del mes\nPara efectos de cotizaciones y cálculo del impuesto, suele usarse la UF del\núltimo día del mes\nal que corresponde la remuneración.\nConsulta el valor actualizado de la UF en el siguiente enlace:\nValor UF — Servicio de Impuestos Internos",
+    "definitionHtml": "\n<h2>Valor UF último día del mes</h2>\n<p>Para efectos de cotizaciones y cálculo del impuesto, suele usarse la UF del <b>último día del mes</b> al que corresponde la remuneración.</p>\n<p>Consulta el valor actualizado de la UF en el siguiente enlace:</p>\n<p><a class=\"help-link\" href=\"https://www.sii.cl/valores_y_fechas/uf/uf2026.htm\" rel=\"noopener\" target=\"_blank\">Valor UF — Servicio de Impuestos Internos</a></p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "IMPONIBLE": {
+    "id": "IMPONIBLE",
+    "sourceHelpId": "imponible",
+    "category": "resultados",
+    "title": "Imponible",
+    "aliases": [
+      "imponible",
+      "renta imponible",
+      "base imponible"
+    ],
+    "definitionText": "Imponible\nEl\nImponible\ncorresponde al\nmonto total de remuneraciones y beneficios\nen dinero o especie que constituyen la\nbase para calcular las cotizaciones previsionales y de salud obligatorias\n. Sobre este monto se aplican los descuentos de\nAFP (10 %)\n,\nSalud (7 %)\n,\nSIS\n,\nSeguro de Cesantía (AFC)\ny, cuando corresponda,\nTrabajo Pesado\n.\nConceptos incluidos\nSueldo base.\nGratificación legal o contractual.\nHoras extraordinarias.\nBonos y premios habituales (p. ej.,\nbono de productividad\n), asignación de\nantigüedad\n, comisiones e incentivos periódicos.\nConceptos excluidos\nAsignaciones de colación, movilización, viáticos (cuando son reembolsos de gastos).\nAsignaciones familiares.\nIndemnizaciones por años de servicio, término de contrato o bonos por término de conflicto.\nDevoluciones de gastos u otros beneficios\nno constitutivos de remuneración\n.\nLímites y topes\nAFP y Salud:\n89,9 UF.\nSeguro de Cesantía y Trabajo Pesado:\n135,1 UF.\nFundamento legal\nCódigo del Trabajo\n, art.\n41\n(definición de remuneración);\nD.L. N.º 3.500\n, arts.\n16\ny\n17\n(base imponible previsional);\nD.F.L. N.º 1/2005 (MINSAL)\n, arts.\n84\ny\n92\n(base salud); y\nCircular SII N.º 325\n.",
+    "definitionHtml": "\n<h2>Imponible</h2>\n<p>El <b>Imponible</b> corresponde al <b>monto total de remuneraciones y beneficios</b> en dinero o especie que constituyen la <b>base para calcular las cotizaciones previsionales y de salud obligatorias</b>. Sobre este monto se aplican los descuentos de <b>AFP (10 %)</b>, <b>Salud (7 %)</b>, <b>SIS</b>, <b>Seguro de Cesantía (AFC)</b> y, cuando corresponda, <b>Trabajo Pesado</b>.</p>\n<h3>Conceptos incluidos</h3>\n<ul>\n<li>Sueldo base.</li>\n<li>Gratificación legal o contractual.</li>\n<li>Horas extraordinarias.</li>\n<li>Bonos y premios habituales (p. ej., <b>bono de productividad</b>), asignación de <b>antigüedad</b>, comisiones e incentivos periódicos.</li>\n</ul>\n<h3>Conceptos excluidos</h3>\n<ul>\n<li>Asignaciones de colación, movilización, viáticos (cuando son reembolsos de gastos).</li>\n<li>Asignaciones familiares.</li>\n<li>Indemnizaciones por años de servicio, término de contrato o bonos por término de conflicto.</li>\n<li>Devoluciones de gastos u otros beneficios <i>no constitutivos de remuneración</i>.</li>\n</ul>\n<h3>Límites y topes</h3>\n<ul>\n<li><b>AFP y Salud:</b> 89,9 UF.</li>\n<li><b>Seguro de Cesantía y Trabajo Pesado:</b> 135,1 UF.</li>\n</ul>\n<h3>Fundamento legal</h3>\n<p><b>Código del Trabajo</b>, art. <b>41</b> (definición de remuneración); <b>D.L. N.º 3.500</b>, arts. <b>16</b> y <b>17</b> (base imponible previsional); <b>D.F.L. N.º 1/2005 (MINSAL)</b>, arts. <b>84</b> y <b>92</b> (base salud); y <b>Circular SII N.º 325</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "TRIBUTABLE": {
+    "id": "TRIBUTABLE",
+    "sourceHelpId": "tributable",
+    "category": "resultados",
+    "title": "Tributable",
+    "aliases": [
+      "tributable",
+      "renta tributable",
+      "rli",
+      "renta liquida imponible",
+      "renta líquida imponible"
+    ],
+    "definitionText": "Tributable\nEl\nTributable\ncorresponde al\nmonto de remuneraciones imponibles ajustadas\nque sirven de base para el cálculo del\nImpuesto Único de Segunda Categoría (IUSC)\no del\nImpuesto Global Complementario (IGC)\n, según corresponda. Este monto representa la\nRenta Líquida Imponible (RLI)\ndel trabajador dependiente.\nCálculo general\nSe obtiene restando al\nImponible\ntodos los\ndescuentos previsionales obligatorios\n(AFP, Salud, SIS, Cesantía y Trabajo Pesado):\nTributable = Imponible − (AFP + Salud + SIS + Cesantía + Trabajo Pesado)\nUso en el cálculo del impuesto\nEl monto tributable calculado es el que\nse utiliza directamente para ingresar a la tabla del Impuesto Único de Segunda Categoría\npublicada mensualmente por el\nSII\n. Según el tramo correspondiente, se determina la tasa efectiva, el factor y la rebaja, para luego obtener el monto del impuesto a retener.\nCaracterísticas\nEl impuesto es de\ncargo exclusivo del trabajador\ny se aplica sobre la Renta Líquida Imponible mensual.\nCuando el trabajador tiene varias fuentes de ingreso, los impuestos se consolidan anualmente mediante el\nImpuesto Global Complementario\n.\nEl tributable se expresa en\npesos\n, pero puede calcularse considerando topes de cotización en\nUF\nsegún las tablas vigentes.\nFundamento legal\nLey sobre Impuesto a la Renta (D.L. N.º 824)\n, artículos\n42 N.º 1\n,\n43\ny\n46\n;\nCircular N.º 21 del SII (2024)\nsobre tablas IUSC;\nCódigo del Trabajo\n, artículo\n41\n; y\nD.L. N.º 3.500\n, artículos\n16\ny\n17\n.",
+    "definitionHtml": "\n<h2>Tributable</h2>\n<p>El <b>Tributable</b> corresponde al <b>monto de remuneraciones imponibles ajustadas</b> que sirven de base para el cálculo del <b>Impuesto Único de Segunda Categoría (IUSC)</b> o del <b>Impuesto Global Complementario (IGC)</b>, según corresponda. Este monto representa la <b>Renta Líquida Imponible (RLI)</b> del trabajador dependiente.</p>\n<h3>Cálculo general</h3>\n<p>Se obtiene restando al <b>Imponible</b> todos los <b>descuentos previsionales obligatorios</b> (AFP, Salud, SIS, Cesantía y Trabajo Pesado):</p>\n<p class=\"formula\"><i>Tributable = Imponible − (AFP + Salud + SIS + Cesantía + Trabajo Pesado)</i></p>\n<h3>Uso en el cálculo del impuesto</h3>\n<p>El monto tributable calculado es el que <b>se utiliza directamente para ingresar a la tabla del Impuesto Único de Segunda Categoría</b> publicada mensualmente por el <b>SII</b>. Según el tramo correspondiente, se determina la tasa efectiva, el factor y la rebaja, para luego obtener el monto del impuesto a retener.</p>\n<h3>Características</h3>\n<ul>\n<li>El impuesto es de <b>cargo exclusivo del trabajador</b> y se aplica sobre la Renta Líquida Imponible mensual.</li>\n<li>Cuando el trabajador tiene varias fuentes de ingreso, los impuestos se consolidan anualmente mediante el <b>Impuesto Global Complementario</b>.</li>\n<li>El tributable se expresa en <b>pesos</b>, pero puede calcularse considerando topes de cotización en <b>UF</b> según las tablas vigentes.</li>\n</ul>\n<h3>Fundamento legal</h3>\n<p><b>Ley sobre Impuesto a la Renta (D.L. N.º 824)</b>, artículos <b>42 N.º 1</b>, <b>43</b> y <b>46</b>; <b>Circular N.º 21 del SII (2024)</b> sobre tablas IUSC; <b>Código del Trabajo</b>, artículo <b>41</b>; y <b>D.L. N.º 3.500</b>, artículos <b>16</b> y <b>17</b>.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "HELP_LIQ_APV": {
+    "id": "HELP_LIQ_APV",
+    "sourceHelpId": "help_liq_apv",
+    "category": "apv",
+    "title": "Líquido en el comparador APV",
+    "aliases": [
+      "liquido comparador apv",
+      "líquido comparador apv",
+      "liquido apv",
+      "líquido apv"
+    ],
+    "definitionText": "Líquido en el comparador APV\nEste líquido no incluye AFP, salud ni otros descuentos; solo muestra el efecto del APV sobre el impuesto.\nPor lo mismo, puede ser distinto del “Líquido a pagar” del resumen inferior, que sí considera las cotizaciones previsionales y otros descuentos.",
+    "definitionHtml": "\n<h2>Líquido en el comparador APV</h2>\n<p>Este líquido no incluye AFP, salud ni otros descuentos; solo muestra el efecto del APV sobre el impuesto.</p>\n<p>Por lo mismo, puede ser distinto del “Líquido a pagar” del resumen inferior, que sí considera las cotizaciones previsionales y otros descuentos.</p>\n",
+    "related": [],
+    "contextual": {
+      "enabled": true,
+      "notes": "Pendiente: conectar con buildContext() para agregar impacto según simulación activa."
+    }
+  },
+  "IMPONIBLE_VS_TRIBUTABLE": {
+    "id": "IMPONIBLE_VS_TRIBUTABLE",
+    "category": "comparativas",
+    "title": "Imponible vs Tributable",
+    "aliases": [
+      "diferencia entre imponible y tributable",
+      "imponible vs tributable",
+      "renta imponible vs renta tributable"
+    ],
+    "definitionText": "La renta imponible se usa para calcular cotizaciones previsionales y de salud. La renta tributable se usa para calcular el Impuesto Único. En simple: la imponible mira cotizaciones; la tributable mira impuestos.",
+    "definitionHtml": "<h2>Imponible vs Tributable</h2><p>La <b>renta imponible</b> se usa para calcular cotizaciones previsionales y de salud. La <b>renta tributable</b> se usa para calcular el Impuesto Único. En simple: la imponible mira cotizaciones; la tributable mira impuestos.</p>",
+    "related": [
+      "IMPONIBLE",
+      "TRIBUTABLE",
+      "IUSC_RET"
+    ],
+    "contextual": {
+      "enabled": true,
+      "notes": "Mostrar imponible, tributable e IUSC actual."
+    }
+  },
+  "APV_A_VS_B": {
+    "id": "APV_A_VS_B",
+    "category": "comparativas",
+    "title": "APV Régimen A vs Régimen B",
+    "aliases": [
+      "diferencia entre apv a y b",
+      "apv a vs b",
+      "apv regimen a vs b",
+      "apv régimen a vs b",
+      "que apv conviene"
+    ],
+    "definitionText": "El Régimen A entrega bonificación estatal sobre el ahorro, con tope anual. El Régimen B rebaja la base tributable y puede reducir el Impuesto Único actual, especialmente en tramos altos. La conveniencia depende de tasa marginal, monto de aporte y horizonte.",
+    "definitionHtml": "<h2>APV Régimen A vs Régimen B</h2><p>El <b>Régimen A</b> entrega bonificación estatal sobre el ahorro, con tope anual. El <b>Régimen B</b> rebaja la base tributable y puede reducir el Impuesto Único actual, especialmente en tramos altos. La conveniencia depende de tasa marginal, monto de aporte y horizonte.</p>",
+    "related": [
+      "APV",
+      "APV_GUIA",
+      "IUSC_RET"
+    ],
+    "contextual": {
+      "enabled": true,
+      "notes": "Usar APV actual, régimen seleccionado y tasa marginal si está disponible."
+    }
+  },
+  "AFP_10_VS_COMISION_AFP": {
+    "id": "AFP_10_VS_COMISION_AFP",
+    "category": "comparativas",
+    "title": "AFP 10% vs Comisión AFP",
+    "aliases": [
+      "diferencia entre afp y comision afp",
+      "afp vs comision afp",
+      "afp 10 vs comision afp"
+    ],
+    "definitionText": "AFP 10% es ahorro previsional obligatorio destinado al fondo de pensiones. La comisión AFP es el cobro de administración de la AFP. En simple: el 10% ahorra; la comisión paga administración.",
+    "definitionHtml": "<h2>AFP 10% vs Comisión AFP</h2><p><b>AFP 10%</b> es ahorro previsional obligatorio destinado al fondo de pensiones. La <b>comisión AFP</b> es el cobro de administración de la AFP. En simple: el 10% ahorra; la comisión paga administración.</p>",
+    "related": [
+      "AFP10",
+      "COMISION_AFP"
+    ],
+    "contextual": {
+      "enabled": true,
+      "notes": "Mostrar monto AFP 10% y comisión AFP actual."
+    }
+  }
+};
+
+
+function remuKbNormalize(value){
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .trim();
+}
+
+function findRemuKbEntry(query){
+  const q = remuKbNormalize(query);
+  if(!q) return null;
+
+  const entries = Object.values(REMUTOOL_KB_V2);
+
+  // 1) Alias exacto/contenido
+  for(const entry of entries){
+    if((entry.aliases || []).some(alias => q.includes(remuKbNormalize(alias)))){
+      return entry;
+    }
+  }
+
+  // 2) Título
+  for(const entry of entries){
+    if(q.includes(remuKbNormalize(entry.title))){
+      return entry;
+    }
+  }
+
+  return null;
+}
+
+function renderRemuKbAnswer(entry, options = {}){
+  if(!entry) return '';
+  const mode = options.mode || 'text';
+  if(mode === 'html') return entry.definitionHtml || `<h2>${entry.title}</h2><p>${entry.definitionText}</p>`;
+  return `${entry.title}\n\n${entry.definitionText}`;
+}
+
+window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
+window.REMUTOOL_KB_V2_READY = true;
+window.REMUTOOL_KB_V2_META = {
+  version: 'v2.0.0-fase-1B',
+  mode: 'integrated-connected',
+  entries: Object.keys(REMUTOOL_KB_V2 || {}).length
+};
+</script>
+
 <script>
 /* === RemuTool v1.2.7.f.w.t — MiCopilot v0.9.2 Quality + Percent Engine === */
 (function(){
@@ -5230,7 +5844,124 @@ function setIuscRetValue(monto){
   }
 
   
-function explainComparison(q){
+
+function cleanKBTextV2(v){
+    if(!v) return '';
+    if(Array.isArray(v)) return v.filter(Boolean).join('\n');
+    if(typeof v === 'string') return v;
+    return String(v || '');
+  }
+
+  function formatKBv2Entry(entry){
+    if(!entry) return null;
+    const title = entry.title || entry.name || entry.id || entry.key || 'Concepto RemuTool';
+    const parts = [String(title).trim()];
+    const definition = cleanKBTextV2(entry.definition || entry.definicion || entry.description || entry.descripcion);
+    if(definition) parts.push('', definition.trim());
+
+    const details = entry.details || entry.detalles || entry.argumentos || entry.notes || entry.notas;
+    if(Array.isArray(details) && details.length){
+      parts.push('', 'Detalles clave:');
+      details.filter(Boolean).forEach(d => parts.push('• ' + cleanKBTextV2(d).trim()));
+    }else{
+      const detailText = cleanKBTextV2(details);
+      if(detailText) parts.push('', detailText.trim());
+    }
+
+    const examples = entry.examples || entry.ejemplos;
+    if(Array.isArray(examples) && examples.length){
+      parts.push('', 'Ejemplos:');
+      examples.filter(Boolean).forEach(e => parts.push('• ' + cleanKBTextV2(e).trim()));
+    }
+
+    const related = entry.related || entry.relacionados;
+    if(Array.isArray(related) && related.length){
+      parts.push('', 'Conceptos relacionados: ' + related.join(', ') + '.');
+    }
+
+    return parts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  }
+
+  function entryTextForSearchV2(entry){
+    if(!entry) return '';
+    const fields = [entry.id, entry.key, entry.title, entry.name, entry.definition, entry.definicion, entry.description, entry.descripcion];
+    if(Array.isArray(entry.aliases)) fields.push(entry.aliases.join(' '));
+    if(Array.isArray(entry.tags)) fields.push(entry.tags.join(' '));
+    if(Array.isArray(entry.related)) fields.push(entry.related.join(' '));
+    return norm(fields.filter(Boolean).join(' '));
+  }
+
+  function buscarKBv2(q){
+    try{
+      const kb = window.REMUTOOL_KB_V2 || (typeof REMUTOOL_KB_V2 !== 'undefined' ? REMUTOOL_KB_V2 : null);
+      if(!kb) return null;
+      const n = norm(q || '');
+      if(!n) return null;
+
+      const wantsConcept = (
+        n.includes('que es') || n.includes('qué es') ||
+        n.includes('explica') || n.includes('explicame') || n.includes('explícame') ||
+        n.includes('diferencia') || n.includes('comparar') || n.includes('compara') ||
+        n.includes('como se calcula') || n.includes('cómo se calcula') ||
+        n.includes('como afecta') || n.includes('cómo afecta') ||
+        n.includes('para que sirve') || n.includes('para qué sirve')
+      );
+
+      const entries = Array.isArray(kb)
+        ? kb
+        : Object.entries(kb).map(([key, value]) => {
+            if(value && typeof value === 'object') return Object.assign({key}, value);
+            return {key, title:key, definition:String(value || '')};
+          });
+
+      let best = null;
+      let bestScore = 0;
+
+      for(const entry of entries){
+        let score = 0;
+        const aliases = Array.isArray(entry.aliases) ? entry.aliases : [];
+        const title = entry.title || entry.name || entry.key || entry.id || '';
+
+        for(const a of aliases){
+          const na = norm(a);
+          if(na && n === na) score = Math.max(score, 120);
+          if(na && n.includes(na)) score = Math.max(score, 100 + Math.min(na.length, 30));
+        }
+
+        const nt = norm(title);
+        if(nt && n === nt) score = Math.max(score, 110);
+        if(nt && n.includes(nt)) score = Math.max(score, 90 + Math.min(nt.length, 30));
+
+        const nid = norm(entry.id || entry.key || '');
+        if(nid && n.includes(nid)) score = Math.max(score, 80 + Math.min(nid.length, 20));
+
+        if(score < 70 && wantsConcept){
+          const searchText = entryTextForSearchV2(entry);
+          const stop = ['diferencia','diferencias','entre','como','cómo','para','sirve','explica','explicame','explícame','cual','cuál','esta','este','tengo','mes'];
+          const words = n.split(/\s+/).filter(w => w.length >= 4 && !stop.includes(w));
+          const hits = words.filter(w => searchText.includes(w)).length;
+          if(hits >= 2) score = Math.max(score, 40 + hits * 10);
+        }
+
+        if(score > bestScore){
+          bestScore = score;
+          best = entry;
+        }
+      }
+
+      if(best && bestScore >= 70) return formatKBv2Entry(best);
+      return null;
+    }catch(err){
+      console.warn('buscarKBv2 error', err);
+      return null;
+    }
+  }
+
+  function answerFromKBv2(q){
+    return buscarKBv2(q) || null;
+  }
+
+  function explainComparison(q){
     const n = norm(q || '');
 
     const asksDiff = (
@@ -6050,6 +6781,9 @@ function explainConcept(q){
   }
 
   function answerQuestion(q){
+    const kb2 = answerFromKBv2(q);
+    if(kb2) return kb2;
+
     const s = (q||'').trim();
     if(!s) return 'Escribe una consulta sobre tu liquidación o elige una opción sugerida.';
     const n = norm(s);
@@ -6613,5 +7347,9 @@ function explainConcept(q){
 <!-- RemuTool v1.4.0.f.w.t: MiCopilot v1.9 Fase 1, KB completa de conceptos base. -->
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1B, KB Profesional v2 integrada y conectada con prioridad al router de MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 </body>
 </html>
