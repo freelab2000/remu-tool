@@ -5527,7 +5527,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-1B',
+  version: 'v2.0.0-fase-1C',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -5845,19 +5845,63 @@ window.REMUTOOL_KB_V2_META = {
 
   
 
-function cleanKBTextV2(v){
+
+function stripHtmlKBv2(html){
+    if(!html) return '';
+    return String(html)
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<\/p>/gi, '\n')
+      .replace(/<\/li>/gi, '\n')
+      .replace(/<\/h[1-6]>/gi, '\n')
+      .replace(/<li>/gi, '• ')
+      .replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  }
+
+  function cleanKBTextV2(v){
     if(!v) return '';
     if(Array.isArray(v)) return v.filter(Boolean).join('\n');
     if(typeof v === 'string') return v;
     return String(v || '');
   }
 
+  function getKBv2MainText(entry){
+    if(!entry) return '';
+    return cleanKBTextV2(
+      entry.definitionText ||
+      entry.text ||
+      entry.content ||
+      entry.definition ||
+      entry.definicion ||
+      entry.description ||
+      entry.descripcion ||
+      stripHtmlKBv2(entry.definitionHtml || entry.html || '')
+    );
+  }
+
   function formatKBv2Entry(entry){
     if(!entry) return null;
+
     const title = entry.title || entry.name || entry.id || entry.key || 'Concepto RemuTool';
-    const parts = [String(title).trim()];
-    const definition = cleanKBTextV2(entry.definition || entry.definicion || entry.description || entry.descripcion);
-    if(definition) parts.push('', definition.trim());
+    const main = getKBv2MainText(entry);
+
+    const parts = [];
+    const mainTrim = String(main || '').trim();
+
+    // Si el texto ya parte con el título, no duplicarlo.
+    if(mainTrim && norm(mainTrim).startsWith(norm(title))){
+      parts.push(mainTrim);
+    }else{
+      parts.push(String(title).trim());
+      if(mainTrim) parts.push('', mainTrim);
+    }
 
     const details = entry.details || entry.detalles || entry.argumentos || entry.notes || entry.notas;
     if(Array.isArray(details) && details.length){
@@ -5884,7 +5928,11 @@ function cleanKBTextV2(v){
 
   function entryTextForSearchV2(entry){
     if(!entry) return '';
-    const fields = [entry.id, entry.key, entry.title, entry.name, entry.definition, entry.definicion, entry.description, entry.descripcion];
+    const fields = [
+      entry.id, entry.key, entry.title, entry.name,
+      entry.definitionText, entry.definitionHtml, entry.text, entry.content,
+      entry.definition, entry.definicion, entry.description, entry.descripcion
+    ];
     if(Array.isArray(entry.aliases)) fields.push(entry.aliases.join(' '));
     if(Array.isArray(entry.tags)) fields.push(entry.tags.join(' '));
     if(Array.isArray(entry.related)) fields.push(entry.related.join(' '));
@@ -5895,6 +5943,7 @@ function cleanKBTextV2(v){
     try{
       const kb = window.REMUTOOL_KB_V2 || (typeof REMUTOOL_KB_V2 !== 'undefined' ? REMUTOOL_KB_V2 : null);
       if(!kb) return null;
+
       const n = norm(q || '');
       if(!n) return null;
 
@@ -5902,6 +5951,7 @@ function cleanKBTextV2(v){
         n.includes('que es') || n.includes('qué es') ||
         n.includes('explica') || n.includes('explicame') || n.includes('explícame') ||
         n.includes('diferencia') || n.includes('comparar') || n.includes('compara') ||
+        n.includes(' vs ') || n.includes('versus') ||
         n.includes('como se calcula') || n.includes('cómo se calcula') ||
         n.includes('como afecta') || n.includes('cómo afecta') ||
         n.includes('para que sirve') || n.includes('para qué sirve')
@@ -5911,7 +5961,7 @@ function cleanKBTextV2(v){
         ? kb
         : Object.entries(kb).map(([key, value]) => {
             if(value && typeof value === 'object') return Object.assign({key}, value);
-            return {key, title:key, definition:String(value || '')};
+            return {key, title:key, definitionText:String(value || '')};
           });
 
       let best = null;
@@ -5919,28 +5969,43 @@ function cleanKBTextV2(v){
 
       for(const entry of entries){
         let score = 0;
+
         const aliases = Array.isArray(entry.aliases) ? entry.aliases : [];
         const title = entry.title || entry.name || entry.key || entry.id || '';
+        const id = entry.id || entry.key || '';
+
+        const isComparison = (entry.category === 'comparativas') || norm(id).includes('vs') || norm(title).includes(' vs ');
+
+        // Las comparativas deben ganar cuando la pregunta pide diferencia/comparar.
+        if(isComparison && (n.includes('diferencia') || n.includes('comparar') || n.includes('compara') || n.includes(' vs ') || n.includes('versus'))){
+          score += 80;
+        }
 
         for(const a of aliases){
           const na = norm(a);
-          if(na && n === na) score = Math.max(score, 120);
-          if(na && n.includes(na)) score = Math.max(score, 100 + Math.min(na.length, 30));
+          if(!na) continue;
+          if(n === na) score = Math.max(score, 220);
+          if(n.includes(na)) score = Math.max(score, 180 + Math.min(na.length, 40));
+          // Coincidencia por palabras importantes del alias.
+          const aw = na.split(/\s+/).filter(w => w.length >= 2 && !['que','qué','hay','entre','cual','cuál','diferencia','comparar','compara'].includes(w));
+          if(aw.length >= 2 && aw.every(w => n.includes(w))){
+            score = Math.max(score, 140 + aw.length * 8);
+          }
         }
 
         const nt = norm(title);
-        if(nt && n === nt) score = Math.max(score, 110);
-        if(nt && n.includes(nt)) score = Math.max(score, 90 + Math.min(nt.length, 30));
+        if(nt && n === nt) score = Math.max(score, 170);
+        if(nt && n.includes(nt)) score = Math.max(score, 130 + Math.min(nt.length, 40));
 
-        const nid = norm(entry.id || entry.key || '');
-        if(nid && n.includes(nid)) score = Math.max(score, 80 + Math.min(nid.length, 20));
+        const nid = norm(id);
+        if(nid && n.includes(nid)) score = Math.max(score, 90 + Math.min(nid.length, 20));
 
-        if(score < 70 && wantsConcept){
+        if(score < 100 && wantsConcept){
           const searchText = entryTextForSearchV2(entry);
           const stop = ['diferencia','diferencias','entre','como','cómo','para','sirve','explica','explicame','explícame','cual','cuál','esta','este','tengo','mes'];
           const words = n.split(/\s+/).filter(w => w.length >= 4 && !stop.includes(w));
           const hits = words.filter(w => searchText.includes(w)).length;
-          if(hits >= 2) score = Math.max(score, 40 + hits * 10);
+          if(hits >= 2) score = Math.max(score, 50 + hits * 12 + (isComparison ? 40 : 0));
         }
 
         if(score > bestScore){
@@ -5949,7 +6014,7 @@ function cleanKBTextV2(v){
         }
       }
 
-      if(best && bestScore >= 70) return formatKBv2Entry(best);
+      if(best && bestScore >= 90) return formatKBv2Entry(best);
       return null;
     }catch(err){
       console.warn('buscarKBv2 error', err);
@@ -7348,8 +7413,10 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1B, KB Profesional v2 integrada y conectada con prioridad al router de MiCopilot. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 1C, KB Profesional v2 conectada con extracción definitionText/definitionHtml y prioridad para comparativas. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
 </body>
 </html>
