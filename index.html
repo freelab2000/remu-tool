@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-1D',
+  version: 'v2.0.0-fase-2A',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -6939,7 +6939,174 @@ function explainConcept(q){
     return 'Puedo ayudarte según el paso actual del Modo Guiado: ingresos, variables, descuentos o resultado.';
   }
 
+
+  function wantsPersonalContextV2(n){
+    return (
+      n.includes('mi ') || n.includes('mis ') || n.includes('me ') ||
+      n.includes('esta simulacion') || n.includes('esta simulación') ||
+      n.includes('este mes') || n.includes('actual') ||
+      n.includes('como me afecta') || n.includes('cómo me afecta') ||
+      n.includes('como afecta') || n.includes('cómo afecta') ||
+      n.includes('impacto') || n.includes('beneficia') || n.includes('beneficio') ||
+      n.includes('por que') || n.includes('por qué') || n.includes('porque') ||
+      n.includes('tengo') || n.includes('registrado') || n.includes('ingresado')
+    );
+  }
+
+  function kbV2ForQuery(q){
+    try { return answerFromKBv2(q); } catch(e){ return null; }
+  }
+
+  function appendContextBlock(baseText, contextLines){
+    const cleanBase = cleanAnswer(baseText || '');
+    const ctx = (contextLines || []).filter(Boolean);
+    if(!ctx.length) return cleanBase;
+    return [
+      cleanBase,
+      '',
+      'Contexto de tu simulación:',
+      ...ctx.map(x => '• ' + x)
+    ].join('\n');
+  }
+
+  function contextualAPVV2(q, n){
+    const c = buildContext();
+    const apv = c.descuentos['APV'] || 0;
+    const regimen = (c.bases.regimenAPV || 'B').trim();
+    const trib = c.resultados.tributable || 0;
+    const iusc = c.descuentos['IUSC'] || 0;
+    const descLeg = c.resultados.descuentosLegales || sum(c.descuentos);
+    const ctx = [];
+
+    if(apv > 0){
+      ctx.push('APV ingresado: ' + CLP(apv) + ' en régimen ' + regimen + '.');
+      if(descLeg) ctx.push('Representa ' + pct(apv/descLeg*100) + ' de tus descuentos legales.');
+      if(regimen.toUpperCase().includes('B')){
+        ctx.push('En régimen B, este APV puede reducir la renta tributable usada para calcular el Impuesto Único, sujeto a topes legales.');
+      }else{
+        ctx.push('En régimen A, el foco está en la bonificación estatal, no en rebajar directamente la base tributable mensual.');
+      }
+    }else{
+      ctx.push('No hay APV ingresado en esta simulación.');
+    }
+
+    if(trib) ctx.push('Renta tributable actual: ' + CLP(trib) + '.');
+    if(iusc) ctx.push('Impuesto Único calculado: ' + CLP(iusc) + '.');
+
+    const base = kbV2ForQuery(q) || kbV2ForQuery('apv');
+    return appendContextBlock(base, ctx);
+  }
+
+  function contextualIUSCV2(q, n){
+    const c = buildContext();
+    const iusc = c.descuentos['IUSC'] || 0;
+    const trib = c.resultados.tributable || 0;
+    const vars = sum(c.variables);
+    const topVar = topEntries(c.variables, 1)[0];
+    const apv = c.descuentos['APV'] || 0;
+    const ctx = [];
+
+    if(trib) ctx.push('Renta tributable actual: ' + CLP(trib) + '.');
+    if(iusc) ctx.push('IUSC calculado: ' + CLP(iusc) + '.');
+    if(topVar) ctx.push('Principal factor variable que empuja la base: ' + topVar[0] + ' por ' + CLP(topVar[1]) + '.');
+    if(vars > 0) ctx.push('Variables totales del mes: ' + CLP(vars) + '.');
+    if(apv > 0) ctx.push('APV ingresado: ' + CLP(apv) + '; en régimen B normalmente ayuda a reducir la base tributable.');
+    if(!trib && !iusc) ctx.push('Aún faltan datos calculados para explicar el impuesto con precisión.');
+
+    const base = kbV2ForQuery(q) || kbV2ForQuery('iusc');
+    return appendContextBlock(base, ctx);
+  }
+
+  function contextualImponibleTributableV2(q, n){
+    const c = buildContext();
+    const imp = c.resultados.imponible || 0;
+    const trib = c.resultados.tributable || 0;
+    const apv = c.descuentos['APV'] || 0;
+    const regimen = (c.bases.regimenAPV || 'B').trim();
+    const ctx = [];
+
+    if(imp) ctx.push('Renta imponible actual: ' + CLP(imp) + '.');
+    if(trib) ctx.push('Renta tributable actual: ' + CLP(trib) + '.');
+    if(imp && trib) ctx.push('Diferencia actual: ' + CLP(Math.abs(imp - trib)) + '.');
+    if(apv > 0) ctx.push('APV ingresado: ' + CLP(apv) + ' en régimen ' + regimen + '.');
+    if(apv > 0 && regimen.toUpperCase().includes('B')) ctx.push('Ese APV puede explicar parte de la diferencia entre imponible y tributable.');
+
+    const base = kbV2ForQuery(q) || kbV2ForQuery('diferencia entre imponible y tributable');
+    return appendContextBlock(base, ctx);
+  }
+
+  function contextualVariablesV2(q, n){
+    const c = buildContext();
+    const vars = topEntries(c.variables, 10).filter(x => x[1] > 0);
+    const totalVars = sum(c.variables);
+    const haberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + totalVars);
+    if(!vars.length){
+      return 'No hay variables registradas en esta simulación. Si la liquidación del mes tuvo productividad, vacaciones, feriados o secuencias, ingresa esos montos en Variables del mes.';
+    }
+    const lines = ['Variables registradas:'];
+    vars.forEach((v,i)=> lines.push((i+1)+'. '+v[0]+': '+CLP(v[1])+(totalVars ? ' ('+pct(v[1]/totalVars*100)+' de las variables)' : '')));
+    lines.push('');
+    lines.push('Total variables: ' + CLP(totalVars) + '.');
+    if(haberes) lines.push('Representan ' + pct(totalVars/haberes*100) + ' de tus haberes totales.');
+    const top = vars[0];
+    if(top) lines.push('Principal variable: ' + top[0] + ' por ' + CLP(top[1]) + '.');
+    return lines.join('\n');
+  }
+
+  function contextualDescuentosV2(q, n){
+    const c = buildContext();
+    const desc = topEntries(c.descuentos, 10).filter(x => x[1] > 0);
+    const totalDesc = c.resultados.descuentosLegales || sum(c.descuentos);
+    if(!desc.length){
+      return 'No hay descuentos calculados o ingresados en esta simulación. Completa ingresos y descuentos para poder analizarlos.';
+    }
+    const lines = ['Descuentos principales:'];
+    desc.slice(0,6).forEach((d,i)=> lines.push((i+1)+'. '+d[0]+': '+CLP(d[1])+(totalDesc ? ' ('+pct(d[1]/totalDesc*100)+' de los descuentos)' : '')));
+    lines.push('');
+    lines.push('Total descuentos considerados: ' + CLP(totalDesc) + '.');
+    lines.push('Principal descuento: ' + desc[0][0] + ' por ' + CLP(desc[0][1]) + '.');
+    return lines.join('\n');
+  }
+
+  function contextualProductividadV2(q, n){
+    const c = buildContext();
+    const prod = c.variables['Bono Productividad'] || 0;
+    const totalVars = sum(c.variables);
+    const haberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + totalVars);
+    const ctx = [];
+    if(prod > 0){
+      ctx.push('Bono Productividad ingresado: ' + CLP(prod) + '.');
+      if(totalVars) ctx.push('Representa ' + pct(prod/totalVars*100) + ' de tus variables.');
+      if(haberes) ctx.push('Representa ' + pct(prod/haberes*100) + ' de tus haberes totales.');
+      ctx.push('Al aumentar los haberes variables, normalmente también aumenta la base afecta a IUSC.');
+    }else{
+      ctx.push('No hay Bono Productividad ingresado en esta simulación.');
+    }
+    const base = kbV2ForQuery(q) || kbV2ForQuery('productividad');
+    return appendContextBlock(base, ctx);
+  }
+
+  function contextualConceptV2(q){
+    const n = norm(q || '');
+    const personal = wantsPersonalContextV2(n);
+
+    // Preguntas de datos actuales deben ganar siempre sobre definiciones.
+    if((n.includes('variable') || n.includes('variables')) && (n.includes('tengo') || n.includes('analiza') || n.includes('registrada') || n.includes('registradas') || n.includes('este mes'))) return contextualVariablesV2(q,n);
+    if((n.includes('descuento') || n.includes('descuentos')) && (n.includes('tengo') || n.includes('analiza') || n.includes('principal') || n.includes('mayor') || n.includes('impacta') || n.includes('importante'))) return contextualDescuentosV2(q,n);
+
+    if(n.includes('apv') && (personal || n.includes('diferencia') || n.includes(' a ') || n.includes(' b '))) return contextualAPVV2(q,n);
+    if((n.includes('iusc') || n.includes('impuesto')) && personal) return contextualIUSCV2(q,n);
+    if((n.includes('imponible') || n.includes('tributable')) && (personal || n.includes('diferencia'))) return contextualImponibleTributableV2(q,n);
+    if(n.includes('productividad') && personal) return contextualProductividadV2(q,n);
+
+    return null;
+  }
+
+
   function answerQuestion(q){
+    const contextual2 = contextualConceptV2(q);
+    if(contextual2) return contextual2;
+
     const kb2 = answerFromKBv2(q);
     if(kb2) return kb2;
 
@@ -7507,12 +7674,14 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1D, KB Profesional v2 conectada con formateo de respuestas, limpieza de saltos y subtítulos legibles. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 2A, respuestas contextuales iniciales combinando KB Profesional v2 con datos reales de la simulación. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
 </body>
 </html>
