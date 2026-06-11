@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-2A',
+  version: 'v2.0.0-fase-2B',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -6940,6 +6940,7 @@ function explainConcept(q){
   }
 
 
+
   function wantsPersonalContextV2(n){
     return (
       n.includes('mi ') || n.includes('mis ') || n.includes('me ') ||
@@ -6969,6 +6970,19 @@ function explainConcept(q){
     ].join('\n');
   }
 
+  function hasUsefulComputedDataV2(){
+    const c = buildContext();
+    return !!(
+      c.resultados.totalHaberes ||
+      c.resultados.imponible ||
+      c.resultados.tributable ||
+      c.resultados.liquido ||
+      sum(c.variables) ||
+      sum(c.descuentos) ||
+      sum(c.ingresosFijos)
+    );
+  }
+
   function contextualAPVV2(q, n){
     const c = buildContext();
     const apv = c.descuentos['APV'] || 0;
@@ -6982,9 +6996,9 @@ function explainConcept(q){
       ctx.push('APV ingresado: ' + CLP(apv) + ' en régimen ' + regimen + '.');
       if(descLeg) ctx.push('Representa ' + pct(apv/descLeg*100) + ' de tus descuentos legales.');
       if(regimen.toUpperCase().includes('B')){
-        ctx.push('En régimen B, este APV puede reducir la renta tributable usada para calcular el Impuesto Único, sujeto a topes legales.');
+        ctx.push('En régimen B, puede reducir la renta tributable usada para calcular el Impuesto Único, sujeto a topes legales.');
       }else{
-        ctx.push('En régimen A, el foco está en la bonificación estatal, no en rebajar directamente la base tributable mensual.');
+        ctx.push('En régimen A, el foco está en la bonificación estatal; no rebaja directamente la base tributable mensual.');
       }
     }else{
       ctx.push('No hay APV ingresado en esta simulación.');
@@ -6993,7 +7007,8 @@ function explainConcept(q){
     if(trib) ctx.push('Renta tributable actual: ' + CLP(trib) + '.');
     if(iusc) ctx.push('Impuesto Único calculado: ' + CLP(iusc) + '.');
 
-    const base = kbV2ForQuery(q) || kbV2ForQuery('apv');
+    // Siempre usar la definición profesional completa de APV como base.
+    const base = kbV2ForQuery('que es apv') || kbV2ForQuery('apv') || 'APV';
     return appendContextBlock(base, ctx);
   }
 
@@ -7011,9 +7026,9 @@ function explainConcept(q){
     if(topVar) ctx.push('Principal factor variable que empuja la base: ' + topVar[0] + ' por ' + CLP(topVar[1]) + '.');
     if(vars > 0) ctx.push('Variables totales del mes: ' + CLP(vars) + '.');
     if(apv > 0) ctx.push('APV ingresado: ' + CLP(apv) + '; en régimen B normalmente ayuda a reducir la base tributable.');
-    if(!trib && !iusc) ctx.push('Aún faltan datos calculados para explicar el impuesto con precisión.');
+    if(!trib && !iusc) ctx.push('Aún faltan ingresos/base tributable para explicar el impuesto con precisión.');
 
-    const base = kbV2ForQuery(q) || kbV2ForQuery('iusc');
+    const base = kbV2ForQuery('que es iusc') || kbV2ForQuery('impuesto unico retenido') || kbV2ForQuery('iusc') || 'IUSC';
     return appendContextBlock(base, ctx);
   }
 
@@ -7031,7 +7046,7 @@ function explainConcept(q){
     if(apv > 0) ctx.push('APV ingresado: ' + CLP(apv) + ' en régimen ' + regimen + '.');
     if(apv > 0 && regimen.toUpperCase().includes('B')) ctx.push('Ese APV puede explicar parte de la diferencia entre imponible y tributable.');
 
-    const base = kbV2ForQuery(q) || kbV2ForQuery('diferencia entre imponible y tributable');
+    const base = kbV2ForQuery('diferencia entre imponible y tributable') || kbV2ForQuery(q);
     return appendContextBlock(base, ctx);
   }
 
@@ -7082,7 +7097,7 @@ function explainConcept(q){
     }else{
       ctx.push('No hay Bono Productividad ingresado en esta simulación.');
     }
-    const base = kbV2ForQuery(q) || kbV2ForQuery('productividad');
+    const base = kbV2ForQuery('bono productividad') || kbV2ForQuery('productividad') || kbV2ForQuery(q);
     return appendContextBlock(base, ctx);
   }
 
@@ -7090,11 +7105,12 @@ function explainConcept(q){
     const n = norm(q || '');
     const personal = wantsPersonalContextV2(n);
 
-    // Preguntas de datos actuales deben ganar siempre sobre definiciones.
+    // Análisis operativo de datos actuales: aquí sí se entrega respuesta contextual directa.
     if((n.includes('variable') || n.includes('variables')) && (n.includes('tengo') || n.includes('analiza') || n.includes('registrada') || n.includes('registradas') || n.includes('este mes'))) return contextualVariablesV2(q,n);
     if((n.includes('descuento') || n.includes('descuentos')) && (n.includes('tengo') || n.includes('analiza') || n.includes('principal') || n.includes('mayor') || n.includes('impacta') || n.includes('importante'))) return contextualDescuentosV2(q,n);
 
-    if(n.includes('apv') && (personal || n.includes('diferencia') || n.includes(' a ') || n.includes(' b '))) return contextualAPVV2(q,n);
+    // Conceptos + contexto: definición profesional completa primero, contexto después.
+    if(n.includes('apv') && personal) return contextualAPVV2(q,n);
     if((n.includes('iusc') || n.includes('impuesto')) && personal) return contextualIUSCV2(q,n);
     if((n.includes('imponible') || n.includes('tributable')) && (personal || n.includes('diferencia'))) return contextualImponibleTributableV2(q,n);
     if(n.includes('productividad') && personal) return contextualProductividadV2(q,n);
@@ -7674,7 +7690,7 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 2A, respuestas contextuales iniciales combinando KB Profesional v2 con datos reales de la simulación. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto como complemento: mantiene la KB profesional completa y agrega datos de simulación al final. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
@@ -7683,5 +7699,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
 </body>
 </html>
