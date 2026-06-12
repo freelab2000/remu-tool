@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.1.3',
+  version: 'v2.0.0-fase-3A.2',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7217,30 +7217,13 @@ function explainConcept(q){
     const salud = c.descuentos['Salud 7%'] || 0;
     const productividad = c.variables['Bono Productividad'] || 0;
 
-    // Fase 3A.1.2:
-    // Las bases del auditor se estabilizan con una lectura defensiva.
-    // Evitamos usar valores parciales o inexistentes que puedan provocar alertas falsas.
-    let imponible = Number(c.resultados.imponible || c.bases.imponible || 0);
-    let tributable = Number(c.resultados.tributable || c.bases.tributable || c.resultados.rentaTributable || c.bases.rentaTributable || 0);
-
-    // Si no existe tributable explícito, se estima solo para contexto y no para alertas críticas.
-    let tributableEstimado = false;
-    if(!tributable && imponible){
-      tributable = Math.max(0, imponible - afp - salud - apv);
-      tributableEstimado = true;
-    }
-
-    // Si no existe imponible explícito, no intentamos inventarlo desde haberes totales.
-    // Eso fue lo que generaba diferencias exageradas en algunas simulaciones.
-    const basesConfiables = imponible > 0 && tributable > 0 && !tributableEstimado;
-
     const insights = [];
 
     function add(level, title, detail, priority){
       insights.push({level, title, detail, priority: priority || 50});
     }
 
-    if(!totalHaberes && !imponible && !tributable){
+    if(!totalHaberes){
       add('info', 'Simulación incompleta', 'Aún faltan ingresos suficientes para generar una auditoría útil.', 10);
       return insights;
     }
@@ -7279,41 +7262,20 @@ function explainConcept(q){
 
     if(iusc > 0){
       const pi = totalDescLegales ? iusc / totalDescLegales * 100 : 0;
-      const pt = tributable ? iusc / tributable * 100 : 0;
       if(pi >= 45){
         add('alerta', 'IUSC dominante', 'El IUSC representa ' + pct(pi) + ' de tus descuentos legales (' + CLP(iusc) + ').', 91);
       }else{
-        add('aviso', 'IUSC calculado', 'Impuesto Único retenido por ' + CLP(iusc) + (pt ? ', equivalente a ' + pct(pt) + ' de la renta tributable.' : '.'), 60);
+        add('aviso', 'IUSC calculado', 'Impuesto Único retenido por ' + CLP(iusc) + '.', 60);
       }
     }
 
-    // Auditoría de bases estabilizada:
-    // Solo se emiten alertas de diferencia si ambas bases vienen calculadas de forma confiable.
-    if(basesConfiables){
-      const diff = imponible - tributable;
-      const absDiff = Math.abs(diff);
-      const p = imponible ? absDiff / imponible * 100 : 0;
+    // Fase 3A.1.4:
+    // Se elimina completamente la comparación tributable > imponible.
+    // En rentas altas, la base imponible previsional queda topada por UF,
+    // mientras la renta tributable puede ser naturalmente mayor.
+    // Por lo tanto, no corresponde tratarlo como alerta ni como hallazgo.
 
-      if(tributable > imponible){
-        // En algunos casos puede ocurrir por componentes tributables no imponibles.
-        // Por eso se baja de alerta crítica a aviso de revisión, y solo si la diferencia es material.
-        if(p >= 5){
-          add('aviso', 'Tributable mayor que imponible', 'La renta tributable aparece ' + CLP(absDiff) + ' sobre la imponible. Puede explicarse por haberes tributables no imponibles, pero conviene revisar datos.', 72);
-        }
-      }else if(absDiff > 0){
-        if(p >= 10){
-          add('aviso', 'Diferencia imponible/tributable', 'Existe una diferencia de ' + CLP(absDiff) + ' entre renta imponible y tributable. Revisa APV y descuentos que modifican la base tributaria.', 74);
-        }else{
-          add('info', 'Diferencia de bases', 'Diferencia entre imponible y tributable: ' + CLP(absDiff) + '.', 45);
-        }
-      }
-    }else if(imponible || tributable){
-      add('info', 'Bases tributarias parciales', 'Hay información de imponible o tributable, pero no suficiente para emitir una alerta de consistencia entre ambas bases.', 35);
-    }
-
-    // Consistencia básica de descuentos obligatorios:
-    // Evita falsos positivos cuando la simulación aún está incompleta.
-    if(totalHaberes > 0 && imponible > 0){
+    if(totalHaberes > 0){
       if(!afp) add('aviso', 'AFP no detectada', 'No se detecta cotización AFP 10%. Revisa si faltan datos o si corresponde por tope/configuración.', 68);
       if(!salud) add('aviso', 'Salud no detectada', 'No se detecta cotización de salud 7%. Revisa si faltan datos o si corresponde por tope/configuración.', 68);
     }
@@ -7330,14 +7292,91 @@ function explainConcept(q){
   }
 
 
+  function generateExecutiveSummaryV2(){
+    const c = buildContext();
+
+    const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const totalDesc = c.resultados.descuentosLegales || sum(c.descuentos);
+    const liquido = c.resultados.liquido || 0;
+
+    const topVar = topEntries(c.variables, 1)[0];
+    const topDesc = topEntries(c.descuentos, 1)[0];
+
+    const apv = c.descuentos['APV'] || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+    const iusc = c.descuentos['IUSC'] || 0;
+
+    const lines = ['Resumen ejecutivo:', ''];
+
+    if(!totalHaberes){
+      lines.push('La simulación aún no tiene haberes suficientes para generar un resumen ejecutivo útil.');
+      return lines.join('\n');
+    }
+
+    lines.push('• Haberes totales: ' + CLP(totalHaberes) + '.');
+
+    if(totalFijos || totalVars){
+      const pf = totalHaberes ? totalFijos / totalHaberes * 100 : 0;
+      const pv = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+      lines.push('• Composición: fijos ' + pct(pf) + ', variables ' + pct(pv) + '.');
+    }
+
+    if(topVar && topVar[1] > 0){
+      lines.push('• Principal variable: ' + topVar[0] + ' por ' + CLP(topVar[1]) + '.');
+    }else{
+      lines.push('• No se registran variables relevantes en esta simulación.');
+    }
+
+    if(topDesc && topDesc[1] > 0){
+      lines.push('• Principal descuento: ' + topDesc[0] + ' por ' + CLP(topDesc[1]) + '.');
+    }
+
+    if(apv > 0){
+      lines.push('• APV activo: ' + CLP(apv) + ' en régimen ' + regimenAPV + '.');
+    }
+
+    if(iusc > 0){
+      lines.push('• IUSC retenido: ' + CLP(iusc) + '.');
+    }
+
+    if(liquido > 0){
+      lines.push('• Líquido estimado: ' + CLP(liquido) + '.');
+    }
+
+    let conclusion = 'La liquidación queda determinada principalmente por ';
+    if(topDesc && topDesc[0] === 'IUSC'){
+      conclusion += 'la carga tributaria del mes';
+    }else if(topDesc){
+      conclusion += 'el descuento ' + topDesc[0];
+    }else{
+      conclusion += 'la composición de haberes y descuentos ingresados';
+    }
+
+    if(topVar && topVar[1] > 0){
+      conclusion += ', con ' + topVar[0] + ' como principal componente variable.';
+    }else{
+      conclusion += '.';
+    }
+
+    lines.push('');
+    lines.push(conclusion);
+
+    return lines.join('\n');
+  }
+
+
   function formatInsights(insights){
+    const summary = generateExecutiveSummaryV2();
+
     if(!insights || !insights.length){
-      return 'Auditoría inteligente:\n\nNo detecto hallazgos relevantes con los datos actuales.';
+      return summary + '\n\nAuditoría inteligente:\n\nNo detecto hallazgos relevantes con los datos actuales.';
     }
 
     const icon = {alerta:'⚠️', aviso:'🔎', info:'ℹ️'};
     const label = {alerta:'Atención', aviso:'Revisión', info:'Información'};
-    const lines = ['Auditoría inteligente de la liquidación:', ''];
+    const lines = [summary, '', 'Hallazgos del auditor:', ''];
 
     insights.forEach((x, i) => {
       lines.push((i+1) + '. ' + (icon[x.level] || '•') + ' ' + (label[x.level] || 'Hallazgo') + ': ' + x.title);
@@ -7938,4 +7977,107 @@ function explainConcept(q){
       addMessage(messages, 'Resultado listo para revisión. El análisis detallado debe hacerse desde MiCopilot si el usuario quiere profundizar.');
       if(!uf){
         level = 'warn';
-       
+        addMessage(messages, 'UF no detectada. Revisa este dato antes de usar la simulación como referencia final.');
+      }
+    }
+
+    if(messages.length === 0){
+      addMessage(messages, 'Sin observaciones para este paso.');
+    }
+
+    badge.classList.remove('warn','info');
+    if(level === 'warn'){
+      badge.classList.add('warn');
+      badge.textContent = 'Revisar';
+    } else if(level === 'info'){
+      badge.classList.add('info');
+      badge.textContent = 'Info';
+    } else {
+      badge.textContent = 'Listo';
+    }
+
+    list.innerHTML = messages.map(m => '<li>'+m+'</li>').join('');
+  }
+
+  function refreshGuide(){
+    const step = getStep();
+    setGuideCopy(step);
+    updateGuideSmart();
+  }
+
+  function bindGuidePolish(){
+    refreshGuide();
+
+    document.addEventListener('click', ev => {
+      if(ev.target?.classList?.contains('guide-step') ||
+         ev.target?.id === 'guideNextTop' ||
+         ev.target?.id === 'guidePrevTop' ||
+         ev.target?.id === 'guideNextBottom' ||
+         ev.target?.id === 'guidePrevBottom' ||
+         ev.target?.id === 'modeGuided' ||
+         ev.target?.id === 'modeClassic'){
+        setTimeout(refreshGuide, 80);
+      }
+    }, true);
+
+    document.addEventListener('input', () => {
+      if(document.body.classList.contains('mode-guided')) {
+        setTimeout(updateGuideSmart, 40);
+      }
+    }, true);
+
+    document.addEventListener('change', () => {
+      if(document.body.classList.contains('mode-guided')) {
+        setTimeout(updateGuideSmart, 40);
+      }
+    }, true);
+
+    const obs = new MutationObserver(() => {
+      if(document.body.classList.contains('mode-guided')) refreshGuide();
+    });
+
+    obs.observe(document.body, {attributes:true, attributeFilter:['data-guide-step','class']});
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', bindGuidePolish);
+  } else {
+    bindGuidePolish();
+  }
+})();
+</script>
+
+
+<!-- RemuTool v1.3.1.f.w.t: MiCopilot Core corrective build; uses original internal router, no external intercept. -->
+
+<!-- RemuTool v1.3.6.f.w.t: MiCopilot v1.5 Snapshots estables + Alertas inteligentes. -->
+
+<!-- RemuTool v1.3.7.f.w.t: MiCopilot v1.6 Auditor Inteligente. -->
+
+<!-- RemuTool v1.3.8.f.w.t: MiCopilot v1.8 RC, pulido de comparación y base estable previa a v2.0. -->
+
+<!-- RemuTool v1.4.0.f.w.t: MiCopilot v1.9 Fase 1, KB completa de conceptos base. -->
+
+<!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
