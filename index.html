@@ -5544,7 +5544,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.5',
+  version: 'v2.0.0-fase-3A.4.3',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8015,6 +8015,79 @@ function explainConcept(q){
   }
 
 
+
+  function buildPatrimonialAnalysisV2(kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC){
+    function absCLP(v){ return CLP(Math.abs(v)); }
+
+    const lines = [];
+
+    if(kind === 'apv'){
+      const apvDiff = Math.abs(deltaAPV || 0);
+      const liqDiff = Math.abs(deltaLiquido || 0);
+      const iuscDiff = Math.abs(deltaIUSC || 0);
+
+      if(apvDiff <= 0){
+        return '';
+      }
+
+      const efficiency = liqDiff / apvDiff;
+      const higherTitle = (B.apv || 0) >= (A.apv || 0) ? titleB : titleA;
+      const lowerTitle = (B.apv || 0) >= (A.apv || 0) ? titleA : titleB;
+
+      lines.push('Análisis patrimonial:');
+
+      if(efficiency < 0.80){
+        lines.push('La relación ahorro/costo es favorable. Para incrementar el APV en ' + absCLP(apvDiff) + ', el sacrificio de líquido estimado es de ' + absCLP(liqDiff) + '.');
+        lines.push('Por cada $1 adicional destinado a APV, el líquido baja aproximadamente $' + efficiency.toFixed(2) + '. Esto significa que el ahorro previsional adicional supera de forma clara la pérdida de liquidez mensual.');
+        lines.push('Evaluación: ' + higherTitle + ' tiene alta eficiencia patrimonial si el objetivo es acumulación de largo plazo.');
+      }else if(efficiency < 1.00){
+        lines.push('La relación ahorro/costo es equilibrada. Para incrementar el APV en ' + absCLP(apvDiff) + ', el sacrificio de líquido estimado es de ' + absCLP(liqDiff) + '.');
+        lines.push('Por cada $1 adicional destinado a APV, el líquido baja aproximadamente $' + efficiency.toFixed(2) + '. El costo de liquidez es moderado frente al ahorro previsional generado.');
+        lines.push('Evaluación: ' + higherTitle + ' es razonable para acumulación patrimonial; ' + lowerTitle + ' es preferible si necesitas más caja mensual.');
+      }else{
+        lines.push('La relación ahorro/costo es exigente. Para incrementar el APV en ' + absCLP(apvDiff) + ', el sacrificio de líquido estimado es de ' + absCLP(liqDiff) + '.');
+        lines.push('Por cada $1 adicional destinado a APV, el líquido baja aproximadamente $' + efficiency.toFixed(2) + '. La reducción de liquidez es similar o superior al ahorro adicional aportado.');
+        lines.push('Evaluación: ' + higherTitle + ' solo conviene si tu prioridad previsional supera claramente la necesidad de liquidez mensual.');
+      }
+
+      if(iuscDiff > 0){
+        lines.push('Efecto tributario estimado: el cambio reduce o aumenta el IUSC en aproximadamente ' + absCLP(iuscDiff) + ', según la dirección del APV y el régimen aplicado.');
+      }
+
+      return lines.join('\n');
+    }
+
+    if(kind === 'prod'){
+      const prodDiff = Math.abs(deltaProd || 0);
+      const liqDiff = Math.abs(deltaLiquido || 0);
+      const iuscDiff = Math.abs(deltaIUSC || 0);
+
+      if(prodDiff <= 0){
+        return '';
+      }
+
+      const capture = liqDiff / prodDiff;
+      const higherTitle = (B.productividad || 0) >= (A.productividad || 0) ? titleB : titleA;
+
+      lines.push('Análisis patrimonial:');
+      lines.push('La productividad adicional tiene una captura líquida estimada de $' + capture.toFixed(2) + ' por cada $1 variable adicional.');
+      lines.push('En esta comparación, una diferencia de productividad de ' + absCLP(prodDiff) + ' cambia el líquido estimado en ' + absCLP(liqDiff) + ' y el IUSC en aproximadamente ' + absCLP(iuscDiff) + '.');
+
+      if(capture >= 0.80){
+        lines.push('Evaluación: ' + higherTitle + ' tiene alta conversión a líquido; el impacto tributario existe, pero no absorbe la mayor parte de la variable.');
+      }else if(capture >= 0.60){
+        lines.push('Evaluación: ' + higherTitle + ' sigue siendo favorable para líquido, aunque una parte relevante queda absorbida por impuestos y descuentos.');
+      }else{
+        lines.push('Evaluación: el aumento de productividad tiene conversión líquida más baja; conviene revisar el efecto tributario antes de proyectar líquido disponible.');
+      }
+
+      return lines.join('\n');
+    }
+
+    return '';
+  }
+
+
   function addRecommendationEngineV2(lines, kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC){
     function absCLP(v){ return CLP(Math.abs(v)); }
 
@@ -8167,6 +8240,12 @@ function explainConcept(q){
     }
 
     addRecommendationEngineV2(lines, kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC);
+
+    const patrimonial = buildPatrimonialAnalysisV2(kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC);
+    if(patrimonial){
+      lines.push('');
+      lines.push(patrimonial);
+    }
 
     lines.push('');
     lines.push('Criterio: comparación estimativa basada en la simulación actual. El IUSC se aproxima con tasa efectiva observada; para liquidación real debe contrastarse con el cálculo exacto.');
@@ -8818,3 +8897,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
+</body>
+</html>
