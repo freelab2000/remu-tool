@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-2B',
+  version: 'v2.0.0-fase-3A',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7101,8 +7101,149 @@ function explainConcept(q){
     return appendContextBlock(base, ctx);
   }
 
+
+  function generateInsights(){
+    const c = buildContext();
+
+    const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
+    const totalVars = sum(c.variables);
+    const totalDescLegales = c.resultados.descuentosLegales || sum(c.descuentos);
+    const imponible = c.resultados.imponible || 0;
+    const tributable = c.resultados.tributable || 0;
+    const liquido = c.resultados.liquido || 0;
+
+    const apv = c.descuentos['APV'] || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+    const iusc = c.descuentos['IUSC'] || 0;
+    const afp = c.descuentos['AFP 10%'] || c.descuentos['Fondo Pens. AFP (10,00%)'] || 0;
+    const salud = c.descuentos['Salud 7%'] || 0;
+    const productividad = c.variables['Bono Productividad'] || 0;
+
+    const insights = [];
+
+    function add(level, title, detail, priority){
+      insights.push({level, title, detail, priority: priority || 50});
+    }
+
+    if(!totalHaberes && !imponible && !tributable){
+      add('info', 'Simulación incompleta', 'Aún faltan ingresos suficientes para generar una auditoría útil.', 10);
+      return insights;
+    }
+
+    if(totalVars > 0 && totalHaberes > 0){
+      const p = totalVars / totalHaberes * 100;
+      if(p >= 45){
+        add('alerta', 'Variables relevantes', 'Las variables representan ' + pct(p) + ' de tus haberes. Conviene revisar productividad, feriados, vacaciones y secuencias.', 90);
+      }else if(p >= 20){
+        add('aviso', 'Variables con impacto', 'Las variables representan ' + pct(p) + ' de tus haberes.', 65);
+      }
+    }
+
+    if(productividad > 0){
+      const pv = totalVars ? productividad / totalVars * 100 : 0;
+      const ph = totalHaberes ? productividad / totalHaberes * 100 : 0;
+      if(pv >= 70){
+        add('alerta', 'Concentración en Productividad', 'Bono Productividad concentra ' + pct(pv) + ' de tus variables (' + CLP(productividad) + ').', 88);
+      }else{
+        add('info', 'Productividad registrada', 'Bono Productividad ingresado por ' + CLP(productividad) + (ph ? ', equivalente a ' + pct(ph) + ' de tus haberes.' : '.'), 55);
+      }
+    }
+
+    if(apv > 0){
+      const pd = totalDescLegales ? apv / totalDescLegales * 100 : 0;
+      if(pd >= 40){
+        add('alerta', 'APV relevante', 'APV representa ' + pct(pd) + ' de tus descuentos legales (' + CLP(apv) + ') en régimen ' + regimenAPV + '.', 92);
+      }else{
+        add('aviso', 'APV activo', 'APV ingresado por ' + CLP(apv) + ' en régimen ' + regimenAPV + '.', 62);
+      }
+
+      if(regimenAPV.toUpperCase().includes('B') && tributable){
+        add('info', 'Efecto tributario APV B', 'El APV régimen B puede reducir la renta tributable usada para calcular el IUSC, sujeto a topes legales.', 70);
+      }
+    }
+
+    if(iusc > 0){
+      const pi = totalDescLegales ? iusc / totalDescLegales * 100 : 0;
+      const pt = tributable ? iusc / tributable * 100 : 0;
+      if(pi >= 45){
+        add('alerta', 'IUSC dominante', 'El IUSC representa ' + pct(pi) + ' de tus descuentos legales (' + CLP(iusc) + ').', 91);
+      }else{
+        add('aviso', 'IUSC calculado', 'Impuesto Único retenido por ' + CLP(iusc) + (pt ? ', equivalente a ' + pct(pt) + ' de la renta tributable.' : '.'), 60);
+      }
+    }
+
+    if(imponible && tributable){
+      const diff = imponible - tributable;
+      const absDiff = Math.abs(diff);
+      const p = imponible ? absDiff / imponible * 100 : 0;
+
+      if(absDiff > 0){
+        if(p >= 10){
+          add('alerta', 'Diferencia imponible/tributable', 'Existe una diferencia relevante de ' + CLP(absDiff) + ' entre renta imponible y tributable.', 86);
+        }else{
+          add('info', 'Diferencia de bases', 'Diferencia entre imponible y tributable: ' + CLP(absDiff) + '.', 50);
+        }
+      }
+
+      if(tributable > imponible){
+        add('alerta', 'Tributable mayor que imponible', 'La renta tributable aparece mayor que la imponible. Conviene revisar datos ingresados y descuentos.', 95);
+      }
+    }
+
+    if(totalHaberes > 0){
+      if(!afp) add('alerta', 'AFP no detectada', 'No se detecta cotización AFP 10%. Revisa si faltan datos o si corresponde por tope/configuración.', 89);
+      if(!salud) add('alerta', 'Salud no detectada', 'No se detecta cotización de salud 7%. Revisa si faltan datos o si corresponde por tope/configuración.', 89);
+    }
+
+    if(liquido && totalHaberes){
+      const pl = liquido / totalHaberes * 100;
+      if(pl < 45){
+        add('aviso', 'Líquido reducido', 'El líquido representa ' + pct(pl) + ' de tus haberes. Revisa descuentos legales y APV.', 70);
+      }
+    }
+
+    insights.sort((a,b) => b.priority - a.priority);
+    return insights.slice(0, 8);
+  }
+
+  function formatInsights(insights){
+    if(!insights || !insights.length){
+      return 'Auditoría inteligente:\n\nNo detecto hallazgos relevantes con los datos actuales.';
+    }
+
+    const icon = {alerta:'⚠️', aviso:'🔎', info:'ℹ️'};
+    const lines = ['Auditoría inteligente de la liquidación:', ''];
+
+    insights.forEach((x, i) => {
+      lines.push((i+1) + '. ' + (icon[x.level] || '•') + ' ' + x.title);
+      lines.push('   ' + x.detail);
+    });
+
+    lines.push('');
+    lines.push('Criterio: esta auditoría no declara errores por sí sola; prioriza puntos que conviene contrastar con la liquidación real.');
+    return lines.join('\n');
+  }
+
+  function answerAuditV2(){
+    return formatInsights(generateInsights());
+  }
+
+  function isAuditQuestionV2(n){
+    return (
+      n.includes('auditar') || n.includes('auditoria') || n.includes('auditoría') ||
+      n.includes('alerta') || n.includes('alertas') ||
+      n.includes('observas') || n.includes('revisar') ||
+      n.includes('que ves') || n.includes('qué ves') ||
+      n.includes('hallazgo') || n.includes('hallazgos') ||
+      n.includes('analisis automatico') || n.includes('análisis automático')
+    );
+  }
+
+
   function contextualConceptV2(q){
     const n = norm(q || '');
+    if(isAuditQuestionV2(n)) return answerAuditV2();
+
     const personal = wantsPersonalContextV2(n);
 
     // Análisis operativo de datos actuales: aquí sí se entrega respuesta contextual directa.
@@ -7690,7 +7831,7 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto como complemento: mantiene la KB profesional completa y agrega datos de simulación al final. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A, Auditor Inteligente inicial: genera hallazgos automáticos sobre APV, variables, IUSC, bases y consistencia. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
@@ -7701,5 +7842,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
 </body>
 </html>
