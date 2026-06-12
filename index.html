@@ -4911,6 +4911,7 @@ function setIuscRetValue(monto){
       <button class="ai-prompt-btn" type="button" data-ai-prompt="auditor">🧭 Auditar liquidación</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="causal">🧠 ¿Qué explica mi liquidación?</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="scenario">🧪 Simular escenario</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="compare">⚖️ Comparar escenarios</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
@@ -4921,6 +4922,8 @@ function setIuscRetValue(monto){
 • ¿Qué explica mi liquidación?
 • ¿Qué pasa si no tuviera APV?
 • ¿Qué pasa si mi productividad fuera 2 millones?
+• Compara APV actual vs APV de 1 millón
+• Compara productividad actual vs 3 millones
 • Muéstrame alertas inteligentes
 • ¿Qué cambió respecto a la simulación anterior?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
@@ -5540,7 +5543,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.4.1',
+  version: 'v2.0.0-fase-3A.4.2',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7867,9 +7870,249 @@ function explainConcept(q){
   }
 
 
+
+  function parseComparisonQuestionV2(q){
+    const n = norm(q || '');
+    const hasCompareIntent =
+      n.includes('compara') ||
+      n.includes('comparar') ||
+      n.includes('versus') ||
+      n.includes(' vs ') ||
+      n.includes('conviene') ||
+      n.includes('mejor') ||
+      n.includes('diferencia entre');
+
+    if(!hasCompareIntent) return null;
+
+    const hasAPV = n.includes('apv') || n.includes('ahorro previsional');
+    const hasProductividad = n.includes('productividad') || n.includes('bono productividad') || n.includes('prod');
+
+    const amounts = [];
+    const n2 = n;
+
+    const millionRe = /(\d+(?:[.,]\d+)?)\s*(millon|millón|millones|mm)\b/g;
+    let m;
+    while((m = millionRe.exec(n2)) !== null){
+      const val = parseFloat(m[1].replace(',', '.'));
+      if(!isNaN(val)) amounts.push(Math.round(val * 1000000));
+    }
+
+    const milRe = /(\d+(?:[.,]\d+)?)\s*(mil|lucas|k)\b/g;
+    while((m = milRe.exec(n2)) !== null){
+      const val = parseFloat(m[1].replace(',', '.'));
+      if(!isNaN(val)) amounts.push(Math.round(val * 1000));
+    }
+
+    const rawRe = /\$?\s*(\d{1,3}(?:[.\s]\d{3})+|\d{5,})/g;
+    while((m = rawRe.exec(n2)) !== null){
+      const raw = m[1].replace(/[.\s]/g, '');
+      const val = parseInt(raw, 10);
+      if(!isNaN(val)) amounts.push(val);
+    }
+
+    const unique = [...new Set(amounts)].filter(v => v >= 0);
+
+    const removeWords = ['sin', 'quita', 'quitar', 'elimina', 'eliminar', 'saca', 'sacar', 'cero', '0'];
+    const hasRemove = removeWords.some(w => n.includes(w));
+
+    if(hasAPV){
+      if(unique.length >= 2){
+        return {kind:'apv_compare_two', a:unique[0], b:unique[1]};
+      }
+      if(unique.length === 1){
+        return {kind:'apv_compare_current', b:unique[0]};
+      }
+      if(hasRemove){
+        return {kind:'apv_compare_current', b:0};
+      }
+    }
+
+    if(hasProductividad){
+      if(unique.length >= 2){
+        return {kind:'prod_compare_two', a:unique[0], b:unique[1]};
+      }
+      if(unique.length === 1){
+        return {kind:'prod_compare_current', b:unique[0]};
+      }
+      if(hasRemove){
+        return {kind:'prod_compare_current', b:0};
+      }
+    }
+
+    return null;
+  }
+
+  function isComparisonQuestionV2(n){
+    return !!parseComparisonQuestionV2(n);
+  }
+
+  function scenarioSnapshotV2(kind, value){
+    const c = buildContext();
+
+    const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
+    const totalDescLegales = c.resultados.descuentosLegales || sum(c.descuentos);
+    const totalDescVarios = c.resultados.descuentosVarios || 0;
+    const currentLiquido = c.resultados.liquido || Math.max(0, totalHaberes - totalDescLegales - totalDescVarios);
+
+    const currentAPV = c.descuentos['APV'] || 0;
+    const currentProd = c.variables['Bono Productividad'] || 0;
+    const currentIUSC = c.descuentos['IUSC'] || 0;
+    const currentTributable = c.resultados.tributable || c.resultados.rentaTributable || c.bases.tributable || c.bases.rentaTributable || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+
+    let apv = currentAPV;
+    let prod = currentProd;
+    let haberes = totalHaberes;
+    let tributable = currentTributable;
+    let iusc = currentIUSC;
+    let descLegales = totalDescLegales;
+
+    if(kind === 'apv'){
+      apv = Math.max(0, value);
+      const deltaAPV = apv - currentAPV;
+
+      if(regimenAPV.toUpperCase().includes('B')){
+        tributable = Math.max(0, currentTributable - deltaAPV);
+        iusc = estimateIUSCScenarioV2(currentIUSC, currentTributable, tributable);
+        descLegales = totalDescLegales + deltaAPV + (iusc - currentIUSC);
+      }else{
+        descLegales = totalDescLegales + deltaAPV;
+      }
+    }
+
+    if(kind === 'prod'){
+      prod = Math.max(0, value);
+      const deltaProd = prod - currentProd;
+      haberes = Math.max(0, totalHaberes + deltaProd);
+      tributable = Math.max(0, currentTributable + deltaProd);
+      iusc = estimateIUSCScenarioV2(currentIUSC, currentTributable, tributable);
+      descLegales = totalDescLegales + (iusc - currentIUSC);
+    }
+
+    const liquido = Math.max(0, haberes - descLegales - totalDescVarios);
+
+    return {
+      haberes,
+      iusc,
+      apv,
+      productividad: prod,
+      tributable,
+      liquido,
+      descLegales,
+      totalDescVarios,
+      regimenAPV,
+      current: {
+        haberes: totalHaberes,
+        iusc: currentIUSC,
+        apv: currentAPV,
+        productividad: currentProd,
+        liquido: currentLiquido,
+        tributable: currentTributable,
+        descLegales: totalDescLegales
+      }
+    };
+  }
+
+  function generateComparisonV2(q){
+    const parsed = parseComparisonQuestionV2(q);
+    if(!parsed){
+      return 'No detecté una comparación clara. Puedes probar: "compara APV 700 mil vs 1 millón" o "compara productividad actual vs 3 millones".';
+    }
+
+    let kind = parsed.kind.includes('apv') ? 'apv' : 'prod';
+    const c = buildContext();
+    const currentValue = kind === 'apv'
+      ? (c.descuentos['APV'] || 0)
+      : (c.variables['Bono Productividad'] || 0);
+
+    let aValue, bValue, titleA, titleB;
+
+    if(parsed.kind.endsWith('two')){
+      aValue = parsed.a;
+      bValue = parsed.b;
+      titleA = kind === 'apv' ? 'APV ' + CLP(aValue) : 'Productividad ' + CLP(aValue);
+      titleB = kind === 'apv' ? 'APV ' + CLP(bValue) : 'Productividad ' + CLP(bValue);
+    }else{
+      aValue = currentValue;
+      bValue = parsed.b;
+      titleA = 'Actual';
+      titleB = kind === 'apv' ? (bValue === 0 ? 'Sin APV' : 'APV ' + CLP(bValue)) : (bValue === 0 ? 'Sin Productividad' : 'Productividad ' + CLP(bValue));
+    }
+
+    const A = scenarioSnapshotV2(kind, aValue);
+    const B = scenarioSnapshotV2(kind, bValue);
+
+    function signedCLP(v){
+      return (v >= 0 ? '+' : '-') + CLP(Math.abs(v));
+    }
+
+    const deltaHaberes = B.haberes - A.haberes;
+    const deltaIUSC = B.iusc - A.iusc;
+    const deltaAPV = B.apv - A.apv;
+    const deltaProd = B.productividad - A.productividad;
+    const deltaLiquido = B.liquido - A.liquido;
+
+    const lines = ['Comparación automática de escenarios', ''];
+    lines.push('Escenario A: ' + titleA);
+    lines.push('Escenario B: ' + titleB);
+    lines.push('');
+
+    lines.push('Resumen comparativo:');
+    lines.push('• Haberes: ' + CLP(A.haberes) + ' → ' + CLP(B.haberes) + ' (' + signedCLP(deltaHaberes) + ')');
+    lines.push('• IUSC: ' + CLP(A.iusc) + ' → ' + CLP(B.iusc) + ' (' + signedCLP(deltaIUSC) + ')');
+    lines.push('• APV: ' + CLP(A.apv) + ' → ' + CLP(B.apv) + ' (' + signedCLP(deltaAPV) + ')');
+    lines.push('• Productividad: ' + CLP(A.productividad) + ' → ' + CLP(B.productividad) + ' (' + signedCLP(deltaProd) + ')');
+    lines.push('• Líquido estimado: ' + CLP(A.liquido) + ' → ' + CLP(B.liquido) + ' (' + signedCLP(deltaLiquido) + ')');
+    lines.push('');
+
+    lines.push('Lectura ejecutiva:');
+
+    if(kind === 'apv'){
+      if(deltaAPV > 0){
+        lines.push('Aumentar APV en ' + CLP(deltaAPV) + ' reduce el líquido estimado en ' + CLP(Math.abs(deltaLiquido)) + ' y reduce el IUSC estimado en ' + CLP(Math.abs(deltaIUSC)) + '.');
+        lines.push('La decisión no es solo líquido mensual: estás trasladando parte del sueldo disponible hacia ahorro previsional, con posible eficiencia tributaria si el régimen es B.');
+      }else if(deltaAPV < 0){
+        lines.push('Reducir APV en ' + CLP(Math.abs(deltaAPV)) + ' aumenta el líquido estimado en ' + CLP(Math.abs(deltaLiquido)) + ', pero también reduce ahorro previsional y puede aumentar el IUSC si el régimen es B.');
+      }else{
+        lines.push('No hay cambio de APV entre ambos escenarios.');
+      }
+    }
+
+    if(kind === 'prod'){
+      if(deltaProd > 0){
+        lines.push('Aumentar Productividad en ' + CLP(deltaProd) + ' sube los haberes y aumenta el líquido estimado en ' + CLP(Math.abs(deltaLiquido)) + ', aunque también sube el IUSC estimado en ' + CLP(Math.abs(deltaIUSC)) + '.');
+      }else if(deltaProd < 0){
+        lines.push('Reducir Productividad en ' + CLP(Math.abs(deltaProd)) + ' baja los haberes y reduce el líquido estimado en ' + CLP(Math.abs(deltaLiquido)) + ', aunque también disminuye el IUSC estimado en ' + CLP(Math.abs(deltaIUSC)) + '.');
+      }else{
+        lines.push('No hay cambio de Productividad entre ambos escenarios.');
+      }
+    }
+
+    lines.push('');
+
+    if(kind === 'apv' && deltaAPV !== 0){
+      const costoLiquido = Math.abs(deltaLiquido);
+      const ahorroTrib = Math.abs(deltaIUSC);
+      lines.push('Indicador útil:');
+      lines.push('• Cambio APV: ' + signedCLP(deltaAPV));
+      lines.push('• Cambio líquido: ' + signedCLP(deltaLiquido));
+      lines.push('• Cambio IUSC estimado: ' + signedCLP(deltaIUSC));
+      if(deltaAPV > 0){
+        lines.push('• Costo líquido aproximado por cada $1 adicional de APV: ' + (deltaAPV ? (costoLiquido / deltaAPV).toFixed(2) : '0') + '.');
+      }
+    }
+
+    lines.push('');
+    lines.push('Criterio: comparación estimativa basada en la simulación actual. El IUSC se aproxima con tasa efectiva observada; para liquidación real debe contrastarse con el cálculo exacto.');
+
+    return lines.join('\n');
+  }
+
+
   function contextualConceptV2(q){
     const n = norm(q || '');
     if(isDebugBasesQuestionV2(n)) return debugBasesV2();
+    if(isComparisonQuestionV2(n)) return generateComparisonV2(q);
     if(isScenarioQuestionV2(n)) return generateScenarioV2(q);
     if(isCausalQuestionV2(n)) return generateCausalExplanationV2();
     if(isAuditQuestionV2(n)) return answerAuditV2();
@@ -8050,6 +8293,11 @@ function explainConcept(q){
       if(t.dataset.aiPrompt==='scenario'){
         addMessage('user','¿Qué pasa si no tuviera APV?');
         setResponse(generateScenarioV2('¿Qué pasa si no tuviera APV?'));
+        captureBaseline();
+      }
+      if(t.dataset.aiPrompt==='compare'){
+        addMessage('user','Compara APV actual vs APV de 1 millón');
+        setResponse(generateComparisonV2('Compara APV actual vs APV de 1 millón'));
         captureBaseline();
       }
       if(t.dataset.aiPrompt==='descuentos'){
@@ -8500,3 +8748,5 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
