@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.1.1',
+  version: 'v2.0.0-fase-3A.1.2',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7108,8 +7108,6 @@ function explainConcept(q){
     const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
     const totalVars = sum(c.variables);
     const totalDescLegales = c.resultados.descuentosLegales || sum(c.descuentos);
-    const imponible = c.resultados.imponible || 0;
-    const tributable = c.resultados.tributable || 0;
     const liquido = c.resultados.liquido || 0;
 
     const apv = c.descuentos['APV'] || 0;
@@ -7118,6 +7116,23 @@ function explainConcept(q){
     const afp = c.descuentos['AFP 10%'] || c.descuentos['Fondo Pens. AFP (10,00%)'] || 0;
     const salud = c.descuentos['Salud 7%'] || 0;
     const productividad = c.variables['Bono Productividad'] || 0;
+
+    // Fase 3A.1.2:
+    // Las bases del auditor se estabilizan con una lectura defensiva.
+    // Evitamos usar valores parciales o inexistentes que puedan provocar alertas falsas.
+    let imponible = Number(c.resultados.imponible || c.bases.imponible || 0);
+    let tributable = Number(c.resultados.tributable || c.bases.tributable || c.resultados.rentaTributable || c.bases.rentaTributable || 0);
+
+    // Si no existe tributable explícito, se estima solo para contexto y no para alertas críticas.
+    let tributableEstimado = false;
+    if(!tributable && imponible){
+      tributable = Math.max(0, imponible - afp - salud - apv);
+      tributableEstimado = true;
+    }
+
+    // Si no existe imponible explícito, no intentamos inventarlo desde haberes totales.
+    // Eso fue lo que generaba diferencias exageradas en algunas simulaciones.
+    const basesConfiables = imponible > 0 && tributable > 0 && !tributableEstimado;
 
     const insights = [];
 
@@ -7157,7 +7172,7 @@ function explainConcept(q){
         add('aviso', 'APV activo', 'APV ingresado por ' + CLP(apv) + ' en régimen ' + regimenAPV + '.', 62);
       }
 
-      if(regimenAPV.toUpperCase().includes('B') && tributable){
+      if(regimenAPV.toUpperCase().includes('B')){
         add('info', 'Efecto tributario APV B', 'El APV régimen B puede reducir la renta tributable usada para calcular el IUSC, sujeto a topes legales.', 70);
       }
     }
@@ -7172,33 +7187,41 @@ function explainConcept(q){
       }
     }
 
-    if(imponible && tributable){
+    // Auditoría de bases estabilizada:
+    // Solo se emiten alertas de diferencia si ambas bases vienen calculadas de forma confiable.
+    if(basesConfiables){
       const diff = imponible - tributable;
       const absDiff = Math.abs(diff);
       const p = imponible ? absDiff / imponible * 100 : 0;
 
-      if(absDiff > 0){
+      if(tributable > imponible){
+        // En algunos casos puede ocurrir por componentes tributables no imponibles.
+        // Por eso se baja de alerta crítica a aviso de revisión, y solo si la diferencia es material.
+        if(p >= 5){
+          add('aviso', 'Tributable mayor que imponible', 'La renta tributable aparece ' + CLP(absDiff) + ' sobre la imponible. Puede explicarse por haberes tributables no imponibles, pero conviene revisar datos.', 72);
+        }
+      }else if(absDiff > 0){
         if(p >= 10){
-          add('alerta', 'Diferencia imponible/tributable', 'Existe una diferencia relevante de ' + CLP(absDiff) + ' entre renta imponible y tributable.', 86);
+          add('aviso', 'Diferencia imponible/tributable', 'Existe una diferencia de ' + CLP(absDiff) + ' entre renta imponible y tributable. Revisa APV y descuentos que modifican la base tributaria.', 74);
         }else{
-          add('info', 'Diferencia de bases', 'Diferencia entre imponible y tributable: ' + CLP(absDiff) + '.', 50);
+          add('info', 'Diferencia de bases', 'Diferencia entre imponible y tributable: ' + CLP(absDiff) + '.', 45);
         }
       }
-
-      if(tributable > imponible){
-        add('alerta', 'Tributable mayor que imponible', 'La renta tributable aparece mayor que la imponible. Conviene revisar datos ingresados y descuentos.', 95);
-      }
+    }else if(imponible || tributable){
+      add('info', 'Bases tributarias parciales', 'Hay información de imponible o tributable, pero no suficiente para emitir una alerta de consistencia entre ambas bases.', 35);
     }
 
-    if(totalHaberes > 0){
-      if(!afp) add('alerta', 'AFP no detectada', 'No se detecta cotización AFP 10%. Revisa si faltan datos o si corresponde por tope/configuración.', 89);
-      if(!salud) add('alerta', 'Salud no detectada', 'No se detecta cotización de salud 7%. Revisa si faltan datos o si corresponde por tope/configuración.', 89);
+    // Consistencia básica de descuentos obligatorios:
+    // Evita falsos positivos cuando la simulación aún está incompleta.
+    if(totalHaberes > 0 && imponible > 0){
+      if(!afp) add('aviso', 'AFP no detectada', 'No se detecta cotización AFP 10%. Revisa si faltan datos o si corresponde por tope/configuración.', 68);
+      if(!salud) add('aviso', 'Salud no detectada', 'No se detecta cotización de salud 7%. Revisa si faltan datos o si corresponde por tope/configuración.', 68);
     }
 
     if(liquido && totalHaberes){
       const pl = liquido / totalHaberes * 100;
       if(pl < 45){
-        add('aviso', 'Líquido reducido', 'El líquido representa ' + pct(pl) + ' de tus haberes. Revisa descuentos legales y APV.', 70);
+        add('aviso', 'Líquido reducido', 'El líquido representa ' + pct(pl) + ' de tus haberes. Revisa descuentos legales, APV e IUSC.', 70);
       }
     }
 
@@ -7206,16 +7229,18 @@ function explainConcept(q){
     return insights.slice(0, 8);
   }
 
+
   function formatInsights(insights){
     if(!insights || !insights.length){
       return 'Auditoría inteligente:\n\nNo detecto hallazgos relevantes con los datos actuales.';
     }
 
     const icon = {alerta:'⚠️', aviso:'🔎', info:'ℹ️'};
+    const label = {alerta:'Atención', aviso:'Revisión', info:'Información'};
     const lines = ['Auditoría inteligente de la liquidación:', ''];
 
     insights.forEach((x, i) => {
-      lines.push((i+1) + '. ' + (icon[x.level] || '•') + ' ' + x.title);
+      lines.push((i+1) + '. ' + (icon[x.level] || '•') + ' ' + (label[x.level] || 'Hallazgo') + ': ' + x.title);
       lines.push('   ' + x.detail);
     });
 
@@ -7223,6 +7248,7 @@ function explainConcept(q){
     lines.push('Criterio: esta auditoría no declara errores por sí sola; prioriza puntos que conviene contrastar con la liquidación real.');
     return lines.join('\n');
   }
+
 
   function answerAuditV2(){
     return formatInsights(generateInsights());
@@ -7894,7 +7920,7 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, Router Auditor Inteligente robusto: activa auditoría con alertas, observaciones, diagnóstico, hallazgos, revisión o preguntas abiertas. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, Estabilización del Auditor: corrige falsos positivos, valida bases imponible/tributable y baja ruido en hallazgos. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
@@ -7909,5 +7935,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
 </body>
 </html>
