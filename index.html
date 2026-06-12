@@ -5537,7 +5537,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.3.1',
+  version: 'v2.0.0-fase-3A.3.2',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7543,7 +7543,8 @@ function explainConcept(q){
     if(topVar && topVar[1] > 0){
       const topVarPct = totalVars ? topVar[1] / totalVars * 100 : 0;
       const topVarHabPct = totalHaberes ? topVar[1] / totalHaberes * 100 : 0;
-      lines.push('   El principal impulsor variable es ' + topVar[0] + ' por ' + CLP(topVar[1]) + ', equivalente a ' + pct(topVarPct) + ' de las variables y ' + pct(topVarHabPct) + ' de los haberes.');
+      lines.push('   El principal impulsor variable es ' + topVar[0] + ' por ' + CLP(topVar[1]) + '.');
+      lines.push('   Representa ' + pct(topVarPct) + ' de las variables y ' + pct(topVarHabPct) + ' de los haberes del mes.');
     }else{
       lines.push('   No hay variables relevantes registradas; la liquidación está explicada principalmente por haberes fijos.');
     }
@@ -7553,9 +7554,12 @@ function explainConcept(q){
     lines.push('2. Efecto tributario');
     if(iusc > 0){
       const iuscDescPct = totalDesc ? iusc / totalDesc * 100 : 0;
-      lines.push('   El IUSC alcanza ' + CLP(iusc) + ', equivalente a ' + pct(iuscDescPct) + ' de los descuentos legales.');
+      const iuscHabPct = totalHaberes ? iusc / totalHaberes * 100 : 0;
+      lines.push('   El IUSC alcanza ' + CLP(iusc) + '.');
+      lines.push('   Representa ' + pct(iuscDescPct) + ' de los descuentos legales y ' + pct(iuscHabPct) + ' de los haberes del mes.');
       if(productividad > 0){
-        lines.push('   La productividad del mes aumenta la renta tributable y normalmente empuja el IUSC al alza.');
+        const prodHabPct = totalHaberes ? productividad / totalHaberes * 100 : 0;
+        lines.push('   La productividad del mes (' + CLP(productividad) + ', ' + pct(prodHabPct) + ' de los haberes) aumenta la renta tributable y normalmente empuja el IUSC al alza.');
       }else if(totalVars > 0){
         lines.push('   Las variables del mes aumentan la renta tributable y pueden explicar parte del impuesto retenido.');
       }else{
@@ -7569,7 +7573,10 @@ function explainConcept(q){
 
     lines.push('3. Efecto APV');
     if(apv > 0){
+      const apvDescPct = totalDesc ? apv / totalDesc * 100 : 0;
+      const apvHabPct = totalHaberes ? apv / totalHaberes * 100 : 0;
       lines.push('   Tienes APV por ' + CLP(apv) + ' en régimen ' + regimenAPV + '.');
+      lines.push('   Representa ' + pct(apvDescPct) + ' de los descuentos legales y ' + pct(apvHabPct) + ' de los haberes del mes.');
       if(regimenAPV.toUpperCase().includes('B')){
         lines.push('   En régimen B, el APV puede reducir la renta tributable usada para calcular el IUSC, pero también reduce el líquido inmediato porque se descuenta del sueldo.');
       }else{
@@ -7583,7 +7590,8 @@ function explainConcept(q){
 
     lines.push('4. Qué explica el líquido final');
     if(liquido > 0){
-      lines.push('   El líquido estimado es ' + CLP(liquido) + '.');
+      const liquidoHabPct = totalHaberes ? liquido / totalHaberes * 100 : 0;
+      lines.push('   El líquido estimado es ' + CLP(liquido) + ', equivalente a ' + pct(liquidoHabPct) + ' de los haberes del mes.');
     }
 
     const drivers = [];
@@ -7604,31 +7612,40 @@ function explainConcept(q){
     const frases = [];
 
     if(topVar && topVar[1] > 0){
+      const topVarHabPct = totalHaberes ? topVar[1] / totalHaberes * 100 : 0;
       frases.push(
         'El principal impulsor de esta liquidación es ' +
         topVar[0] +
         ' por ' +
         CLP(topVar[1]) +
-        '.'
+        ', equivalente a ' +
+        pct(topVarHabPct) +
+        ' de los haberes.'
       );
     }
 
     if(iusc > 0){
+      const iuscDescPct = totalDesc ? iusc / totalDesc * 100 : 0;
       frases.push(
         'Este resultado genera un IUSC de ' +
         CLP(iusc) +
-        ', que constituye el principal descuento legal del mes.'
+        ', que representa ' +
+        pct(iuscDescPct) +
+        ' de los descuentos legales y constituye el principal factor de descuento del mes.'
       );
     }
 
     if(apv > 0){
+      const apvDescPct = totalDesc ? apv / totalDesc * 100 : 0;
       if(regimenAPV.toUpperCase().includes('B')){
         frases.push(
           'Además mantienes un APV de ' +
           CLP(apv) +
           ' en régimen ' +
           regimenAPV +
-          ', que puede reducir la renta tributable, pero también disminuye el líquido disponible del mes.'
+          ', equivalente a ' +
+          pct(apvDescPct) +
+          ' de los descuentos legales, que puede reducir la renta tributable, pero también disminuye el líquido disponible.'
         );
       }else{
         frases.push(
@@ -7636,7 +7653,9 @@ function explainConcept(q){
           CLP(apv) +
           ' en régimen ' +
           regimenAPV +
-          ', con impacto directo sobre el líquido final y tu ahorro previsional.'
+          ', equivalente a ' +
+          pct(apvDescPct) +
+          ' de los descuentos legales, con impacto directo sobre el líquido final y tu ahorro previsional.'
         );
       }
     }
@@ -8276,3 +8295,5 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
