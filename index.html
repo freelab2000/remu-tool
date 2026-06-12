@@ -4911,6 +4911,7 @@ function setIuscRetValue(monto){
       <button class="ai-prompt-btn" type="button" data-ai-prompt="auditor">🧭 Auditar liquidación</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="causal">🧠 ¿Qué explica mi liquidación?</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="scenario">🧪 Simular escenario</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="diagnostic">🩺 Diagnóstico financiero</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="compare">⚖️ Comparar escenarios</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
@@ -4919,6 +4920,7 @@ function setIuscRetValue(monto){
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
 • Audita mi liquidación
+• Diagnóstico financiero automático
 • ¿Qué explica mi liquidación?
 • ¿Qué pasa si no tuviera APV?
 • ¿Qué pasa si mi productividad fuera 2 millones?
@@ -5544,7 +5546,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.4.4',
+  version: 'v2.0.0-fase-3B.0',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8238,9 +8240,204 @@ function explainConcept(q){
   }
 
 
+
+  function isFinancialDiagnosticQuestionV2(n){
+    n = norm(n || '');
+    return (
+      n.includes('diagnostico financiero') ||
+      n.includes('diagnóstico financiero') ||
+      n.includes('diagnostico automatico') ||
+      n.includes('diagnóstico automático') ||
+      n.includes('diagnostico') ||
+      n.includes('diagnóstico') ||
+      n.includes('como ves mi liquidacion') ||
+      n.includes('cómo ves mi liquidación') ||
+      n.includes('que observas') ||
+      n.includes('qué observas') ||
+      n.includes('analiza mi liquidacion') ||
+      n.includes('analiza mi liquidación') ||
+      n.includes('analisis financiero') ||
+      n.includes('análisis financiero') ||
+      n.includes('resumen financiero')
+    );
+  }
+
+  function generateFinancialDiagnosticV2(){
+    const c = buildContext();
+
+    const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const totalLegales = c.resultados.descuentosLegales || sum(c.descuentos);
+    const totalVarios = c.resultados.descuentosVarios || 0;
+    const liquido = c.resultados.liquido || Math.max(0, totalHaberes - totalLegales - totalVarios);
+
+    const iusc = c.descuentos['IUSC'] || 0;
+    const apv = c.descuentos['APV'] || 0;
+    const productividad = c.variables['Bono Productividad'] || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+
+    const pctFijos = totalHaberes ? totalFijos / totalHaberes * 100 : 0;
+    const pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+    const pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
+    const pctLegales = totalHaberes ? totalLegales / totalHaberes * 100 : 0;
+    const pctIUSC = totalLegales ? iusc / totalLegales * 100 : 0;
+    const pctAPVHab = totalHaberes ? apv / totalHaberes * 100 : 0;
+    const pctAPVLeg = totalLegales ? apv / totalLegales * 100 : 0;
+    const pctProdHab = totalHaberes ? productividad / totalHaberes * 100 : 0;
+    const pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
+
+    const topVar = topEntries(c.variables, 1)[0];
+    const topDesc = topEntries(c.descuentos, 1)[0];
+
+    const lines = ['Diagnóstico financiero automático', ''];
+
+    if(!totalHaberes){
+      lines.push('Aún faltan haberes suficientes para generar un diagnóstico financiero útil.');
+      lines.push('Ingresa sueldo base, gratificación, variables y descuentos principales para activar el análisis.');
+      return lines.join('\n');
+    }
+
+    lines.push('Resumen ejecutivo:');
+    lines.push('• Haberes totales: ' + CLP(totalHaberes) + '.');
+    lines.push('• Líquido estimado: ' + CLP(liquido) + ' (' + pct(pctLiquido) + ' de los haberes).');
+    lines.push('• Composición: ' + pct(pctFijos) + ' fija y ' + pct(pctVars) + ' variable.');
+    lines.push('• Descuentos legales: ' + CLP(totalLegales) + ' (' + pct(pctLegales) + ' de los haberes).');
+
+    if(topVar && topVar[1] > 0){
+      lines.push('• Principal variable: ' + topVar[0] + ' por ' + CLP(topVar[1]) + '.');
+    }
+
+    if(topDesc && topDesc[1] > 0){
+      lines.push('• Principal descuento: ' + topDesc[0] + ' por ' + CLP(topDesc[1]) + '.');
+    }
+
+    lines.push('');
+    lines.push('Lectura financiera:');
+
+    if(pctLiquido >= 70){
+      lines.push('🟢 Liquidez: el líquido estimado es alto respecto de los haberes. La liquidación conserva una buena proporción de caja disponible.');
+    }else if(pctLiquido >= 55){
+      lines.push('🟡 Liquidez: el líquido estimado es razonable, pero hay descuentos o carga tributaria relevantes que conviene monitorear.');
+    }else{
+      lines.push('🔴 Liquidez: el líquido estimado queda bajo respecto de los haberes. Conviene revisar descuentos, APV, impuestos y variables del mes.');
+    }
+
+    if(pctVars >= 30){
+      lines.push('🟡 Dependencia variable: las variables representan ' + pct(pctVars) + ' de los haberes. El líquido mensual puede fluctuar de forma importante.');
+    }else if(pctVars >= 10){
+      lines.push('🟢 Variables: las variables representan ' + pct(pctVars) + ' de los haberes. Tienen impacto, pero no dominan completamente la liquidación.');
+    }else{
+      lines.push('🟢 Estabilidad: la liquidación está explicada principalmente por haberes fijos.');
+    }
+
+    if(productividad > 0){
+      lines.push('📊 Productividad: Bono Productividad representa ' + pct(pctProdHab) + ' de los haberes y ' + pct(pctProdVars) + ' de las variables.');
+    }
+
+    if(iusc > 0){
+      if(pctIUSC >= 60){
+        lines.push('🟡 Carga tributaria: el IUSC concentra ' + pct(pctIUSC) + ' de los descuentos legales. Es una de las principales palancas que explican el líquido final.');
+      }else{
+        lines.push('🟢 Carga tributaria: el IUSC representa ' + pct(pctIUSC) + ' de los descuentos legales.');
+      }
+    }
+
+    if(apv > 0){
+      lines.push('💰 APV: tienes APV por ' + CLP(apv) + ' en régimen ' + regimenAPV + ', equivalente a ' + pct(pctAPVHab) + ' de los haberes y ' + pct(pctAPVLeg) + ' de los descuentos legales.');
+      if(regimenAPV.toUpperCase().includes('B')){
+        lines.push('   En régimen B, el APV puede reducir la renta tributable, pero también disminuye el líquido mensual disponible.');
+      }
+    }else{
+      lines.push('ℹ️ APV: no hay APV registrado en esta simulación. Si buscas ahorro previsional o eficiencia tributaria, puede ser una palanca a evaluar.');
+    }
+
+    lines.push('');
+    lines.push('Hallazgos principales:');
+
+    const findings = [];
+
+    if(topVar && topVar[1] > 0 && totalVars > 0 && (topVar[1] / totalVars * 100) >= 70){
+      findings.push('• Alta concentración variable: ' + topVar[0] + ' concentra ' + pct(topVar[1] / totalVars * 100) + ' de las variables.');
+    }
+
+    if(iusc > 0 && pctIUSC >= 60){
+      findings.push('• IUSC dominante: el impuesto explica una parte relevante de los descuentos legales.');
+    }
+
+    if(apv > 0 && pctAPVHab >= 8){
+      findings.push('• APV relevante: el ahorro previsional tiene impacto visible sobre el líquido del mes.');
+    }
+
+    if(pctLiquido < 55){
+      findings.push('• Liquidez presionada: el líquido final queda relativamente bajo frente al total de haberes.');
+    }
+
+    if(productividad > 0 && pctProdHab >= 15){
+      findings.push('• Productividad relevante: el Bono Productividad es una de las principales palancas del resultado mensual.');
+    }
+
+    if(!findings.length){
+      findings.push('• No se detectan alertas fuertes. La liquidación parece balanceada según los datos ingresados.');
+    }
+
+    findings.forEach(x => lines.push(x));
+
+    lines.push('');
+    lines.push('Palancas de decisión:');
+
+    const levers = [];
+
+    if(productividad > 0){
+      levers.push('• Productividad: es la principal palanca de aumento de líquido, aunque también puede elevar el IUSC.');
+    }
+
+    if(apv > 0){
+      levers.push('• APV: es la principal palanca de ahorro previsional; mejora acumulación patrimonial, pero reduce caja mensual.');
+    }else{
+      levers.push('• APV: podrías simular distintos montos para evaluar ahorro previsional versus liquidez mensual.');
+    }
+
+    if(iusc > 0){
+      levers.push('• IUSC: no se modifica directamente, pero responde a renta tributable, variables y APV régimen B.');
+    }
+
+    levers.forEach(x => lines.push(x));
+
+    lines.push('');
+    lines.push('Conclusión:');
+
+    const conclusion = [];
+
+    if(productividad > 0 && apv > 0){
+      conclusion.push('La liquidación está explicada principalmente por la combinación de variables del mes, carga tributaria y APV.');
+    }else if(productividad > 0){
+      conclusion.push('La liquidación está fuertemente influida por variables del mes, especialmente Productividad.');
+    }else if(apv > 0){
+      conclusion.push('La liquidación tiene un componente relevante de ahorro previsional por APV.');
+    }else{
+      conclusion.push('La liquidación depende principalmente de haberes fijos y descuentos legales ordinarios.');
+    }
+
+    if(pctLiquido >= 55){
+      conclusion.push('El nivel de líquido parece razonable frente al total de haberes, aunque conviene monitorear IUSC y variables.');
+    }else{
+      conclusion.push('El nivel de líquido queda presionado; conviene revisar descuentos y simular escenarios alternativos.');
+    }
+
+    lines.push(conclusion.join(' '));
+
+    lines.push('');
+    lines.push('Puedes profundizar con preguntas como: "¿qué me conviene modificar?", "compara APV actual vs 1 millón" o "productividad actual versus cero".');
+
+    return lines.join('\n');
+  }
+
+
   function contextualConceptV2(q){
     const n = norm(q || '');
     if(isDebugBasesQuestionV2(n)) return debugBasesV2();
+    if(isFinancialDiagnosticQuestionV2(n)) return generateFinancialDiagnosticV2();
     if(isComparisonQuestionV2(n)) return generateComparisonV2(q);
     if(isScenarioQuestionV2(n)) return generateScenarioV2(q);
     if(isCausalQuestionV2(n)) return generateCausalExplanationV2();
@@ -8422,6 +8619,11 @@ function explainConcept(q){
       if(t.dataset.aiPrompt==='scenario'){
         addMessage('user','¿Qué pasa si no tuviera APV?');
         setResponse(generateScenarioV2('¿Qué pasa si no tuviera APV?'));
+        captureBaseline();
+      }
+      if(t.dataset.aiPrompt==='diagnostic'){
+        addMessage('user','Diagnóstico financiero automático');
+        setResponse(generateFinancialDiagnosticV2());
         captureBaseline();
       }
       if(t.dataset.aiPrompt==='compare'){
@@ -8885,5 +9087,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
 </body>
 </html>
