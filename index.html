@@ -4923,6 +4923,7 @@ function setIuscRetValue(monto){
 • ¿Qué pasa si no tuviera APV?
 • ¿Qué pasa si mi productividad fuera 2 millones?
 • Compara APV actual vs APV de 1 millón
+• ¿Me conviene APV de 700 mil o 1 millón?
 • Compara productividad actual vs 3 millones
 • Muéstrame alertas inteligentes
 • ¿Qué cambió respecto a la simulación anterior?</span></div>
@@ -5543,7 +5544,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.4.2',
+  version: 'v2.0.0-fase-3A.5',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8013,6 +8014,69 @@ function explainConcept(q){
     };
   }
 
+
+  function addRecommendationEngineV2(lines, kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC){
+    function absCLP(v){ return CLP(Math.abs(v)); }
+
+    lines.push('');
+    lines.push('Recomendación según objetivo:');
+
+    if(kind === 'apv'){
+      const apvA = A.apv || 0;
+      const apvB = B.apv || 0;
+      const higherTitle = apvB >= apvA ? titleB : titleA;
+      const lowerTitle = apvB >= apvA ? titleA : titleB;
+      const apvDiff = Math.abs(apvB - apvA);
+      const liqDiff = Math.abs(deltaLiquido);
+      const iuscDiff = Math.abs(deltaIUSC);
+      const costoPorPeso = apvDiff > 0 ? (liqDiff / apvDiff) : 0;
+
+      if(apvDiff === 0){
+        lines.push('• Ambos escenarios tienen el mismo APV, por lo que la decisión no cambia por ahorro previsional.');
+        return;
+      }
+
+      lines.push('• Si tu objetivo es maximizar líquido mensual, ' + lowerTitle + ' es más favorable porque libera aproximadamente ' + absCLP(liqDiff) + ' frente al escenario de mayor APV.');
+      lines.push('• Si tu objetivo es aumentar ahorro previsional y eficiencia tributaria, ' + higherTitle + ' es más favorable porque destina ' + absCLP(apvDiff) + ' adicionales al APV, con una reducción estimada de IUSC de ' + absCLP(iuscDiff) + '.');
+      lines.push('• Lectura costo/beneficio: por cada $1 adicional destinado a APV, el líquido baja aproximadamente $' + costoPorPeso.toFixed(2) + '.');
+
+      if(costoPorPeso > 0 && costoPorPeso < 1){
+        lines.push('• Conclusión: el escenario de mayor APV tiene una relación ahorro/costo atractiva si tu prioridad es acumulación patrimonial de largo plazo. Si necesitas caja mensual, el escenario de menor APV es más conveniente.');
+      }else{
+        lines.push('• Conclusión: el APV mayor aumenta ahorro, pero su costo líquido es alto. Conviene priorizarlo solo si el foco es previsional/largo plazo.');
+      }
+
+      return;
+    }
+
+    if(kind === 'prod'){
+      const prodA = A.productividad || 0;
+      const prodB = B.productividad || 0;
+      const higherTitle = prodB >= prodA ? titleB : titleA;
+      const lowerTitle = prodB >= prodA ? titleA : titleB;
+      const prodDiff = Math.abs(prodB - prodA);
+      const liqDiff = Math.abs(deltaLiquido);
+      const iuscDiff = Math.abs(deltaIUSC);
+      const capturaLiquida = prodDiff > 0 ? (liqDiff / prodDiff) : 0;
+
+      if(prodDiff === 0){
+        lines.push('• Ambos escenarios tienen la misma productividad, por lo que la decisión no cambia por variable operacional.');
+        return;
+      }
+
+      lines.push('• Si tu objetivo es maximizar líquido mensual, ' + higherTitle + ' es más favorable porque aumenta el líquido estimado en aproximadamente ' + absCLP(liqDiff) + '.');
+      lines.push('• Si tu objetivo es reducir carga tributaria mensual, ' + lowerTitle + ' genera menor IUSC estimado, con una baja aproximada de ' + absCLP(iuscDiff) + '.');
+      lines.push('• Lectura neta: por cada $1 adicional de productividad, el líquido captura aproximadamente $' + capturaLiquida.toFixed(2) + ' después del efecto tributario estimado.');
+
+      lines.push('• Conclusión: una productividad mayor sigue siendo favorable para líquido, aunque parte del aumento se pierde por mayor IUSC. La decisión no es si conviene recibir productividad, sino entender cuánto de ella llega efectivamente al líquido.');
+
+      return;
+    }
+
+    lines.push('• No hay suficientes datos para emitir una recomendación comparativa.');
+  }
+
+
   function generateComparisonV2(q){
     const parsed = parseComparisonQuestionV2(q);
     if(!parsed){
@@ -8101,6 +8165,8 @@ function explainConcept(q){
         lines.push('• Costo líquido aproximado por cada $1 adicional de APV: ' + (deltaAPV ? (costoLiquido / deltaAPV).toFixed(2) : '0') + '.');
       }
     }
+
+    addRecommendationEngineV2(lines, kind, titleA, titleB, A, B, deltaAPV, deltaProd, deltaLiquido, deltaIUSC);
 
     lines.push('');
     lines.push('Criterio: comparación estimativa basada en la simulación actual. El IUSC se aproxima con tasa efectiva observada; para liquidación real debe contrastarse con el cálculo exacto.');
@@ -8750,3 +8816,5 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
