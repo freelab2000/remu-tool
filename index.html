@@ -4909,6 +4909,7 @@ function setIuscRetValue(monto){
       <button class="ai-prompt-btn" type="button" data-ai-prompt="comparar">🔁 Comparar simulaciones</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="alertas">⚠️ Alertas inteligentes</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="auditor">🧭 Auditar liquidación</button>
+      <button class="ai-prompt-btn" type="button" data-ai-prompt="causal">🧠 ¿Qué explica mi liquidación?</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="descuentos">📊 Analiza mis descuentos</button>
       <button class="ai-prompt-btn" type="button" data-ai-prompt="concepto">📖 Explícame un concepto</button>
     </div>
@@ -4916,6 +4917,7 @@ function setIuscRetValue(monto){
       <div id="aiResponseBox" class="ai-response ai-history"><span class="ai-response-empty">Puedes comenzar con una de estas consultas:
 
 • Audita mi liquidación
+• ¿Qué explica mi liquidación?
 • Muéstrame alertas inteligentes
 • ¿Qué cambió respecto a la simulación anterior?</span></div>
       <div class="ai-chat-toolbar"><button type="button" id="aiClearChatBtn" class="ai-clear-btn">Limpiar chat</button></div>
@@ -5535,7 +5537,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.2',
+  version: 'v2.0.0-fase-3A.3',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7468,9 +7470,156 @@ function explainConcept(q){
   }
 
 
+
+  function isCausalQuestionV2(n){
+    n = norm(n || '');
+    const triggers = [
+      'que explica',
+      'qué explica',
+      'explica esta liquidacion',
+      'explica esta liquidación',
+      'explicacion causal',
+      'explicación causal',
+      'por que se produce',
+      'por qué se produce',
+      'por que sale',
+      'por qué sale',
+      'por que me salio',
+      'por qué me salió',
+      'por que mi liquidacion',
+      'por qué mi liquidación',
+      'que impulsa',
+      'qué impulsa',
+      'causa principal',
+      'causas principales',
+      'que determina',
+      'qué determina',
+      'motor de la liquidacion',
+      'motor de la liquidación'
+    ];
+    if(triggers.some(t => n.includes(norm(t)))) return true;
+
+    // Preguntas de "por qué" orientadas al resultado general.
+    if(
+      (n.includes('por que') || n.includes('por qué')) &&
+      (n.includes('liquidacion') || n.includes('liquidación') || n.includes('sueldo') || n.includes('liquido') || n.includes('líquido'))
+    ){
+      return true;
+    }
+
+    return false;
+  }
+
+  function generateCausalExplanationV2(){
+    const c = buildContext();
+
+    const totalHaberes = c.resultados.totalHaberes || (sum(c.ingresosFijos) + sum(c.variables));
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const totalDesc = c.resultados.descuentosLegales || sum(c.descuentos);
+    const liquido = c.resultados.liquido || 0;
+
+    const topVar = topEntries(c.variables, 1)[0];
+    const topDesc = topEntries(c.descuentos, 1)[0];
+
+    const productividad = c.variables['Bono Productividad'] || 0;
+    const apv = c.descuentos['APV'] || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+    const iusc = c.descuentos['IUSC'] || 0;
+
+    const lines = ['Explicación causal de la liquidación', ''];
+
+    if(!totalHaberes){
+      lines.push('Aún faltan haberes suficientes para explicar causalmente la liquidación.');
+      return lines.join('\n');
+    }
+
+    const varPct = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+    const fixedPct = totalHaberes ? totalFijos / totalHaberes * 100 : 0;
+
+    lines.push('1. Estructura de ingresos');
+    lines.push('   Tus haberes totales son ' + CLP(totalHaberes) + '. La composición es ' + pct(fixedPct) + ' fija y ' + pct(varPct) + ' variable.');
+
+    if(topVar && topVar[1] > 0){
+      const topVarPct = totalVars ? topVar[1] / totalVars * 100 : 0;
+      const topVarHabPct = totalHaberes ? topVar[1] / totalHaberes * 100 : 0;
+      lines.push('   El principal impulsor variable es ' + topVar[0] + ' por ' + CLP(topVar[1]) + ', equivalente a ' + pct(topVarPct) + ' de las variables y ' + pct(topVarHabPct) + ' de los haberes.');
+    }else{
+      lines.push('   No hay variables relevantes registradas; la liquidación está explicada principalmente por haberes fijos.');
+    }
+
+    lines.push('');
+
+    lines.push('2. Efecto tributario');
+    if(iusc > 0){
+      const iuscDescPct = totalDesc ? iusc / totalDesc * 100 : 0;
+      lines.push('   El IUSC alcanza ' + CLP(iusc) + ', equivalente a ' + pct(iuscDescPct) + ' de los descuentos legales.');
+      if(productividad > 0){
+        lines.push('   La productividad del mes aumenta la renta tributable y normalmente empuja el IUSC al alza.');
+      }else if(totalVars > 0){
+        lines.push('   Las variables del mes aumentan la renta tributable y pueden explicar parte del impuesto retenido.');
+      }else{
+        lines.push('   El impuesto se explica principalmente por la renta tributable proveniente de los haberes ingresados.');
+      }
+    }else{
+      lines.push('   No se detecta IUSC calculado en esta simulación.');
+    }
+
+    lines.push('');
+
+    lines.push('3. Efecto APV');
+    if(apv > 0){
+      lines.push('   Tienes APV por ' + CLP(apv) + ' en régimen ' + regimenAPV + '.');
+      if(regimenAPV.toUpperCase().includes('B')){
+        lines.push('   En régimen B, el APV puede reducir la renta tributable usada para calcular el IUSC, pero también reduce el líquido inmediato porque se descuenta del sueldo.');
+      }else{
+        lines.push('   En régimen A, el APV apunta principalmente al beneficio/bonificación previsional, no a rebajar directamente la base tributaria mensual.');
+      }
+    }else{
+      lines.push('   No hay APV registrado; por lo tanto, el líquido no está reducido por ahorro previsional voluntario.');
+    }
+
+    lines.push('');
+
+    lines.push('4. Qué explica el líquido final');
+    if(liquido > 0){
+      lines.push('   El líquido estimado es ' + CLP(liquido) + '.');
+    }
+
+    const drivers = [];
+    if(topVar && topVar[1] > 0) drivers.push(topVar[0]);
+    if(iusc > 0) drivers.push('IUSC');
+    if(apv > 0) drivers.push('APV');
+    if(topDesc && topDesc[1] > 0 && topDesc[0] !== 'IUSC' && topDesc[0] !== 'APV') drivers.push(topDesc[0]);
+
+    if(drivers.length){
+      lines.push('   En esta simulación, los factores que más explican el resultado son: ' + drivers.join(', ') + '.');
+    }else{
+      lines.push('   El resultado se explica por la combinación de haberes fijos y descuentos legales ingresados.');
+    }
+
+    lines.push('');
+    lines.push('Conclusión:');
+    if(iusc > 0 && topVar && topVar[1] > 0 && apv > 0){
+      lines.push('La liquidación está explicada principalmente por la combinación de variable relevante, carga tributaria e impacto del APV.');
+    }else if(iusc > 0 && topVar && topVar[1] > 0){
+      lines.push('La liquidación está explicada principalmente por la variable del mes y su efecto sobre el IUSC.');
+    }else if(iusc > 0 && apv > 0){
+      lines.push('La liquidación está explicada principalmente por IUSC y APV.');
+    }else if(topVar && topVar[1] > 0){
+      lines.push('La liquidación está explicada principalmente por la variable registrada del mes.');
+    }else{
+      lines.push('La liquidación está explicada principalmente por haberes fijos y descuentos legales.');
+    }
+
+    return lines.join('\n');
+  }
+
+
   function contextualConceptV2(q){
     const n = norm(q || '');
     if(isDebugBasesQuestionV2(n)) return debugBasesV2();
+    if(isCausalQuestionV2(n)) return generateCausalExplanationV2();
     if(isAuditQuestionV2(n)) return answerAuditV2();
 
     const personal = wantsPersonalContextV2(n);
@@ -7640,6 +7789,11 @@ function explainConcept(q){
       if(t.dataset.aiPrompt==='auditor'){
         addMessage('user','Auditar liquidación');
         setResponse(auditarLiquidacion());
+      }
+      if(t.dataset.aiPrompt==='causal'){
+        addMessage('user','¿Qué explica mi liquidación?');
+        setResponse(generateCausalExplanationV2());
+        captureBaseline();
       }
       if(t.dataset.aiPrompt==='descuentos'){
         addMessage('user','Analiza mis descuentos');
@@ -8081,3 +8235,5 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
