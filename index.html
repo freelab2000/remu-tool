@@ -5535,7 +5535,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A',
+  version: 'v2.0.0-fase-3A.1.1',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7229,14 +7229,77 @@ function explainConcept(q){
   }
 
   function isAuditQuestionV2(n){
-    return (
-      n.includes('auditar') || n.includes('auditoria') || n.includes('auditoría') ||
-      n.includes('alerta') || n.includes('alertas') ||
-      n.includes('observas') || n.includes('revisar') ||
-      n.includes('que ves') || n.includes('qué ves') ||
-      n.includes('hallazgo') || n.includes('hallazgos') ||
-      n.includes('analisis automatico') || n.includes('análisis automático')
-    );
+    n = norm(n || '');
+
+    const auditTriggers = [
+      'auditar',
+      'auditoria',
+      'auditoría',
+      'auditame',
+      'audítame',
+      'alerta',
+      'alertas',
+      'alertas inteligentes',
+      'observa',
+      'observas',
+      'observacion',
+      'observación',
+      'observaciones',
+      'que observas',
+      'qué observas',
+      'que ves',
+      'qué ves',
+      'que detectas',
+      'qué detectas',
+      'detectas algo',
+      'hallazgo',
+      'hallazgos',
+      'diagnostico',
+      'diagnóstico',
+      'analiza mi liquidacion',
+      'analiza mi liquidación',
+      'analizar liquidacion',
+      'analizar liquidación',
+      'revisa mi liquidacion',
+      'revisa mi liquidación',
+      'revisar liquidacion',
+      'revisar liquidación',
+      'revision liquidacion',
+      'revisión liquidación',
+      'resumen ejecutivo',
+      'revision general',
+      'revisión general',
+      'chequeo',
+      'chequeo inteligente',
+      'control',
+      'control inteligente'
+    ];
+
+    if(auditTriggers.some(t => n.includes(norm(t)))) return true;
+
+    const auditRoots = [
+      'observ',
+      'alert',
+      'audit',
+      'hallazg',
+      'diagnost',
+      'revis',
+      'detect',
+      'cheque',
+      'control'
+    ];
+
+    if(auditRoots.some(r => n.includes(r))) return true;
+
+    if(
+      (n.includes('que') || n.includes('qué')) &&
+      (n.includes('liquidacion') || n.includes('liquidación')) &&
+      (n.includes('mal') || n.includes('raro') || n.includes('extraño') || n.includes('importante') || n.includes('relevante'))
+    ){
+      return true;
+    }
+
+    return false;
   }
 
 
@@ -7831,7 +7894,7 @@ function explainConcept(q){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A, Auditor Inteligente inicial: genera hallazgos automáticos sobre APV, variables, IUSC, bases y consistencia. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, Router Auditor Inteligente robusto: activa auditoría con alertas, observaciones, diagnóstico, hallazgos, revisión o preguntas abiertas. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
@@ -7844,5 +7907,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
 </body>
 </html>
