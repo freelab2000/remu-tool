@@ -5537,7 +5537,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3A.3',
+  version: 'v2.0.0-fase-3A.3.1',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -7600,17 +7600,54 @@ function explainConcept(q){
 
     lines.push('');
     lines.push('Conclusión:');
-    if(iusc > 0 && topVar && topVar[1] > 0 && apv > 0){
-      lines.push('La liquidación está explicada principalmente por la combinación de variable relevante, carga tributaria e impacto del APV.');
-    }else if(iusc > 0 && topVar && topVar[1] > 0){
-      lines.push('La liquidación está explicada principalmente por la variable del mes y su efecto sobre el IUSC.');
-    }else if(iusc > 0 && apv > 0){
-      lines.push('La liquidación está explicada principalmente por IUSC y APV.');
-    }else if(topVar && topVar[1] > 0){
-      lines.push('La liquidación está explicada principalmente por la variable registrada del mes.');
-    }else{
-      lines.push('La liquidación está explicada principalmente por haberes fijos y descuentos legales.');
+
+    const frases = [];
+
+    if(topVar && topVar[1] > 0){
+      frases.push(
+        'El principal impulsor de esta liquidación es ' +
+        topVar[0] +
+        ' por ' +
+        CLP(topVar[1]) +
+        '.'
+      );
     }
+
+    if(iusc > 0){
+      frases.push(
+        'Este resultado genera un IUSC de ' +
+        CLP(iusc) +
+        ', que constituye el principal descuento legal del mes.'
+      );
+    }
+
+    if(apv > 0){
+      if(regimenAPV.toUpperCase().includes('B')){
+        frases.push(
+          'Además mantienes un APV de ' +
+          CLP(apv) +
+          ' en régimen ' +
+          regimenAPV +
+          ', que puede reducir la renta tributable, pero también disminuye el líquido disponible del mes.'
+        );
+      }else{
+        frases.push(
+          'Además mantienes un APV de ' +
+          CLP(apv) +
+          ' en régimen ' +
+          regimenAPV +
+          ', con impacto directo sobre el líquido final y tu ahorro previsional.'
+        );
+      }
+    }
+
+    if(!frases.length){
+      frases.push(
+        'La liquidación se explica principalmente por haberes fijos y descuentos legales.'
+      );
+    }
+
+    lines.push(frases.join(' '));
 
     return lines.join('\n');
   }
@@ -8237,3 +8274,5 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
