@@ -4921,6 +4921,7 @@ function setIuscRetValue(monto){
 
 • Audita mi liquidación
 • Diagnóstico financiero automático
+• ¿Cómo ves mi liquidación?
 • ¿Qué explica mi liquidación?
 • ¿Qué pasa si no tuviera APV?
 • ¿Qué pasa si mi productividad fuera 2 millones?
@@ -5546,7 +5547,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.2.1',
+  version: 'v2.0.0-fase-3B.3',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8264,6 +8265,95 @@ function explainConcept(q){
 
 
 
+
+  function buildExecutiveNarrativeV2(data){
+    const {
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes,
+      liquido
+    } = data;
+
+    let orientation = 'equilibrio';
+    if(apv <= 0 && pctLiquido >= 70){
+      orientation = 'liquidez';
+    }else if(pctAPVHab >= 8){
+      orientation = 'patrimonio';
+    }else if(pctLiquido < 55){
+      orientation = 'liquidez presionada';
+    }
+
+    let stability = 'estable';
+    if(pctVars >= 35){
+      stability = 'dependiente de variables';
+    }else if(pctVars >= 15){
+      stability = 'moderadamente variable';
+    }
+
+    const lines = [];
+    lines.push('🧠 Lectura ejecutiva IA');
+    lines.push('');
+
+    if(orientation === 'liquidez'){
+      lines.push('Tu liquidación presenta un perfil orientado a liquidez. La estructura actual prioriza caja mensual disponible por sobre ahorro previsional voluntario.');
+    }else if(orientation === 'patrimonio'){
+      lines.push('Tu liquidación muestra una orientación patrimonial. Una parte relevante de los ingresos se está destinando a APV, privilegiando acumulación de largo plazo y posible eficiencia tributaria por sobre liquidez inmediata.');
+    }else if(orientation === 'liquidez presionada'){
+      lines.push('Tu liquidación muestra presión de liquidez. El líquido disponible queda ajustado frente al total de haberes, por lo que conviene revisar qué descuentos o aportes están reduciendo la caja mensual.');
+    }else{
+      lines.push('Tu liquidación mantiene un equilibrio razonable entre liquidez mensual, carga tributaria y construcción patrimonial.');
+    }
+
+    if(stability === 'estable'){
+      lines.push('La composición de ingresos es mayoritariamente estable: las variables tienen impacto, pero no dominan completamente el resultado mensual.');
+    }else if(stability === 'moderadamente variable'){
+      lines.push('Las remuneraciones variables tienen influencia relevante. No dominan completamente la liquidación, pero sí pueden mover el líquido de forma visible mes a mes.');
+    }else{
+      lines.push('Existe una dependencia importante de ingresos variables. Cambios operacionales, productividad o pagos variables pueden modificar significativamente el líquido mensual.');
+    }
+
+    if(productividad > 0){
+      if(pctProdVars >= 70){
+        lines.push('El principal punto de atención es la productividad: concentra gran parte de las variables y funciona como una palanca directa del líquido, aunque también puede elevar el IUSC.');
+      }else{
+        lines.push('La productividad aporta al resultado mensual y debe monitorearse como palanca de ingreso disponible, especialmente por su efecto sobre renta tributable e IUSC.');
+      }
+    }
+
+    if(apv <= 0){
+      lines.push('No se observa APV registrado. Esto favorece liquidez inmediata, pero deja espacio para evaluar ahorro previsional voluntario si el objetivo es acumulación patrimonial.');
+    }else if(pctAPVHab < 3){
+      lines.push('El APV actual tiene peso bajo. Es una señal de alta preferencia por liquidez mensual, con margen para simular aportes mayores si buscas fortalecer ahorro previsional.');
+    }else if(pctAPVHab >= 8){
+      lines.push('El APV tiene peso relevante. Esta decisión puede ser eficiente para patrimonio de largo plazo, siempre que el menor líquido mensual sea compatible con tu caja personal.');
+    }else{
+      lines.push('El APV tiene presencia moderada y contribuye a un equilibrio entre ahorro previsional y liquidez mensual.');
+    }
+
+    if(iusc > 0 && pctIUSCHab >= 15){
+      lines.push('La carga tributaria es un factor relevante: el IUSC representa una proporción importante de los haberes, por lo que cambios en variables o APV pueden impactar el líquido.');
+    }
+
+    if(orientation === 'liquidez'){
+      lines.push('En síntesis: la liquidación se ve sólida para objetivos de caja mensual. El siguiente punto estratégico sería evaluar si parte de esa liquidez puede transformarse en ahorro previsional sin afectar tu flexibilidad.');
+    }else if(orientation === 'patrimonio'){
+      lines.push('En síntesis: la liquidación está orientada a acumulación patrimonial. El foco debe estar en validar que el sacrificio de liquidez sea sostenible mes a mes.');
+    }else if(orientation === 'liquidez presionada'){
+      lines.push('En síntesis: antes de aumentar ahorro o descuentos voluntarios, conviene revisar escenarios que recuperen caja mensual y reduzcan presión sobre el líquido.');
+    }else{
+      lines.push('En síntesis: la estructura actual luce balanceada. La gestión fina está en monitorear productividad, APV e IUSC para evitar desbalances mensuales.');
+    }
+
+    return lines.join('\n');
+  }
+
+
   function buildFinancialArchetypeV2(data){
     const {
       pctVars,
@@ -8554,6 +8644,20 @@ function explainConcept(q){
       return lines.join('\n');
     }
 
+    lines.push(buildExecutiveNarrativeV2({
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes,
+      liquido
+    }));
+
+    lines.push('');
     lines.push('Resumen ejecutivo:');
     lines.push('• Haberes totales: ' + CLP(totalHaberes) + '.');
     lines.push('• Líquido estimado: ' + CLP(liquido) + ' (' + pct(pctLiquido) + ' de los haberes).');
@@ -9386,5 +9490,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
 
 <!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
 </body>
 </html>
