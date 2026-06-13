@@ -5546,7 +5546,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.0',
+  version: 'v2.0.0-fase-3B.1',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8262,6 +8262,90 @@ function explainConcept(q){
     );
   }
 
+
+  function buildLiquidationProfileV2(data){
+    const {
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      productividad,
+      totalHaberes,
+      apv
+    } = data;
+
+    function classifyIncomeStability(p){
+      if(p < 10) return {label:'Muy estable', icon:'🟢', detail:'La liquidación depende principalmente de haberes fijos.'};
+      if(p < 25) return {label:'Estable con componente variable', icon:'🟢', detail:'Las variables influyen, pero no dominan el resultado mensual.'};
+      if(p < 40) return {label:'Mixta', icon:'🟡', detail:'Existe dependencia relevante de variables del mes.'};
+      if(p < 60) return {label:'Dependiente de variables', icon:'🟠', detail:'Una parte importante del líquido depende de componentes no fijos.'};
+      return {label:'Altamente variable', icon:'🔴', detail:'La liquidación depende fuertemente de variables mensuales.'};
+    }
+
+    function classifyAPV(p){
+      if(p <= 0) return {label:'Sin APV registrado', icon:'⚪', detail:'No se observa ahorro previsional voluntario en esta simulación.'};
+      if(p < 3) return {label:'Bajo', icon:'🟡', detail:'El APV tiene impacto limitado sobre ahorro previsional y líquido.'};
+      if(p < 8) return {label:'Moderado', icon:'🟢', detail:'El APV tiene presencia relevante sin dominar la liquidación.'};
+      if(p < 15) return {label:'Alto', icon:'🟠', detail:'El APV tiene impacto importante en caja mensual y acumulación previsional.'};
+      return {label:'Muy alto', icon:'🔴', detail:'El APV consume una proporción significativa de los haberes del mes.'};
+    }
+
+    function classifyTax(p){
+      if(p <= 0) return {label:'Sin IUSC relevante', icon:'⚪', detail:'No se observa impuesto único relevante en esta simulación.'};
+      if(p < 8) return {label:'Baja', icon:'🟢', detail:'El IUSC tiene peso bajo respecto de los haberes.'};
+      if(p < 18) return {label:'Moderada', icon:'🟡', detail:'El IUSC tiene peso visible y debe monitorearse.'};
+      if(p < 28) return {label:'Alta', icon:'🟠', detail:'El IUSC es una carga relevante sobre el resultado líquido.'};
+      return {label:'Muy alta', icon:'🔴', detail:'El IUSC absorbe una proporción muy significativa de los haberes.'};
+    }
+
+    function classifyLiquidity(p){
+      if(p >= 70) return {label:'Alta', icon:'🟢', detail:'La liquidación conserva buena proporción de caja disponible.'};
+      if(p >= 55) return {label:'Razonable', icon:'🟡', detail:'La caja disponible es adecuada, pero conviene monitorear descuentos.'};
+      if(p >= 40) return {label:'Presionada', icon:'🟠', detail:'El líquido queda ajustado respecto de los haberes.'};
+      return {label:'Crítica', icon:'🔴', detail:'La caja disponible es baja frente al total de haberes.'};
+    }
+
+    const stability = classifyIncomeStability(pctVars);
+    const apvProfile = classifyAPV(pctAPVHab);
+    const taxProfile = classifyTax(pctIUSCHab);
+    const liquidityProfile = classifyLiquidity(pctLiquido);
+
+    let general = '';
+    if(pctVars < 25 && pctAPVHab >= 3 && pctAPVHab < 8 && pctIUSCHab < 18){
+      general = 'Perfil general: liquidación estable, ahorro previsional moderado y carga tributaria controlada.';
+    }else if(pctVars >= 40 && pctAPVHab < 3){
+      general = 'Perfil general: alta dependencia de variables y bajo ahorro previsional. Conviene revisar estrategia de ahorro automático.';
+    }else if(pctAPVHab >= 8 && pctLiquido >= 55){
+      general = 'Perfil general: orientación patrimonial. El APV tiene peso importante, pero el líquido aún se mantiene razonable.';
+    }else if(pctLiquido < 55){
+      general = 'Perfil general: liquidez presionada. Conviene revisar descuentos, APV y escenarios alternativos.';
+    }else if(pctVars >= 25){
+      general = 'Perfil general: liquidación mixta, con variables relevantes y necesidad de monitorear volatilidad mensual.';
+    }else{
+      general = 'Perfil general: liquidación balanceada según los datos ingresados.';
+    }
+
+    const lines = [];
+    lines.push('Perfil de la liquidación:');
+    lines.push('• Estabilidad de ingresos: ' + stability.icon + ' ' + stability.label + '. ' + stability.detail);
+    lines.push('• Ahorro previsional APV: ' + apvProfile.icon + ' ' + apvProfile.label + '. ' + apvProfile.detail);
+    lines.push('• Carga tributaria IUSC: ' + taxProfile.icon + ' ' + taxProfile.label + '. ' + taxProfile.detail);
+    lines.push('• Liquidez mensual: ' + liquidityProfile.icon + ' ' + liquidityProfile.label + '. ' + liquidityProfile.detail);
+    lines.push('');
+    lines.push(general);
+
+    if(productividad > 0 && totalHaberes > 0){
+      lines.push('Nota: la productividad debe evaluarse como variable no garantizada; si baja o desaparece, puede modificar significativamente el líquido mensual.');
+    }
+
+    if(apv > 0){
+      lines.push('Nota APV: el aporte previsional debe evaluarse contra tu necesidad de caja mensual y objetivo patrimonial de largo plazo.');
+    }
+
+    return lines.join('\n');
+  }
+
+
   function generateFinancialDiagnosticV2(){
     const c = buildContext();
 
@@ -8282,6 +8366,7 @@ function explainConcept(q){
     const pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
     const pctLegales = totalHaberes ? totalLegales / totalHaberes * 100 : 0;
     const pctIUSC = totalLegales ? iusc / totalLegales * 100 : 0;
+    const pctIUSCHab = totalHaberes ? iusc / totalHaberes * 100 : 0;
     const pctAPVHab = totalHaberes ? apv / totalHaberes * 100 : 0;
     const pctAPVLeg = totalLegales ? apv / totalLegales * 100 : 0;
     const pctProdHab = totalHaberes ? productividad / totalHaberes * 100 : 0;
@@ -8311,6 +8396,17 @@ function explainConcept(q){
     if(topDesc && topDesc[1] > 0){
       lines.push('• Principal descuento: ' + topDesc[0] + ' por ' + CLP(topDesc[1]) + '.');
     }
+
+    lines.push('');
+    lines.push(buildLiquidationProfileV2({
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      productividad,
+      totalHaberes,
+      apv
+    }));
 
     lines.push('');
     lines.push('Lectura financiera:');
@@ -9089,5 +9185,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
 </body>
 </html>
