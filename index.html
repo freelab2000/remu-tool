@@ -5546,7 +5546,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.2',
+  version: 'v2.0.0-fase-3B.2.1',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8541,7 +8541,6 @@ function explainConcept(q){
     const pctAPVHab = totalHaberes ? apv / totalHaberes * 100 : 0;
     const pctAPVLeg = totalLegales ? apv / totalLegales * 100 : 0;
     const pctProdHab = totalHaberes ? productividad / totalHaberes * 100 : 0;
-    const pctProdHab = totalHaberes ? productividad / totalHaberes * 100 : 0;
     const pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
 
     const topVar = topEntries(c.variables, 1)[0];
@@ -9385,5 +9384,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
+
+<!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
 </body>
 </html>
