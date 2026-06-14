@@ -5547,7 +5547,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.5.1',
+  version: 'v2.0.0-fase-3B.6',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8268,6 +8268,112 @@ function explainConcept(q){
 
 
 
+
+  function buildMonthlyPriorityV2(data){
+    var pctVars = data.pctVars || 0;
+    var pctAPVHab = data.pctAPVHab || 0;
+    var pctIUSCHab = data.pctIUSCHab || 0;
+    var pctLiquido = data.pctLiquido || 0;
+    var pctProdVars = data.pctProdVars || 0;
+    var apv = data.apv || 0;
+    var productividad = data.productividad || 0;
+    var iusc = data.iusc || 0;
+
+    var priorities = [];
+    var avoid = [];
+
+    if(pctLiquido < 55){
+      priorities.push({
+        title: 'Recuperar liquidez mensual',
+        text: 'El líquido está ajustado frente a los haberes. Antes de aumentar APV u otros descuentos voluntarios, conviene revisar escenarios que liberen caja.'
+      });
+    }
+
+    if(apv <= 0 || pctAPVHab < 3){
+      priorities.push({
+        title: 'Evaluar APV gradual',
+        text: 'El ahorro previsional voluntario es bajo o inexistente. Simular APV de 300 mil, 500 mil o 700 mil permite medir si existe espacio para acumular patrimonio sin afectar demasiado la liquidez.'
+      });
+    }else if(pctAPVHab >= 8 && pctLiquido < 65){
+      priorities.push({
+        title: 'Validar sostenibilidad del APV',
+        text: 'El APV tiene peso relevante y puede ser positivo para patrimonio, pero conviene confirmar que el menor líquido mensual sea tolerable para tu caja.'
+      });
+    }else if(pctAPVHab >= 3){
+      priorities.push({
+        title: 'Mantener estrategia APV actual',
+        text: 'El APV tiene presencia razonable. No parece necesario modificarlo sin antes comparar escenarios o definir un objetivo claro de liquidez versus ahorro.'
+      });
+    }
+
+    if(productividad > 0 && pctProdVars >= 70){
+      priorities.push({
+        title: 'Planificar con productividad conservadora',
+        text: 'La productividad concentra gran parte de las variables y depende de programación y horas de vuelo asignadas. Para presupuesto mensual, conviene usar un escenario conservador o incluso productividad cero.'
+      });
+    }
+
+    if(iusc > 0 && pctIUSCHab >= 15){
+      priorities.push({
+        title: 'Monitorear carga tributaria',
+        text: 'El IUSC tiene peso relevante. Cuando suban variables o productividad, conviene comparar escenarios de APV para entender el impacto sobre impuesto y líquido.'
+      });
+    }
+
+    if(pctLiquido >= 70 && pctAPVHab >= 3 && pctIUSCHab < 15 && pctVars < 20){
+      priorities.unshift({
+        title: 'Mantener estructura actual',
+        text: 'La liquidación se ve equilibrada: liquidez saludable, APV presente, variables acotadas y carga tributaria controlada. El foco debería ser seguimiento, no cambios agresivos.'
+      });
+    }
+
+    if(productividad > 0){
+      avoid.push('No tratar productividad como variable controlable: depende principalmente de programación, horas de vuelo asignadas y operación del mes.');
+    }
+
+    if(pctLiquido < 60){
+      avoid.push('No aumentar compromisos de ahorro sin revisar primero el impacto sobre caja mensual.');
+    }else if(pctAPVHab >= 8){
+      avoid.push('No reducir APV sólo para aumentar líquido si tu prioridad principal es acumulación patrimonial de largo plazo.');
+    }
+
+    if(!priorities.length){
+      priorities.push({
+        title: 'Mantener seguimiento mensual',
+        text: 'No se detecta una prioridad crítica. Conviene seguir monitoreando APV, IUSC, productividad y liquidez.'
+      });
+    }
+
+    var lines = [];
+    lines.push('Prioridad recomendada este mes:');
+    lines.push('');
+
+    priorities.slice(0, 3).forEach(function(p, idx){
+      lines.push('Prioridad #' + (idx + 1) + ': ' + p.title);
+      lines.push(p.text);
+      lines.push('');
+    });
+
+    if(avoid.length){
+      lines.push('No haría por ahora:');
+      avoid.slice(0, 3).forEach(function(x){
+        lines.push('• ' + x);
+      });
+      lines.push('');
+    }
+
+    if(pctLiquido >= 70){
+      lines.push('Lectura final: la caja mensual se mantiene saludable. Las decisiones relevantes están más asociadas a estrategia APV, carga tributaria y planificación conservadora de productividad.');
+    }else if(pctLiquido >= 55){
+      lines.push('Lectura final: la caja mensual es razonable, pero conviene evitar decisiones que reduzcan demasiado el líquido sin una razón patrimonial clara.');
+    }else{
+      lines.push('Lectura final: la prioridad debe ser liquidez. Antes de optimizar ahorro o impuestos, conviene asegurar caja mensual suficiente.');
+    }
+
+    return lines.join('\n');
+  }
+
+
   function buildDecisionSimulatorV2(data){
     var pctAPVHab = data.pctAPVHab || 0;
     var pctIUSCHab = data.pctIUSCHab || 0;
@@ -8963,6 +9069,18 @@ function explainConcept(q){
     }));
 
     lines.push('');
+    lines.push(buildMonthlyPriorityV2({
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc
+    }));
+
+    lines.push('');
     lines.push(buildSmartAlertsV2({
       pctVars,
       pctAPVHab,
@@ -9647,121 +9765,3 @@ function explainConcept(q){
     } else {
       badge.textContent = 'Listo';
     }
-
-    list.innerHTML = messages.map(m => '<li>'+m+'</li>').join('');
-  }
-
-  function refreshGuide(){
-    const step = getStep();
-    setGuideCopy(step);
-    updateGuideSmart();
-  }
-
-  function bindGuidePolish(){
-    refreshGuide();
-
-    document.addEventListener('click', ev => {
-      if(ev.target?.classList?.contains('guide-step') ||
-         ev.target?.id === 'guideNextTop' ||
-         ev.target?.id === 'guidePrevTop' ||
-         ev.target?.id === 'guideNextBottom' ||
-         ev.target?.id === 'guidePrevBottom' ||
-         ev.target?.id === 'modeGuided' ||
-         ev.target?.id === 'modeClassic'){
-        setTimeout(refreshGuide, 80);
-      }
-    }, true);
-
-    document.addEventListener('input', () => {
-      if(document.body.classList.contains('mode-guided')) {
-        setTimeout(updateGuideSmart, 40);
-      }
-    }, true);
-
-    document.addEventListener('change', () => {
-      if(document.body.classList.contains('mode-guided')) {
-        setTimeout(updateGuideSmart, 40);
-      }
-    }, true);
-
-    const obs = new MutationObserver(() => {
-      if(document.body.classList.contains('mode-guided')) refreshGuide();
-    });
-
-    obs.observe(document.body, {attributes:true, attributeFilter:['data-guide-step','class']});
-  }
-
-  if(document.readyState === 'loading'){
-    document.addEventListener('DOMContentLoaded', bindGuidePolish);
-  } else {
-    bindGuidePolish();
-  }
-})();
-</script>
-
-
-<!-- RemuTool v1.3.1.f.w.t: MiCopilot Core corrective build; uses original internal router, no external intercept. -->
-
-<!-- RemuTool v1.3.6.f.w.t: MiCopilot v1.5 Snapshots estables + Alertas inteligentes. -->
-
-<!-- RemuTool v1.3.7.f.w.t: MiCopilot v1.6 Auditor Inteligente. -->
-
-<!-- RemuTool v1.3.8.f.w.t: MiCopilot v1.8 RC, pulido de comparación y base estable previa a v2.0. -->
-
-<!-- RemuTool v1.4.0.f.w.t: MiCopilot v1.9 Fase 1, KB completa de conceptos base. -->
-
-<!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
-
-<!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
-
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.5.1 hotfix, simulador de decisiones compatible y defensivo. -->
-</body>
-</html>
