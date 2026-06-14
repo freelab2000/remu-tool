@@ -5547,7 +5547,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.3',
+  version: 'v2.0.0-fase-3B.4',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8266,6 +8266,119 @@ function explainConcept(q){
 
 
 
+
+  function buildAutomaticRecommendationsV2(data){
+    const {
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      pctProdHab,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes
+    } = data;
+
+    const fortalezas = [];
+    const exposiciones = [];
+    const acciones = [];
+
+    if(pctLiquido >= 70){
+      fortalezas.push('✅ Liquidez saludable: el líquido representa ' + pct(pctLiquido) + ' de los haberes.');
+    }else if(pctLiquido >= 55){
+      fortalezas.push('✅ Liquidez razonable: el líquido se mantiene en un rango aceptable frente a los haberes.');
+    }
+
+    if(pctVars < 20){
+      fortalezas.push('✅ Ingreso relativamente estable: las variables representan ' + pct(pctVars) + ' de los haberes.');
+    }
+
+    if(apv > 0 && pctAPVHab >= 3 && pctAPVHab < 8){
+      fortalezas.push('✅ APV moderado: existe ahorro previsional sin dominar el líquido mensual.');
+    }else if(apv > 0 && pctAPVHab >= 8){
+      fortalezas.push('✅ Construcción patrimonial: el APV tiene presencia relevante en la liquidación.');
+    }
+
+    if(iusc > 0 && pctIUSCHab < 15){
+      fortalezas.push('✅ Carga tributaria controlada: el IUSC no domina los haberes del mes.');
+    }
+
+    if(!fortalezas.length){
+      fortalezas.push('✅ La liquidación cuenta con datos suficientes para análisis, aunque no se detectan fortalezas dominantes.');
+    }
+
+    if(productividad > 0 && pctProdVars >= 70){
+      exposiciones.push('⚠️ Dependencia operacional: la productividad concentra ' + pct(pctProdVars) + ' de las variables. Este componente depende de programación y horas de vuelo asignadas, por lo que no debe tratarse como ingreso garantizado.');
+    }else if(productividad > 0 && pctProdHab >= 10){
+      exposiciones.push('⚠️ Productividad relevante: representa ' + pct(pctProdHab) + ' de los haberes. Aporta al líquido, pero depende de la operación y programación del mes.');
+    }
+
+    if(pctVars >= 35){
+      exposiciones.push('⚠️ Volatilidad mensual: las variables representan ' + pct(pctVars) + ' de los haberes. Una baja operacional podría afectar significativamente el líquido.');
+    }
+
+    if(apv <= 0){
+      exposiciones.push('⚠️ Sin APV registrado: la liquidación prioriza liquidez inmediata, pero no genera ahorro previsional voluntario dentro de esta simulación.');
+    }else if(pctAPVHab < 3){
+      exposiciones.push('⚠️ APV bajo: el aporte previsional representa ' + pct(pctAPVHab) + ' de los haberes, con impacto patrimonial limitado.');
+    }else if(pctAPVHab >= 10 && pctLiquido < 65){
+      exposiciones.push('⚠️ APV alto con caja ajustada: el ahorro previsional es relevante, pero puede estar presionando el líquido mensual.');
+    }
+
+    if(pctIUSCHab >= 18){
+      exposiciones.push('⚠️ Carga tributaria alta: el IUSC representa ' + pct(pctIUSCHab) + ' de los haberes.');
+    }else if(iusc > 0 && pctIUSCHab >= 10){
+      exposiciones.push('⚠️ Carga tributaria relevante: el IUSC representa ' + pct(pctIUSCHab) + ' de los haberes y debe monitorearse cuando suben las variables.');
+    }
+
+    if(!exposiciones.length){
+      exposiciones.push('🟢 No se detectan exposiciones fuertes en la liquidación actual.');
+    }
+
+    if(apv <= 0 || pctAPVHab < 3){
+      acciones.push('🎯 Simular APV gradual: evaluar escenarios con APV de 300 mil, 500 mil o 700 mil para medir costo líquido versus ahorro previsional.');
+    }else if(pctAPVHab >= 8){
+      acciones.push('🎯 Validar sostenibilidad del APV: comparar APV actual versus un monto menor para confirmar si el sacrificio de liquidez es compatible con tu caja mensual.');
+    }else{
+      acciones.push('🎯 Mantener monitoreo de APV: el nivel actual parece moderado, pero conviene revisar eficiencia cuando cambien productividad o IUSC.');
+    }
+
+    if(productividad > 0){
+      acciones.push('🎯 Planificar con productividad conservadora: tratar la productividad como ingreso operacional no garantizado y simular escenario con productividad baja o cero.');
+    }
+
+    if(iusc > 0 && pctIUSCHab >= 10){
+      acciones.push('🎯 Monitorear eficiencia tributaria: cuando aumenten variables, comparar escenarios de APV para entender el efecto sobre IUSC y líquido.');
+    }
+
+    if(pctLiquido < 55){
+      acciones.push('🎯 Priorizar caja mensual: revisar descuentos voluntarios y simular alternativas antes de aumentar compromisos de ahorro.');
+    }
+
+    if(!acciones.length){
+      acciones.push('🎯 Mantener seguimiento mensual: la liquidación luce razonable, pero conviene revisar cambios en APV, IUSC y productividad.');
+    }
+
+    const lines = [];
+    lines.push('Recomendaciones automáticas:');
+    lines.push('');
+    lines.push('Fortalezas detectadas:');
+    fortalezas.slice(0, 4).forEach(x => lines.push('• ' + x));
+
+    lines.push('');
+    lines.push('Exposiciones detectadas:');
+    exposiciones.slice(0, 5).forEach(x => lines.push('• ' + x));
+
+    lines.push('');
+    lines.push('Acciones sugeridas bajo tu control:');
+    acciones.slice(0, 5).forEach(x => lines.push('• ' + x));
+
+    return lines.join('\n');
+  }
+
+
   function buildExecutiveNarrativeV2(data){
     const {
       pctVars,
@@ -8693,6 +8806,20 @@ function explainConcept(q){
       apv,
       productividad,
       iusc
+    }));
+
+    lines.push('');
+    lines.push(buildAutomaticRecommendationsV2({
+      pctVars,
+      pctAPVHab,
+      pctIUSCHab,
+      pctLiquido,
+      pctProdHab,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes
     }));
 
     lines.push('');
@@ -9492,5 +9619,7 @@ function explainConcept(q){
 <!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
 </body>
 </html>
