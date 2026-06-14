@@ -5547,7 +5547,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3B.4',
+  version: 'v2.0.0-fase-3B.5',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8267,6 +8267,132 @@ function explainConcept(q){
 
 
 
+
+  function estimateDecisionScenarioV2(current, changes){
+    const totalHaberes = current.totalHaberes || 0;
+    const liquido = current.liquido || 0;
+    const apv = current.apv || 0;
+    const iusc = current.iusc || 0;
+    const productividad = current.productividad || 0;
+
+    const nextAPV = Math.max(0, changes.apv ?? apv);
+    const nextProductividad = Math.max(0, changes.productividad ?? productividad);
+
+    const deltaAPV = nextAPV - apv;
+    const deltaProd = nextProductividad - productividad;
+
+    const tasaIUSC = totalHaberes > 0 ? Math.min(0.45, Math.max(0, iusc / totalHaberes)) : 0;
+    const deltaIUSCFromAPV = deltaAPV < 0 ? Math.abs(deltaAPV) * tasaIUSC : -Math.abs(deltaAPV) * tasaIUSC;
+    const deltaIUSCFromProd = deltaProd * tasaIUSC;
+
+    const estimatedIUSC = Math.max(0, iusc + deltaIUSCFromAPV + deltaIUSCFromProd);
+    const estimatedLiquido = Math.max(0, liquido - deltaAPV + deltaProd - deltaIUSCFromAPV - deltaIUSCFromProd);
+
+    return {
+      nextAPV,
+      nextProductividad,
+      deltaAPV,
+      deltaProd,
+      estimatedIUSC,
+      estimatedLiquido,
+      deltaIUSC: estimatedIUSC - iusc,
+      deltaLiquido: estimatedLiquido - liquido
+    };
+  }
+
+  function buildDecisionSimulatorV2(data){
+    const {
+      pctAPVHab,
+      pctLiquido,
+      pctIUSCHab,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes,
+      liquido
+    } = data;
+
+    const lines = [];
+    const scenarios = [];
+
+    const current = { totalHaberes, liquido, apv, iusc, productividad };
+
+    // Decisión 1: priorizar liquidez mensual mediante APV menor.
+    if(apv > 0){
+      const lowerAPV = apv >= 700000 ? 700000 : Math.max(0, apv - 200000);
+      if(lowerAPV < apv){
+        scenarios.push({
+          title:'Si tu objetivo es más líquido mensual',
+          result: estimateDecisionScenarioV2(current, {apv: lowerAPV}),
+          reading:'Reducir APV libera caja mensual, pero disminuye ahorro previsional y puede aumentar el IUSC estimado si el régimen es B.'
+        });
+      }
+    }
+
+    // Decisión 2: priorizar acumulación patrimonial mediante APV mayor.
+    const higherAPV = apv <= 0 ? 300000 : (apv < 700000 ? 700000 : apv + 300000);
+    if(higherAPV > apv){
+      scenarios.push({
+        title:'Si tu objetivo es más patrimonio',
+        result: estimateDecisionScenarioV2(current, {apv: higherAPV}),
+        reading:'Aumentar APV mejora ahorro previsional y puede reducir IUSC estimado, pero exige sacrificar líquido mensual.'
+      });
+    }
+
+    // Decisión 3: protegerse de productividad baja/cero.
+    if(productividad > 0){
+      scenarios.push({
+        title:'Si quieres protegerte de meses bajos de vuelo',
+        result: estimateDecisionScenarioV2(current, {productividad: 0}),
+        reading:'La productividad depende de programación y horas de vuelo asignadas. Este escenario estima un piso conservador de líquido sin productividad.'
+      });
+    }
+
+    // Decisión 4: equilibrio si APV es muy alto o muy bajo.
+    if(pctAPVHab >= 8){
+      const balancedAPV = Math.max(300000, Math.round(apv * 0.7 / 10000) * 10000);
+      if(balancedAPV < apv){
+        scenarios.push({
+          title:'Si buscas equilibrio entre caja y ahorro',
+          result: estimateDecisionScenarioV2(current, {apv: balancedAPV}),
+          reading:'Un APV algo menor puede recuperar liquidez sin eliminar completamente la estrategia patrimonial.'
+        });
+      }
+    }else if(apv <= 0 || pctAPVHab < 3){
+      const balancedAPV = 500000;
+      if(balancedAPV > apv){
+        scenarios.push({
+          title:'Si buscas equilibrio entre caja y ahorro',
+          result: estimateDecisionScenarioV2(current, {apv: balancedAPV}),
+          reading:'Un APV gradual permite iniciar acumulación previsional manteniendo control sobre la caja mensual.'
+        });
+      }
+    }
+
+    lines.push('Simulador de decisiones inteligentes:');
+    lines.push('');
+
+    scenarios.slice(0, 4).forEach((s, idx) => {
+      const r = s.result;
+      lines.push((idx + 1) + '. ' + s.title);
+      lines.push('   • APV: ' + CLP(apv) + ' → ' + CLP(r.nextAPV) + ' (' + signedCLP(r.deltaAPV) + ')');
+      if(productividad > 0 || r.nextProductividad !== productividad){
+        lines.push('   • Productividad: ' + CLP(productividad) + ' → ' + CLP(r.nextProductividad) + ' (' + signedCLP(r.deltaProd) + ')');
+      }
+      lines.push('   • IUSC estimado: ' + CLP(iusc) + ' → ' + CLP(r.estimatedIUSC) + ' (' + signedCLP(r.deltaIUSC) + ')');
+      lines.push('   • Líquido estimado: ' + CLP(liquido) + ' → ' + CLP(r.estimatedLiquido) + ' (' + signedCLP(r.deltaLiquido) + ')');
+      lines.push('   Lectura: ' + s.reading);
+      lines.push('');
+    });
+
+    lines.push('Criterio: estas son simulaciones rápidas basadas en tasa efectiva observada. No reemplazan el cálculo exacto de la tabla tributaria ni la liquidación real.');
+    lines.push('Clave operativa: productividad no se recomienda como acción controlable; se usa como escenario de exposición para planificar caja conservadora.');
+
+    return lines.join('\n');
+  }
+
+
   function buildAutomaticRecommendationsV2(data){
     const {
       pctVars,
@@ -8820,6 +8946,19 @@ function explainConcept(q){
       productividad,
       iusc,
       totalHaberes
+    }));
+
+    lines.push('');
+    lines.push(buildDecisionSimulatorV2({
+      pctAPVHab,
+      pctLiquido,
+      pctIUSCHab,
+      pctProdVars,
+      apv,
+      productividad,
+      iusc,
+      totalHaberes,
+      liquido
     }));
 
     lines.push('');
@@ -9621,5 +9760,7 @@ function explainConcept(q){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.5, simulador de decisiones inteligentes incorporado. -->
 </body>
 </html>
