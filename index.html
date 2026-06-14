@@ -5571,7 +5571,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3.7',
+  version: 'v2.0.0-fase-3.7.1',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -9386,6 +9386,11 @@ function generateFinancialDiagnosticV2(){
 
 
   function answerQuestion(q){
+    if(wantsFullFinancialAnalysisV2(q)){
+      window.__lastMicopilotQuestion = q;
+      return generateFinancialDiagnosticV2();
+    }
+
     const contextual2 = contextualConceptV2(q);
     if(contextual2) return contextual2;
 
@@ -9482,6 +9487,7 @@ function generateFinancialDiagnosticV2(){
       return;
     }
     addMessage('user', question);
+    window.__lastMicopilotQuestion = question;
     const intent = classifyIntent(norm(question));
     setResponse(answerQuestion(question));
     if(intent !== 'comparacion' && intent !== 'alertas' && intent !== 'auditoria') captureBaseline();
@@ -10031,3 +10037,5 @@ function generateFinancialDiagnosticV2(){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3B.6, prioridad recomendada del mes incorporada. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
