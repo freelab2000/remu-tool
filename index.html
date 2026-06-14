@@ -5571,7 +5571,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-4.0',
+  version: 'v2.0.1-arquetipos-IA',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8980,7 +8980,115 @@ function explainConcept(q){
 
   
   
-  function generateContextualAIDiagnosisV4(data){
+  
+  function detectFinancialArchetypeV201(data){
+    var totalHaberes = data.totalHaberes || 0;
+    var liquido = data.liquido || 0;
+    var totalVars = data.totalVars || 0;
+    var productividad = data.productividad || 0;
+    var apv = data.apv || 0;
+    var iusc = data.iusc || 0;
+
+    var pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
+    var pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+    var pctAPV = totalHaberes ? apv / totalHaberes * 100 : 0;
+    var pctIUSC = totalHaberes ? iusc / totalHaberes * 100 : 0;
+    var pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
+
+    var archetype = 'Balanceado';
+    var icon = '🟢';
+    var summary = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.';
+    var implication = 'La liquidación no muestra una concentración extrema en una sola dimensión.';
+    var action = 'Mantener monitoreo de productividad, APV e IUSC para evitar desbalances mensuales.';
+
+    if(pctVars >= 35){
+      archetype = 'Dependiente de Variables';
+      icon = '🟠';
+      summary = 'Una parte relevante del ingreso depende de componentes variables del mes.';
+      implication = 'El líquido puede cambiar de forma importante si disminuye productividad, feriados, vacaciones u otros pagos variables.';
+      action = 'Presupuestar con productividad conservadora o cero, porque este ingreso depende de programación y horas de vuelo asignadas.';
+    }
+
+    if(pctIUSC >= 22 && pctVars < 35){
+      archetype = 'Alta Carga Tributaria';
+      icon = '🟠';
+      summary = 'El impuesto tiene peso relevante sobre la liquidación.';
+      implication = 'Cambios en renta tributable, productividad o APV pueden mover visiblemente el líquido mensual.';
+      action = 'Comparar escenarios de APV para medir eficiencia tributaria real y no sólo líquido mensual.';
+    }
+
+    if(pctAPV >= 8 && pctLiquido >= 55){
+      archetype = 'Acumulador Previsional';
+      icon = '🟢';
+      summary = 'Existe una priorización clara de ahorro previsional y acumulación patrimonial.';
+      implication = 'El APV aporta disciplina de ahorro y puede mejorar eficiencia tributaria, pero reduce caja mensual disponible.';
+      action = 'Validar que el menor líquido mensual sea sostenible y comparar APV actual versus un monto menor si necesitas caja.';
+    }
+
+    if(pctAPV >= 3 && pctAPV < 8 && pctLiquido >= 60 && pctVars < 35){
+      archetype = 'Constructor Patrimonial Balanceado';
+      icon = '🟢';
+      summary = 'La liquidación combina ahorro previsional, liquidez mensual y exposición moderada a variables.';
+      implication = 'La estrategia APV parece compatible con la caja mensual disponible.';
+      action = 'Mantener estrategia actual y revisar sólo si cambia productividad, IUSC o necesidad de liquidez.';
+    }
+
+    if(apv <= 0 && pctLiquido >= 70){
+      archetype = 'Orientado a Liquidez';
+      icon = '🟡';
+      summary = 'La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.';
+      implication = 'Esto maximiza liquidez presente, pero no genera ahorro previsional voluntario dentro de esta simulación.';
+      action = 'Simular APV gradual con montos de $300.000, $500.000 o $700.000 para medir costo líquido versus ahorro acumulado.';
+    }
+
+    if(pctLiquido < 55){
+      archetype = 'Liquidez Ajustada';
+      icon = '🔴';
+      summary = 'El líquido disponible es bajo respecto de los haberes del mes.';
+      implication = 'Aumentar APV o descuentos voluntarios podría tensionar la caja mensual.';
+      action = 'Priorizar liquidez antes de incrementar ahorro previsional o descuentos no obligatorios.';
+    }
+
+    if(pctVars >= 35 && pctAPV >= 8){
+      archetype = 'Patrimonial con Exposición Operacional';
+      icon = '🟠';
+      summary = 'Existe una estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.';
+      implication = 'La combinación APV alto + productividad variable puede ser eficiente, pero sensible a meses bajos de vuelo.';
+      action = 'Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.';
+    }
+
+    return {
+      name: archetype,
+      icon: icon,
+      summary: summary,
+      implication: implication,
+      action: action,
+      pctLiquido: pctLiquido,
+      pctVars: pctVars,
+      pctAPV: pctAPV,
+      pctIUSC: pctIUSC,
+      pctProdVars: pctProdVars
+    };
+  }
+
+  function renderFinancialArchetypeV201(data){
+    var a = detectFinancialArchetypeV201(data);
+    var lines = [];
+    lines.push('🧬 Arquetipo financiero IA');
+    lines.push('');
+    lines.push(a.icon + ' ' + a.name);
+    lines.push(a.summary);
+    lines.push('');
+    lines.push('Implicancia:');
+    lines.push(a.implication);
+    lines.push('');
+    lines.push('Acción sugerida:');
+    lines.push(a.action);
+    return lines.join('\n');
+  }
+
+
+function generateContextualAIDiagnosisV4(data){
     var totalHaberes = data.totalHaberes || 0;
     var liquido = data.liquido || 0;
     var totalVars = data.totalVars || 0;
@@ -8995,6 +9103,15 @@ function explainConcept(q){
     var pctIUSCHab = totalHaberes ? iusc / totalHaberes * 100 : 0;
 
     var lines = [];
+    lines.push(renderFinancialArchetypeV201({
+      totalHaberes: totalHaberes,
+      liquido: liquido,
+      totalVars: totalVars,
+      productividad: productividad,
+      apv: apv,
+      iusc: iusc
+    }));
+    lines.push('');
     lines.push('🧭 Diagnóstico contextual IA');
     lines.push('');
 
@@ -9503,6 +9620,19 @@ function generateFinancialDiagnosticV2(){
     }
 
     const qn = norm(q);
+    if(qn.includes('arquetipo') || qn.includes('perfil financiero') || qn.includes('tipo de liquidacion') || qn.includes('tipo de liquidación')){
+      window.__lastMicopilotQuestion = q;
+      const snap = getCalcSnapshot();
+      return renderFinancialArchetypeV201({
+        totalHaberes: snap.totalHaberes || snap.haberes || 0,
+        liquido: snap.liquido || snap.alcanceLiquido || 0,
+        totalVars: snap.totalVars || snap.variables || 0,
+        productividad: snap.productividad || snap.bonoProductividad || 0,
+        apv: snap.apv || 0,
+        iusc: snap.iusc || snap.iuscFinal || 0
+      });
+    }
+
     if(qn.includes('diagnostico contextual') || qn.includes('diagnóstico contextual') || qn.includes('recomendacion contextual') || qn.includes('recomendación contextual') || qn.includes('que me recomiendas') || qn.includes('qué me recomiendas')){
       window.__lastMicopilotQuestion = q;
       const snap = getCalcSnapshot();
@@ -10166,5 +10296,7 @@ function generateFinancialDiagnosticV2(){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
+
+<!-- RemuTool v2.0.1.f.w.t: Arquetipos Financieros IA incorporados. -->
 </body>
 </html>
