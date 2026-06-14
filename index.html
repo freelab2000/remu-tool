@@ -5571,7 +5571,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.0-fase-3.7.1',
+  version: 'v2.0.0-fase-4.0',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -8979,7 +8979,109 @@ function explainConcept(q){
 
 
   
-  function generateExecutiveShortV2(data){
+  
+  function generateContextualAIDiagnosisV4(data){
+    var totalHaberes = data.totalHaberes || 0;
+    var liquido = data.liquido || 0;
+    var totalVars = data.totalVars || 0;
+    var productividad = data.productividad || 0;
+    var apv = data.apv || 0;
+    var iusc = data.iusc || 0;
+
+    var pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
+    var pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+    var pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
+    var pctAPVHab = totalHaberes ? apv / totalHaberes * 100 : 0;
+    var pctIUSCHab = totalHaberes ? iusc / totalHaberes * 100 : 0;
+
+    var lines = [];
+    lines.push('🧭 Diagnóstico contextual IA');
+    lines.push('');
+
+    // Liquidez contextual
+    if(pctLiquido >= 70){
+      lines.push('Tu liquidez mensual es alta: el líquido representa ' + pct(pctLiquido) + ' de los haberes. No se observa presión inmediata de caja.');
+    }else if(pctLiquido >= 60){
+      lines.push('Tu liquidez mensual es razonable: el líquido representa ' + pct(pctLiquido) + ' de los haberes. Hay espacio de maniobra, pero conviene monitorear descuentos relevantes.');
+    }else if(pctLiquido >= 50){
+      lines.push('Tu liquidez está ajustada: el líquido representa ' + pct(pctLiquido) + ' de los haberes. Cualquier aumento de APV o descuento voluntario debe evaluarse contra caja mensual.');
+    }else{
+      lines.push('Tu liquidez es baja para el nivel de haberes: el líquido representa sólo ' + pct(pctLiquido) + '. La prioridad debe ser preservar caja antes de aumentar ahorro voluntario.');
+    }
+
+    // APV contextual
+    if(apv <= 0){
+      lines.push('No hay APV registrado. La liquidación privilegia liquidez presente, pero no genera ahorro previsional voluntario dentro de esta simulación.');
+    }else if(pctAPVHab < 3){
+      lines.push('El APV existe, pero es bajo frente a los haberes: representa ' + pct(pctAPVHab) + '. Puede ser un punto de partida, aunque su efecto patrimonial aún es limitado.');
+    }else if(pctAPVHab < 8){
+      lines.push('El APV tiene un peso sano: representa ' + pct(pctAPVHab) + ' de los haberes. Aporta acumulación previsional sin dominar la caja mensual.');
+    }else{
+      lines.push('El APV tiene peso alto: representa ' + pct(pctAPVHab) + ' de los haberes. Es una estrategia patrimonial fuerte, pero debe validarse contra necesidades de liquidez mensual.');
+    }
+
+    // Productividad contextual
+    if(productividad > 0 && pctProdVars >= 70){
+      lines.push('La productividad es el principal factor de exposición: concentra ' + pct(pctProdVars) + ' de las variables. Como depende de programación y horas de vuelo asignadas, no debe tratarse como ingreso garantizado.');
+    }else if(productividad > 0 && pctProdVars >= 40){
+      lines.push('La productividad tiene impacto relevante, pero no concentra totalmente las variables. Conviene usar escenarios conservadores para presupuesto mensual.');
+    }else if(productividad > 0){
+      lines.push('La productividad existe, pero no domina la liquidación. Su variación afecta el líquido, aunque el riesgo operacional parece moderado.');
+    }else{
+      lines.push('No hay productividad registrada. La liquidación depende menos de horas variables, pero también pierde una palanca relevante de ingreso mensual.');
+    }
+
+    // IUSC contextual
+    if(pctIUSCHab >= 20){
+      lines.push('La carga tributaria es alta: el IUSC representa ' + pct(pctIUSCHab) + ' de los haberes. Cambios en productividad, bonos o APV pueden mover de forma visible el líquido.');
+    }else if(pctIUSCHab >= 12){
+      lines.push('La carga tributaria es relevante: el IUSC representa ' + pct(pctIUSCHab) + ' de los haberes. Conviene observar cómo responde ante cambios de APV o variables.');
+    }else{
+      lines.push('La carga tributaria parece controlada: el IUSC representa ' + pct(pctIUSCHab) + ' de los haberes.');
+    }
+
+    lines.push('');
+
+    // Personalized recommendation
+    lines.push('🎯 Recomendación contextual');
+
+    if(pctLiquido < 55){
+      lines.push('Prioridad: proteger liquidez. No aumentaría APV ni descuentos voluntarios sin antes revisar si el líquido disponible cubre cómodamente tus gastos mensuales.');
+    }else if(apv <= 0 && pctLiquido >= 70){
+      lines.push('Prioridad: evaluar APV gradual. Tienes caja mensual suficiente para simular aportes de $300.000, $500.000 o $700.000 y medir el costo líquido real.');
+    }else if(pctAPVHab >= 8 && pctLiquido >= 60){
+      lines.push('Prioridad: validar sostenibilidad del APV. La estrategia patrimonial es fuerte; no la reduciría salvo que necesites liquidez adicional o detectes presión de caja.');
+    }else if(pctAPVHab >= 3 && pctLiquido >= 60){
+      lines.push('Prioridad: mantener estrategia APV actual. Parece equilibrada frente a tu liquidez; el foco debería estar en monitorear productividad e IUSC.');
+    }else{
+      lines.push('Prioridad: mantener equilibrio. Antes de mover APV o variables, conviene comparar escenarios para decidir entre más caja mensual o más acumulación previsional.');
+    }
+
+    if(productividad > 0 && pctProdVars >= 70){
+      lines.push('Plan operativo: arma presupuesto con productividad conservadora o cero. La productividad mejora el líquido, pero depende fuertemente de la programación de vuelo.');
+    }
+
+    if(pctIUSCHab >= 15 && apv > 0){
+      lines.push('Plan tributario: compara APV actual versus APV mayor/menor para medir eficiencia tributaria real, no sólo cambio de líquido.');
+    }
+
+    lines.push('');
+    lines.push('📌 Lectura final contextual');
+    if(pctLiquido >= 60 && pctAPVHab >= 3 && pctProdVars >= 70){
+      lines.push('La liquidación es potente, pero sensible a productividad. La estrategia APV parece razonable; el riesgo principal no está en el APV sino en asumir que la productividad se repetirá todos los meses.');
+    }else if(pctLiquido >= 70 && apv <= 0){
+      lines.push('La liquidación privilegia caja. Es cómoda en liquidez, pero deja espacio para convertir parte del excedente mensual en ahorro previsional si ese es tu objetivo.');
+    }else if(pctLiquido < 55){
+      lines.push('La liquidación requiere cautela. Antes de optimizar impuestos o patrimonio, el foco debe estar en asegurar liquidez mensual suficiente.');
+    }else{
+      lines.push('La liquidación se ve razonable. Las mejores decisiones vendrán de comparar escenarios específicos: APV actual versus alternativo y productividad normal versus conservadora.');
+    }
+
+    return lines.join('\n');
+  }
+
+
+function generateExecutiveShortV2(data){
     var totalHaberes = data.totalHaberes || 0;
     var liquido = data.liquido || 0;
     var totalVars = data.totalVars || 0;
@@ -9069,6 +9171,15 @@ function explainConcept(q){
     lines.push('');
     lines.push('📌 Conclusión:');
     lines.push(conclusion);
+    lines.push('');
+    lines.push(generateContextualAIDiagnosisV4({
+      totalHaberes: totalHaberes,
+      liquido: liquido,
+      totalVars: totalVars,
+      productividad: productividad,
+      apv: apv,
+      iusc: iusc
+    }));
     lines.push('');
     lines.push('Para ver el informe completo, pregunta: "profundiza", "análisis completo" o "ver detalle".');
 
@@ -9389,6 +9500,20 @@ function generateFinancialDiagnosticV2(){
     if(wantsFullFinancialAnalysisV2(q)){
       window.__lastMicopilotQuestion = q;
       return generateFinancialDiagnosticV2();
+    }
+
+    const qn = norm(q);
+    if(qn.includes('diagnostico contextual') || qn.includes('diagnóstico contextual') || qn.includes('recomendacion contextual') || qn.includes('recomendación contextual') || qn.includes('que me recomiendas') || qn.includes('qué me recomiendas')){
+      window.__lastMicopilotQuestion = q;
+      const snap = getCalcSnapshot();
+      return generateContextualAIDiagnosisV4({
+        totalHaberes: snap.totalHaberes || snap.haberes || 0,
+        liquido: snap.liquido || snap.alcanceLiquido || 0,
+        totalVars: snap.totalVars || snap.variables || 0,
+        productividad: snap.productividad || snap.bonoProductividad || 0,
+        apv: snap.apv || 0,
+        iusc: snap.iusc || snap.iuscFinal || 0
+      });
     }
 
     const contextual2 = contextualConceptV2(q);
@@ -10039,3 +10164,7 @@ function generateFinancialDiagnosticV2(){
 <!-- RemuTool v2.0.0.f.w.t: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
 
 <!-- RemuTool v2.0.0.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
+
+<!-- RemuTool v2.0.0.f.w.t: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
+</body>
+</html>
