@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.0.f.w.t" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.0.f.w.t</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.1.f.w.t" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.1.f.w.t</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4965,7 +4965,7 @@ function setIuscRetValue(monto){
 
 
 <script>
-/* === RemuTool v2.0.0.f.w.t — Fase 1A: KB Profesional Integrada ===
+/* === RemuTool v2.0.1.f.w.t — Fase 1A: KB Profesional Integrada ===
    La KB queda cargada como fuente profesional independiente.
    En esta fase NO reemplaza todavía al motor actual de MiCopilot.
 */
@@ -6306,8 +6306,6 @@ function explainConcept(q){
       ['prestamo',['prestamo','préstamo','prestamos','préstamos','anticipo','anticipos']]
     ];
     for(const [key, words] of aliases){
-    var __archV201 = routeArchetypeOrContextualV201(typeof q !== 'undefined' ? q : (typeof pregunta !== 'undefined' ? pregunta : ''));
-    if(__archV201) return __archV201;
 
       if(words.some(w => n.includes(norm(w)))) return KB[key];
     }
@@ -9617,7 +9615,18 @@ function generateFinancialDiagnosticV2(){
 
 
   function answerQuestion(q){
-    if(wantsFullFinancialAnalysisV2(q)){
+    var __directV201 = null;
+    try {
+      if (typeof routeArchetypeOrContextualV201 === 'function') {
+        __directV201 = routeArchetypeOrContextualV201(q);
+      }
+    } catch(e) { __directV201 = null; }
+    if(__directV201){
+      window.__lastMicopilotQuestion = q;
+      return __directV201;
+    }
+
+if(wantsFullFinancialAnalysisV2(q)){
       window.__lastMicopilotQuestion = q;
       return generateFinancialDiagnosticV2();
     }
@@ -10240,65 +10249,65 @@ function generateFinancialDiagnosticV2(){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
 
-<!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
+<!-- Hotfix RemuTool v2.0.1.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.5.1 hotfix, simulador de decisiones compatible y defensivo. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.5.1 hotfix, simulador de decisiones compatible y defensivo. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3B.6, prioridad recomendada del mes incorporada. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3B.6, prioridad recomendada del mes incorporada. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
 
-<!-- RemuTool v2.0.0.f.w.t: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
+<!-- RemuTool v2.0.1.f.w.t: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
 
 <!-- RemuTool v2.0.1.f.w.t: Arquetipos Financieros IA incorporados. -->
 <script>
@@ -10570,5 +10579,158 @@ function routeArchetypeOrContextualV201(q){
 
 
 </script>
+
+<script>
+/* === RemuTool v2.0.1.f.w.t — Router final MiCopilot / Arquetipo + Profundiza === */
+(function(){
+  function normalizeV201(s){
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function safeN(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function robustSnapshot(){
+    var s = {};
+    try {
+      if(typeof getCalcSnapshot === 'function') s = getCalcSnapshot() || {};
+    } catch(e){ s = {}; }
+
+    function id(v){
+      var el = document.getElementById(v);
+      if(!el) return 0;
+      return safeN(el.value || el.textContent || el.innerText);
+    }
+
+    function text(label){
+      var nodes = Array.from(document.querySelectorAll('.kpi, .card, .result-card, .metric, div, span'));
+      var node = nodes.find(function(x){ return (x.textContent || '').toLowerCase().includes(label.toLowerCase()); });
+      return node ? safeN(node.textContent) : 0;
+    }
+
+    var totalHaberes = safeN(s.totalHaberes || s.haberes || s.total_haberes || id('totalHaberes') || text('Total de Haberes'));
+    var liquido = safeN(s.liquido || s.alcanceLiquido || s.alcance_liquido || id('alcanceLiquido') || text('Alcance Líquido'));
+    var totalVars = safeN(s.totalVars || s.variables || s.totalVariables || s.total_variables || id('totalVariables'));
+    var productividad = safeN(s.productividad || s.bonoProductividad || s.bono_productividad || id('bonoProductividad') || id('productividad'));
+    var apv = safeN(s.apv || s.apvMonto || s.apv_monto || id('apv') || id('apvMonto'));
+    var iusc = safeN(s.iusc || s.iuscFinal || s.impuestoUnico || s.impuesto_unico || id('iusc') || id('impuestoUnico'));
+
+    if(!totalVars){
+      totalVars = safeN(productividad) +
+                  safeN(s.vacaciones || s.bonoVacaciones) +
+                  safeN(s.feriados || s.compensacionFeriados) +
+                  safeN(s.secuencia9 || s.secuencia10 || s.bonoSecuencia);
+    }
+
+    return { totalHaberes:totalHaberes, liquido:liquido, totalVars:totalVars, productividad:productividad, apv:apv, iusc:iusc };
+  }
+
+  window.getCalcSnapshotV201Final = robustSnapshot;
+
+  function isArch(q){
+    var n = normalizeV201(q);
+    return n.includes('arquetipo') || n.includes('perfil financiero') || n.includes('tipo de liquidacion') ||
+           n.includes('que perfil tengo') || n.includes('cual es mi perfil') || n.includes('cual es mi arquetipo');
+  }
+
+  function isDeep(q){
+    var n = normalizeV201(q);
+    return n.includes('profundiza') || n.includes('ver detalle') || n.includes('analisis completo') ||
+           n.includes('informe completo') || n.includes('diagnostico contextual') || n.includes('recomendacion contextual') ||
+           n.includes('como ves mi liquidacion') || n.includes('que me recomiendas');
+  }
+
+  function renderArch(data){
+    if(typeof renderFinancialArchetypeV201 === 'function'){
+      try { return renderFinancialArchetypeV201(data); } catch(e){}
+    }
+
+    var h = safeN(data.totalHaberes), l = safeN(data.liquido), v = safeN(data.totalVars), p = safeN(data.productividad), a = safeN(data.apv), i = safeN(data.iusc);
+    var pctL = h ? l / h * 100 : 0;
+    var pctV = h ? v / h * 100 : 0;
+    var pctA = h ? a / h * 100 : 0;
+    var pctI = h ? i / h * 100 : 0;
+    var name = 'Balanceado', icon = '🟢', desc = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.', action = 'Mantener monitoreo de productividad, APV e IUSC.';
+    if(pctV >= 35){ name='Dependiente de variables'; icon='🟠'; desc='Una parte relevante del ingreso depende de componentes variables del mes.'; action='Presupuestar con productividad conservadora o cero.'; }
+    if(pctA >= 8 && pctL >= 55){ name='Acumulador previsional'; icon='🟢'; desc='Existe una priorización clara de ahorro previsional y acumulación patrimonial.'; action='Validar que el menor líquido mensual sea sostenible.'; }
+    if(a <= 0 && pctL >= 70){ name='Orientado a liquidez'; icon='🟡'; desc='La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.'; action='Simular APV gradual para medir costo líquido versus ahorro acumulado.'; }
+    if(pctV >= 35 && pctA >= 8){ name='Patrimonial con exposición operacional'; icon='🟠'; desc='Existe estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.'; action='Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.'; }
+
+    return [
+      '🧬 Arquetipo financiero IA',
+      '',
+      icon + ' ' + name,
+      desc,
+      '',
+      'Lectura:',
+      '• Liquidez estimada: ' + Math.round(pctL) + '% de los haberes.',
+      '• Variables: ' + Math.round(pctV) + '% de los haberes.',
+      '• APV: ' + Math.round(pctA) + '% de los haberes.',
+      '• IUSC: ' + Math.round(pctI) + '% de los haberes.',
+      '',
+      'Acción sugerida:',
+      action,
+      '',
+      'Nota operativa: la productividad no debe tratarse como ingreso garantizado; depende principalmente de programación, horas de vuelo asignadas y operación del mes.'
+    ].join('\n');
+  }
+
+  function contextual(data){
+    if(typeof generateContextualAIDiagnosisV4 === 'function'){
+      try { return generateContextualAIDiagnosisV4(data); } catch(e){}
+    }
+    return renderArch(data);
+  }
+
+  window.routeArchetypeOrContextualV201Final = function(q){
+    var snap = robustSnapshot();
+    if(isArch(q)) return renderArch(snap);
+    if(isDeep(q)) return contextual(snap);
+    return null;
+  };
+
+  var originalAnswer = window.answerQuestion;
+  window.answerQuestion = function(q){
+    var routed = window.routeArchetypeOrContextualV201Final(q);
+    if(routed){
+      window.__lastMicopilotQuestion = q;
+      return routed;
+    }
+    if(typeof originalAnswer === 'function'){
+      return originalAnswer.apply(this, arguments);
+    }
+    return 'Puedo ayudarte a entender tu liquidación, comparar escenarios, revisar APV, variables, descuentos e IUSC.';
+  };
+
+  document.addEventListener('click', function(ev){
+    var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!btn) return;
+    var label = normalizeV201(btn.textContent || '');
+    if(!(label.includes('consultar') || label.includes('enviar'))) return;
+
+    setTimeout(function(){
+      var inputs = Array.from(document.querySelectorAll('input, textarea'));
+      var q = '';
+      for(var i=inputs.length-1; i>=0; i--){
+        if(inputs[i].value && inputs[i].value.trim()){
+          q = inputs[i].value.trim();
+          break;
+        }
+      }
+      var routed = window.routeArchetypeOrContextualV201Final(q);
+      if(!routed) return;
+
+      try {
+        if(typeof setResponse === 'function') setResponse(routed);
+      } catch(e){}
+    }, 80);
+  }, true);
+})();
+</script>
+
 </body>
 </html>
