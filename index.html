@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.1.f.w.t-snapshot-fix" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.1.f.w.t-snapshot-fix</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.1.f.w.t-stable-rebuild" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.1.f.w.t-stable-rebuild</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -4965,7 +4965,7 @@ function setIuscRetValue(monto){
 
 
 <script>
-/* === RemuTool v2.0.1.f.w.t-snapshot-fix — Fase 1A: KB Profesional Integrada ===
+/* === RemuTool v2.0.0.f.w.t — Fase 1A: KB Profesional Integrada ===
    La KB queda cargada como fuente profesional independiente.
    En esta fase NO reemplaza todavía al motor actual de MiCopilot.
 */
@@ -5571,7 +5571,7 @@ function renderRemuKbAnswer(entry, options = {}){
 window.REMUTOOL_KB_V2 = REMUTOOL_KB_V2;
 window.REMUTOOL_KB_V2_READY = true;
 window.REMUTOOL_KB_V2_META = {
-  version: 'v2.0.1-fwt-arquetipos-hotfix',
+  version: 'v2.0.0-fase-4.0',
   mode: 'integrated-connected',
   entries: Object.keys(REMUTOOL_KB_V2 || {}).length
 };
@@ -6306,7 +6306,6 @@ function explainConcept(q){
       ['prestamo',['prestamo','préstamo','prestamos','préstamos','anticipo','anticipos']]
     ];
     for(const [key, words] of aliases){
-
       if(words.some(w => n.includes(norm(w)))) return KB[key];
     }
     return 'Puedo explicar conceptos de RemuTool y también comparar pares como imponible vs tributable, AFP 10% vs comisión AFP, APV A vs APV B, haberes fijos vs variables, secuencia 9 vs 10, salud 7% vs adicional, o descuentos legales vs varios.';
@@ -8726,6 +8725,91 @@ function explainConcept(q){
   }
 
 
+
+  function getFinancialMetricsV2(){
+    const c = buildContext();
+    const totalFijos = sum(c.ingresosFijos);
+    const totalVars = sum(c.variables);
+    const totalHaberes = c.resultados.totalHaberes || (totalFijos + totalVars);
+    const totalLegales = c.resultados.descuentosLegales || sum(c.descuentos);
+    const totalVarios = c.resultados.descuentosVarios || 0;
+    const liquido = c.resultados.liquido || Math.max(0, totalHaberes - totalLegales - totalVarios);
+    const iusc = c.descuentos['IUSC'] || 0;
+    const apv = c.descuentos['APV'] || 0;
+    const productividad = c.variables['Bono Productividad'] || 0;
+    const regimenAPV = (c.bases.regimenAPV || 'B').trim();
+
+    const pctFijos = totalHaberes ? totalFijos / totalHaberes * 100 : 0;
+    const pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
+    const pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
+    const pctLegales = totalHaberes ? totalLegales / totalHaberes * 100 : 0;
+    const pctIUSC = totalLegales ? iusc / totalLegales * 100 : 0;
+    const pctIUSCHab = totalHaberes ? iusc / totalHaberes * 100 : 0;
+    const pctAPVHab = totalHaberes ? apv / totalHaberes * 100 : 0;
+    const pctAPVLeg = totalLegales ? apv / totalLegales * 100 : 0;
+    const pctProdHab = totalHaberes ? productividad / totalHaberes * 100 : 0;
+    const pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
+
+    return {
+      totalHaberes,
+      totalFijos,
+      totalVars,
+      totalLegales,
+      totalVarios,
+      liquido,
+      iusc,
+      apv,
+      productividad,
+      regimenAPV,
+      pctFijos,
+      pctVars,
+      pctLiquido,
+      pctLegales,
+      pctIUSC,
+      pctIUSCHab,
+      pctAPVHab,
+      pctAPVLeg,
+      pctProdHab,
+      pctProdVars
+    };
+  }
+
+  function isArchetypeQuestionV2(q){
+    const n = norm(q || '');
+    return (
+      n.includes('arquetipo financiero') ||
+      n.includes('mi arquetipo') ||
+      n.includes('cual es mi arquetipo') ||
+      n.includes('cuál es mi arquetipo') ||
+      n.includes('perfil financiero') ||
+      n.includes('que perfil tengo') ||
+      n.includes('qué perfil tengo')
+    );
+  }
+
+  function generateFinancialArchetypeAnswerV2(){
+    const data = getFinancialMetricsV2();
+
+    if(!data.totalHaberes){
+      return '🧬 Arquetipo financiero IA\n\nAún faltan haberes suficientes para clasificar tu arquetipo. Ingresa los datos de la liquidación y vuelve a consultar.';
+    }
+
+    const base = buildFinancialArchetypeV2(data);
+    const lines = [];
+    lines.push('🧬 Arquetipo financiero IA');
+    lines.push('');
+    lines.push(base);
+    lines.push('');
+    lines.push('Lectura:');
+    lines.push('• Liquidez estimada: ' + pct(data.pctLiquido) + ' de los haberes.');
+    lines.push('• Variables: ' + pct(data.pctVars) + ' de los haberes.');
+    lines.push('• APV: ' + pct(data.pctAPVHab) + ' de los haberes.');
+    lines.push('• IUSC: ' + pct(data.pctIUSCHab) + ' de los haberes.');
+    lines.push('');
+    lines.push('Nota operativa: la productividad no debe tratarse como ingreso garantizado; depende principalmente de programación, horas de vuelo asignadas y operación del mes.');
+    return lines.join('\n');
+  }
+
   function buildFinancialArchetypeV2(data){
     const {
       pctVars,
@@ -8981,115 +9065,7 @@ function explainConcept(q){
 
   
   
-  
-  function detectFinancialArchetypeV201(data){
-    var totalHaberes = data.totalHaberes || 0;
-    var liquido = data.liquido || 0;
-    var totalVars = data.totalVars || 0;
-    var productividad = data.productividad || 0;
-    var apv = data.apv || 0;
-    var iusc = data.iusc || 0;
-
-    var pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
-    var pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
-    var pctAPV = totalHaberes ? apv / totalHaberes * 100 : 0;
-    var pctIUSC = totalHaberes ? iusc / totalHaberes * 100 : 0;
-    var pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
-
-    var archetype = 'Balanceado';
-    var icon = '🟢';
-    var summary = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.';
-    var implication = 'La liquidación no muestra una concentración extrema en una sola dimensión.';
-    var action = 'Mantener monitoreo de productividad, APV e IUSC para evitar desbalances mensuales.';
-
-    if(pctVars >= 35){
-      archetype = 'Dependiente de Variables';
-      icon = '🟠';
-      summary = 'Una parte relevante del ingreso depende de componentes variables del mes.';
-      implication = 'El líquido puede cambiar de forma importante si disminuye productividad, feriados, vacaciones u otros pagos variables.';
-      action = 'Presupuestar con productividad conservadora o cero, porque este ingreso depende de programación y horas de vuelo asignadas.';
-    }
-
-    if(pctIUSC >= 22 && pctVars < 35){
-      archetype = 'Alta Carga Tributaria';
-      icon = '🟠';
-      summary = 'El impuesto tiene peso relevante sobre la liquidación.';
-      implication = 'Cambios en renta tributable, productividad o APV pueden mover visiblemente el líquido mensual.';
-      action = 'Comparar escenarios de APV para medir eficiencia tributaria real y no sólo líquido mensual.';
-    }
-
-    if(pctAPV >= 8 && pctLiquido >= 55){
-      archetype = 'Acumulador Previsional';
-      icon = '🟢';
-      summary = 'Existe una priorización clara de ahorro previsional y acumulación patrimonial.';
-      implication = 'El APV aporta disciplina de ahorro y puede mejorar eficiencia tributaria, pero reduce caja mensual disponible.';
-      action = 'Validar que el menor líquido mensual sea sostenible y comparar APV actual versus un monto menor si necesitas caja.';
-    }
-
-    if(pctAPV >= 3 && pctAPV < 8 && pctLiquido >= 60 && pctVars < 35){
-      archetype = 'Constructor Patrimonial Balanceado';
-      icon = '🟢';
-      summary = 'La liquidación combina ahorro previsional, liquidez mensual y exposición moderada a variables.';
-      implication = 'La estrategia APV parece compatible con la caja mensual disponible.';
-      action = 'Mantener estrategia actual y revisar sólo si cambia productividad, IUSC o necesidad de liquidez.';
-    }
-
-    if(apv <= 0 && pctLiquido >= 70){
-      archetype = 'Orientado a Liquidez';
-      icon = '🟡';
-      summary = 'La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.';
-      implication = 'Esto maximiza liquidez presente, pero no genera ahorro previsional voluntario dentro de esta simulación.';
-      action = 'Simular APV gradual con montos de $300.000, $500.000 o $700.000 para medir costo líquido versus ahorro acumulado.';
-    }
-
-    if(pctLiquido < 55){
-      archetype = 'Liquidez Ajustada';
-      icon = '🔴';
-      summary = 'El líquido disponible es bajo respecto de los haberes del mes.';
-      implication = 'Aumentar APV o descuentos voluntarios podría tensionar la caja mensual.';
-      action = 'Priorizar liquidez antes de incrementar ahorro previsional o descuentos no obligatorios.';
-    }
-
-    if(pctVars >= 35 && pctAPV >= 8){
-      archetype = 'Patrimonial con Exposición Operacional';
-      icon = '🟠';
-      summary = 'Existe una estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.';
-      implication = 'La combinación APV alto + productividad variable puede ser eficiente, pero sensible a meses bajos de vuelo.';
-      action = 'Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.';
-    }
-
-    return {
-      name: archetype,
-      icon: icon,
-      summary: summary,
-      implication: implication,
-      action: action,
-      pctLiquido: pctLiquido,
-      pctVars: pctVars,
-      pctAPV: pctAPV,
-      pctIUSC: pctIUSC,
-      pctProdVars: pctProdVars
-    };
-  }
-
-  function renderFinancialArchetypeV201(data){
-    var a = detectFinancialArchetypeV201(data);
-    var lines = [];
-    lines.push('🧬 Arquetipo financiero IA');
-    lines.push('');
-    lines.push(a.icon + ' ' + a.name);
-    lines.push(a.summary);
-    lines.push('');
-    lines.push('Implicancia:');
-    lines.push(a.implication);
-    lines.push('');
-    lines.push('Acción sugerida:');
-    lines.push(a.action);
-    return lines.join('\n');
-  }
-
-
-function generateContextualAIDiagnosisV4(data){
+  function generateContextualAIDiagnosisV4(data){
     var totalHaberes = data.totalHaberes || 0;
     var liquido = data.liquido || 0;
     var totalVars = data.totalVars || 0;
@@ -9104,15 +9080,6 @@ function generateContextualAIDiagnosisV4(data){
     var pctIUSCHab = totalHaberes ? iusc / totalHaberes * 100 : 0;
 
     var lines = [];
-    lines.push(renderFinancialArchetypeV201({
-      totalHaberes: totalHaberes,
-      liquido: liquido,
-      totalVars: totalVars,
-      productividad: productividad,
-      apv: apv,
-      iusc: iusc
-    }));
-    lines.push('');
     lines.push('🧭 Diagnóstico contextual IA');
     lines.push('');
 
@@ -9615,47 +9582,20 @@ function generateFinancialDiagnosticV2(){
 
 
   function answerQuestion(q){
-    var __directV201 = null;
-    try {
-      if (typeof routeArchetypeOrContextualV201 === 'function') {
-        __directV201 = routeArchetypeOrContextualV201(q);
-      }
-    } catch(e) { __directV201 = null; }
-    if(__directV201){
-      window.__lastMicopilotQuestion = q;
-      return __directV201;
-    }
-
-if(wantsFullFinancialAnalysisV2(q)){
+    if(wantsFullFinancialAnalysisV2(q)){
       window.__lastMicopilotQuestion = q;
       return generateFinancialDiagnosticV2();
     }
 
     const qn = norm(q);
-    if(qn.includes('arquetipo') || qn.includes('perfil financiero') || qn.includes('tipo de liquidacion') || qn.includes('tipo de liquidación')){
+    if(isArchetypeQuestionV2(qn)){
       window.__lastMicopilotQuestion = q;
-      const snap = getCalcSnapshot();
-      return renderFinancialArchetypeV201({
-        totalHaberes: snap.totalHaberes || snap.haberes || 0,
-        liquido: snap.liquido || snap.alcanceLiquido || 0,
-        totalVars: snap.totalVars || snap.variables || 0,
-        productividad: snap.productividad || snap.bonoProductividad || 0,
-        apv: snap.apv || 0,
-        iusc: snap.iusc || snap.iuscFinal || 0
-      });
+      return generateFinancialArchetypeAnswerV2();
     }
 
     if(qn.includes('diagnostico contextual') || qn.includes('diagnóstico contextual') || qn.includes('recomendacion contextual') || qn.includes('recomendación contextual') || qn.includes('que me recomiendas') || qn.includes('qué me recomiendas')){
       window.__lastMicopilotQuestion = q;
-      const snap = getCalcSnapshot();
-      return generateContextualAIDiagnosisV4({
-        totalHaberes: snap.totalHaberes || snap.haberes || 0,
-        liquido: snap.liquido || snap.alcanceLiquido || 0,
-        totalVars: snap.totalVars || snap.variables || 0,
-        productividad: snap.productividad || snap.bonoProductividad || 0,
-        apv: snap.apv || 0,
-        iusc: snap.iusc || snap.iuscFinal || 0
-      });
+      return generateContextualAIDiagnosisV4(getFinancialMetricsV2());
     }
 
     const contextual2 = contextualConceptV2(q);
@@ -10249,749 +10189,66 @@ if(wantsFullFinancialAnalysisV2(q)){
 
 <!-- RemuTool v1.4.1.f.w.t: MiCopilot v1.9 Fase 2, comparativas de conceptos. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, Auditor con resumen ejecutivo y eliminación de alerta tributable/imponible. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 1B, buscarKBv2 conectado como primera fuente de MiCopilot. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 1C, router KB v2 corregido para definitionText y comparativas. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 1D, formato KB profesional optimizado para lectura en MiCopilot. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 2A, MiCopilot combina KB profesional + contexto actual en APV, IUSC, variables, descuentos, imponible/tributable y productividad. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 2B, contexto agregado como complemento sin degradar definiciones profesionales. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A, generateInsights y auditoría inteligente inicial integrados a MiCopilot. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.1, router auditor robustecido para preguntas tipo qué observas, qué ves, revisar liquidación, diagnóstico y hallazgos. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.2, estabilización del auditor y validación defensiva de bases imponible/tributable. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.1.3, debug bases temporal para auditar fuentes internas de imponible y tributable. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.2, resumen ejecutivo automático y eliminación de alerta tributable mayor que imponible. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3, explicaciones causales de liquidación con datos de simulación. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.1, conclusión ejecutiva dinámica en explicaciones causales. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.3.2, impacto relativo incorporado en explicaciones causales. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.1, escenarios rápidos APV/Productividad con parser flexible. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.2, comparación automática de escenarios APV/Productividad. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.5, motor de recomendaciones según objetivo incorporado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.3, análisis patrimonial cuantitativo incorporado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3A.4.4, separación entre recomendación y análisis patrimonial. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.0, diagnóstico financiero automático incorporado. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.0, diagnóstico financiero automático incorporado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.1, perfil automático de liquidación incorporado. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.1, perfil automático de liquidación incorporado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.2, arquetipos financieros y alertas inteligentes incorporados. -->
 
-<!-- Hotfix RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.2.1, corrección pctProdHab duplicado. -->
+<!-- Hotfix RemuTool v2.0.0.f.w.t: Fase 3B.2.1, corrección pctProdHab duplicado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.3, narrativa ejecutiva IA incorporada. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.4, recomendaciones automáticas con productividad tratada como exposición operacional. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.5.1 hotfix, simulador de decisiones compatible y defensivo. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.5.1 hotfix, simulador de decisiones compatible y defensivo. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3B.6, prioridad recomendada del mes incorporada. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3B.6, prioridad recomendada del mes incorporada. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3.7, respuestas jerárquicas Nivel 1 / Nivel 2 incorporadas. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 3.7.1 hotfix, profundiza/análisis completo conectado al diagnóstico completo. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
+<!-- RemuTool v2.0.0.f.w.t: Fase 4.0 Diagnóstico Contextual IA incorporado. -->
 
-<!-- RemuTool v2.0.1.f.w.t-snapshot-fix: Arquetipos Financieros IA incorporados. -->
-<script>
-
-/* === RemuTool v2.0.1.f.w.t-snapshot-fix — HOTFIX Arquetipos IA / Router MiCopilot === */
-
-function safeNumberV201(x){
-  if(typeof x === 'number' && isFinite(x)) return x;
-  if(x === null || x === undefined) return 0;
-  var s = String(x).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,'');
-  var n = Number(s);
-  return isFinite(n) ? n : 0;
-}
-
-function getCalcSnapshotV201(){
-  var snap = {};
-  try {
-    if(typeof getCalcSnapshot === 'function'){
-      snap = getCalcSnapshot() || {};
-    }
-  } catch(e){ snap = {}; }
-
-  function byId(id){
-    var el = document.getElementById(id);
-    if(!el) return 0;
-    return safeNumberV201(el.value || el.textContent || el.innerText);
-  }
-
-  function byTextContains(txt){
-    var nodes = Array.from(document.querySelectorAll('input, .card, .metric, .result-card, div, span'));
-    var found = nodes.find(function(el){
-      return (el.textContent || '').toLowerCase().includes(txt.toLowerCase());
-    });
-    return found ? safeNumberV201(found.textContent || found.value) : 0;
-  }
-
-  var totalHaberes = safeNumberV201(
-    snap.totalHaberes || snap.haberes || snap.total_haberes || byId('totalHaberes') || byTextContains('Total de Haberes')
-  );
-  var liquido = safeNumberV201(
-    snap.liquido || snap.alcanceLiquido || snap.alcance_liquido || byId('alcanceLiquido') || byId('liquido') || byTextContains('Alcance Líquido')
-  );
-  var totalVars = safeNumberV201(
-    snap.totalVars || snap.variables || snap.totalVariables || snap.total_variables || byId('totalVariables')
-  );
-  var productividad = safeNumberV201(
-    snap.productividad || snap.bonoProductividad || snap.bono_productividad || byId('bonoProductividad') || byId('productividad')
-  );
-  var apv = safeNumberV201(
-    snap.apv || snap.apvMonto || snap.apv_monto || byId('apv') || byId('apvMonto')
-  );
-  var iusc = safeNumberV201(
-    snap.iusc || snap.iuscFinal || snap.impuestoUnico || snap.impuesto_unico || byId('iusc') || byId('impuestoUnico')
-  );
-
-  if(totalVars <= 0){
-    totalVars = safeNumberV201(
-      productividad +
-      (snap.vacaciones || snap.bonoVacaciones || 0) +
-      (snap.feriados || snap.compensacionFeriados || 0) +
-      (snap.secuencia9 || snap.secuencia10 || snap.bonoSecuencia || 0)
-    );
-  }
-
-  return {
-    totalHaberes: totalHaberes,
-    liquido: liquido,
-    totalVars: totalVars,
-    productividad: productividad,
-    apv: apv,
-    iusc: iusc
-  };
-}
-
-function detectFinancialArchetypeV201(data){
-  data = data || getCalcSnapshotV201();
-  var totalHaberes = safeNumberV201(data.totalHaberes);
-  var liquido = safeNumberV201(data.liquido);
-  var totalVars = safeNumberV201(data.totalVars);
-  var productividad = safeNumberV201(data.productividad);
-  var apv = safeNumberV201(data.apv);
-  var iusc = safeNumberV201(data.iusc);
-
-  var pctLiquido = totalHaberes ? liquido / totalHaberes * 100 : 0;
-  var pctVars = totalHaberes ? totalVars / totalHaberes * 100 : 0;
-  var pctAPV = totalHaberes ? apv / totalHaberes * 100 : 0;
-  var pctIUSC = totalHaberes ? iusc / totalHaberes * 100 : 0;
-  var pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
-
-  var archetype = 'Balanceado';
-  var icon = '🟢';
-  var summary = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.';
-  var implication = 'La liquidación no muestra una concentración extrema en una sola dimensión.';
-  var action = 'Mantener monitoreo de productividad, APV e IUSC para evitar desbalances mensuales.';
-
-  if(pctVars >= 35){
-    archetype = 'Dependiente de variables';
-    icon = '🟠';
-    summary = 'Una parte relevante del ingreso depende de componentes variables del mes.';
-    implication = 'El líquido puede cambiar de forma importante si disminuye productividad, feriados, vacaciones u otros pagos variables.';
-    action = 'Presupuestar con productividad conservadora o cero, porque este ingreso depende de programación y horas de vuelo asignadas.';
-  }
-
-  if(pctIUSC >= 22 && pctVars < 35){
-    archetype = 'Alta carga tributaria';
-    icon = '🟠';
-    summary = 'El impuesto tiene peso relevante sobre la liquidación.';
-    implication = 'Cambios en renta tributable, productividad o APV pueden mover visiblemente el líquido mensual.';
-    action = 'Comparar escenarios de APV para medir eficiencia tributaria real y no sólo líquido mensual.';
-  }
-
-  if(pctAPV >= 8 && pctLiquido >= 55){
-    archetype = 'Acumulador previsional';
-    icon = '🟢';
-    summary = 'Existe una priorización clara de ahorro previsional y acumulación patrimonial.';
-    implication = 'El APV aporta disciplina de ahorro y puede mejorar eficiencia tributaria, pero reduce caja mensual disponible.';
-    action = 'Validar que el menor líquido mensual sea sostenible y comparar APV actual versus un monto menor si necesitas caja.';
-  }
-
-  if(pctAPV >= 3 && pctAPV < 8 && pctLiquido >= 60 && pctVars < 35){
-    archetype = 'Constructor patrimonial balanceado';
-    icon = '🟢';
-    summary = 'La liquidación combina ahorro previsional, liquidez mensual y exposición moderada a variables.';
-    implication = 'La estrategia APV parece compatible con la caja mensual disponible.';
-    action = 'Mantener estrategia actual y revisar sólo si cambia productividad, IUSC o necesidad de liquidez.';
-  }
-
-  if(apv <= 0 && pctLiquido >= 70){
-    archetype = 'Orientado a liquidez';
-    icon = '🟡';
-    summary = 'La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.';
-    implication = 'Esto maximiza liquidez presente, pero no genera ahorro previsional voluntario dentro de esta simulación.';
-    action = 'Simular APV gradual con montos de $300.000, $500.000 o $700.000 para medir costo líquido versus ahorro acumulado.';
-  }
-
-  if(pctLiquido < 55 && totalHaberes > 0){
-    archetype = 'Liquidez ajustada';
-    icon = '🔴';
-    summary = 'El líquido disponible es bajo respecto de los haberes del mes.';
-    implication = 'Aumentar APV o descuentos voluntarios podría tensionar la caja mensual.';
-    action = 'Priorizar liquidez antes de incrementar ahorro previsional o descuentos no obligatorios.';
-  }
-
-  if(pctVars >= 35 && pctAPV >= 8){
-    archetype = 'Patrimonial con exposición operacional';
-    icon = '🟠';
-    summary = 'Existe una estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.';
-    implication = 'La combinación APV alto + productividad variable puede ser eficiente, pero sensible a meses bajos de vuelo.';
-    action = 'Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.';
-  }
-
-  return { name: archetype, icon: icon, summary: summary, implication: implication, action: action,
-    pctLiquido: pctLiquido, pctVars: pctVars, pctAPV: pctAPV, pctIUSC: pctIUSC, pctProdVars: pctProdVars,
-    totalHaberes: totalHaberes, liquido: liquido, totalVars: totalVars, productividad: productividad, apv: apv, iusc: iusc };
-}
-
-function renderFinancialArchetypeV201(data){
-  var a = detectFinancialArchetypeV201(data);
-  var lines = [];
-  lines.push('🧬 Arquetipo financiero IA');
-  lines.push('');
-  lines.push(a.icon + ' ' + a.name);
-  lines.push(a.summary);
-  lines.push('');
-  lines.push('Lectura:');
-  lines.push('• Liquidez estimada: ' + Math.round(a.pctLiquido) + '% de los haberes.');
-  lines.push('• Variables: ' + Math.round(a.pctVars) + '% de los haberes.');
-  lines.push('• APV: ' + Math.round(a.pctAPV) + '% de los haberes.');
-  lines.push('• IUSC: ' + Math.round(a.pctIUSC) + '% de los haberes.');
-  lines.push('');
-  lines.push('Implicancia:');
-  lines.push(a.implication);
-  lines.push('');
-  lines.push('Acción sugerida:');
-  lines.push(a.action);
-  lines.push('');
-  lines.push('Nota operativa: la productividad no debe tratarse como ingreso garantizado; depende principalmente de programación, horas de vuelo asignadas y operación del mes.');
-  return lines.join('\n');
-}
-
-function isArchetypeQueryV201(q){
-  var s = String(q || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return (
-    s.includes('arquetipo') ||
-    s.includes('perfil financiero') ||
-    s.includes('tipo de liquidacion') ||
-    s.includes('que perfil tengo') ||
-    s.includes('cual es mi perfil') ||
-    s.includes('cual es mi arquetipo') ||
-    s.includes('que arquetipo tengo')
-  );
-}
-
-function isContextualDiagnosisQueryV201(q){
-  var s = String(q || '').toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  return (
-    s.includes('diagnostico contextual') ||
-    s.includes('recomendacion contextual') ||
-    s.includes('que me recomiendas') ||
-    s.includes('como ves mi liquidacion') ||
-    s.includes('analisis completo') ||
-    s.includes('ver detalle') ||
-    s.includes('profundiza')
-  );
-}
-
-function routeArchetypeOrContextualV201(q){
-  var snap = getCalcSnapshotV201();
-
-  if(isArchetypeQueryV201(q)){
-    return renderFinancialArchetypeV201(snap);
-  }
-
-  if(isContextualDiagnosisQueryV201(q) && typeof generateContextualAIDiagnosisV4 === 'function'){
-    var base = generateContextualAIDiagnosisV4(snap);
-    if(String(base || '').indexOf('🧬 Arquetipo financiero IA') === -1){
-      return renderFinancialArchetypeV201(snap) + '\n\n' + base;
-    }
-    return base;
-  }
-
-  return null;
-}
-
-/* Hook no invasivo: intercepta el router principal aunque tenga nombres distintos */
-(function(){
-  var candidates = ['answerQuestion','processMiCopilotQuestion','handleMiCopilotQuestion','generateMicopilotAnswer','getMicopilotAnswer'];
-  candidates.forEach(function(name){
-    try{
-      if(typeof window[name] === 'function' && !window[name].__archetypeHotfixed){
-        var original = window[name];
-        var wrapped = function(q){
-          var routed = routeArchetypeOrContextualV201(q);
-          if(routed) return routed;
-          return original.apply(this, arguments);
-        };
-        wrapped.__archetypeHotfixed = true;
-        window[name] = wrapped;
-      }
-    }catch(e){}
-  });
-
-  document.addEventListener('click', function(ev){
-    var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
-    if(!btn) return;
-    var txt = (btn.textContent || '').toLowerCase();
-    if(txt.includes('consultar') || txt.includes('enviar')){
-      setTimeout(function(){
-        try{
-          var inputs = Array.from(document.querySelectorAll('input, textarea'));
-          var q = '';
-          for(var i=inputs.length-1; i>=0; i--){
-            if(inputs[i].value && inputs[i].value.trim()){
-              q = inputs[i].value.trim(); break;
-            }
-          }
-          var routed = routeArchetypeOrContextualV201(q);
-          if(!routed) return;
-          if(typeof addMiCopilotMessage === 'function'){
-            addMiCopilotMessage('MiCopilot', routed);
-          }
-        }catch(e){}
-      }, 60);
-    }
-  }, true);
-})();
-
-
-</script>
-
-<script>
-/* === RemuTool v2.0.1.f.w.t-snapshot-fix — Router final MiCopilot / Arquetipo + Profundiza === */
-(function(){
-  function normalizeV201(s){
-    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  }
-
-  function safeN(v){
-    if(typeof v === 'number' && isFinite(v)) return v;
-    if(v === null || v === undefined) return 0;
-    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
-    return isFinite(n) ? n : 0;
-  }
-
-  function robustSnapshot(){
-    var s = {};
-    try {
-      if(typeof getCalcSnapshot === 'function') s = getCalcSnapshot() || {};
-    } catch(e){ s = {}; }
-
-    function id(v){
-      var el = document.getElementById(v);
-      if(!el) return 0;
-      return safeN(el.value || el.textContent || el.innerText);
-    }
-
-    function text(label){
-      var nodes = Array.from(document.querySelectorAll('.kpi, .card, .result-card, .metric, div, span'));
-      var node = nodes.find(function(x){ return (x.textContent || '').toLowerCase().includes(label.toLowerCase()); });
-      return node ? safeN(node.textContent) : 0;
-    }
-
-    var totalHaberes = safeN(s.totalHaberes || s.haberes || s.total_haberes || id('totalHaberes') || text('Total de Haberes'));
-    var liquido = safeN(s.liquido || s.alcanceLiquido || s.alcance_liquido || id('alcanceLiquido') || text('Alcance Líquido'));
-    var totalVars = safeN(s.totalVars || s.variables || s.totalVariables || s.total_variables || id('totalVariables'));
-    var productividad = safeN(s.productividad || s.bonoProductividad || s.bono_productividad || id('bonoProductividad') || id('productividad'));
-    var apv = safeN(s.apv || s.apvMonto || s.apv_monto || id('apv') || id('apvMonto'));
-    var iusc = safeN(s.iusc || s.iuscFinal || s.impuestoUnico || s.impuesto_unico || id('iusc') || id('impuestoUnico'));
-
-    if(!totalVars){
-      totalVars = safeN(productividad) +
-                  safeN(s.vacaciones || s.bonoVacaciones) +
-                  safeN(s.feriados || s.compensacionFeriados) +
-                  safeN(s.secuencia9 || s.secuencia10 || s.bonoSecuencia);
-    }
-
-    return { totalHaberes:totalHaberes, liquido:liquido, totalVars:totalVars, productividad:productividad, apv:apv, iusc:iusc };
-  }
-
-  window.getCalcSnapshotV201Final = robustSnapshot;
-
-  function isArch(q){
-    var n = normalizeV201(q);
-    return n.includes('arquetipo') || n.includes('perfil financiero') || n.includes('tipo de liquidacion') ||
-           n.includes('que perfil tengo') || n.includes('cual es mi perfil') || n.includes('cual es mi arquetipo');
-  }
-
-  function isDeep(q){
-    var n = normalizeV201(q);
-    return n.includes('profundiza') || n.includes('ver detalle') || n.includes('analisis completo') ||
-           n.includes('informe completo') || n.includes('diagnostico contextual') || n.includes('recomendacion contextual') ||
-           n.includes('como ves mi liquidacion') || n.includes('que me recomiendas');
-  }
-
-  function renderArch(data){
-    if(typeof renderFinancialArchetypeV201 === 'function'){
-      try { return renderFinancialArchetypeV201(data); } catch(e){}
-    }
-
-    var h = safeN(data.totalHaberes), l = safeN(data.liquido), v = safeN(data.totalVars), p = safeN(data.productividad), a = safeN(data.apv), i = safeN(data.iusc);
-    var pctL = h ? l / h * 100 : 0;
-    var pctV = h ? v / h * 100 : 0;
-    var pctA = h ? a / h * 100 : 0;
-    var pctI = h ? i / h * 100 : 0;
-    var name = 'Balanceado', icon = '🟢', desc = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.', action = 'Mantener monitoreo de productividad, APV e IUSC.';
-    if(pctV >= 35){ name='Dependiente de variables'; icon='🟠'; desc='Una parte relevante del ingreso depende de componentes variables del mes.'; action='Presupuestar con productividad conservadora o cero.'; }
-    if(pctA >= 8 && pctL >= 55){ name='Acumulador previsional'; icon='🟢'; desc='Existe una priorización clara de ahorro previsional y acumulación patrimonial.'; action='Validar que el menor líquido mensual sea sostenible.'; }
-    if(a <= 0 && pctL >= 70){ name='Orientado a liquidez'; icon='🟡'; desc='La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.'; action='Simular APV gradual para medir costo líquido versus ahorro acumulado.'; }
-    if(pctV >= 35 && pctA >= 8){ name='Patrimonial con exposición operacional'; icon='🟠'; desc='Existe estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.'; action='Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.'; }
-
-    return [
-      '🧬 Arquetipo financiero IA',
-      '',
-      icon + ' ' + name,
-      desc,
-      '',
-      'Lectura:',
-      '• Liquidez estimada: ' + Math.round(pctL) + '% de los haberes.',
-      '• Variables: ' + Math.round(pctV) + '% de los haberes.',
-      '• APV: ' + Math.round(pctA) + '% de los haberes.',
-      '• IUSC: ' + Math.round(pctI) + '% de los haberes.',
-      '',
-      'Acción sugerida:',
-      action,
-      '',
-      'Nota operativa: la productividad no debe tratarse como ingreso garantizado; depende principalmente de programación, horas de vuelo asignadas y operación del mes.'
-    ].join('\n');
-  }
-
-  function contextual(data){
-    if(typeof generateContextualAIDiagnosisV4 === 'function'){
-      try { return generateContextualAIDiagnosisV4(data); } catch(e){}
-    }
-    return renderArch(data);
-  }
-
-  window.routeArchetypeOrContextualV201Final = function(q){
-    var snap = robustSnapshot();
-    if(isArch(q)) return renderArch(snap);
-    if(isDeep(q)) return contextual(snap);
-    return null;
-  };
-
-  var originalAnswer = window.answerQuestion;
-  window.answerQuestion = function(q){
-    var routed = window.routeArchetypeOrContextualV201Final(q);
-    if(routed){
-      window.__lastMicopilotQuestion = q;
-      return routed;
-    }
-    if(typeof originalAnswer === 'function'){
-      return originalAnswer.apply(this, arguments);
-    }
-    return 'Puedo ayudarte a entender tu liquidación, comparar escenarios, revisar APV, variables, descuentos e IUSC.';
-  };
-
-  document.addEventListener('click', function(ev){
-    var btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
-    if(!btn) return;
-    var label = normalizeV201(btn.textContent || '');
-    if(!(label.includes('consultar') || label.includes('enviar'))) return;
-
-    setTimeout(function(){
-      var inputs = Array.from(document.querySelectorAll('input, textarea'));
-      var q = '';
-      for(var i=inputs.length-1; i>=0; i--){
-        if(inputs[i].value && inputs[i].value.trim()){
-          q = inputs[i].value.trim();
-          break;
-        }
-      }
-      var routed = window.routeArchetypeOrContextualV201Final(q);
-      if(!routed) return;
-
-      try {
-        if(typeof setResponse === 'function') setResponse(routed);
-      } catch(e){}
-    }, 80);
-  }, true);
-})();
-</script>
-
-
-<script>
-/* === RemuTool v2.0.1.f.w.t — Snapshot Fix MiCopilot ===
-   Objetivo: conectar Arquetipo / Diagnóstico contextual a buildContext(),
-   la misma fuente real usada por "Analiza mis descuentos".
-*/
-(function(){
-  function nrm(s){
-    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  }
-
-  function safeNum(v){
-    if(typeof v === 'number' && isFinite(v)) return v;
-    if(v === null || v === undefined) return 0;
-    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
-    return isFinite(n) ? n : 0;
-  }
-
-  function sumObj(o){
-    if(!o || typeof o !== 'object') return 0;
-    return Object.values(o).reduce(function(a,b){ return a + safeNum(b); }, 0);
-  }
-
-  function snapshotFromBuildContextV201(){
-    var c = null;
-    try {
-      if(typeof buildContext === 'function'){
-        c = buildContext();
-      }
-    } catch(e){
-      c = null;
-    }
-
-    if(c && c.resultados){
-      var ingresosFijos = c.ingresosFijos || {};
-      var variables = c.variables || {};
-      var descuentos = c.descuentos || {};
-      var resultados = c.resultados || {};
-
-      var totalVars = sumObj(variables);
-      var totalFijos = sumObj(ingresosFijos);
-
-      var productividad =
-        safeNum(variables['Bono Productividad']) ||
-        safeNum(variables['Productividad']) ||
-        safeNum(variables['Bono productividad']);
-
-      return {
-        totalHaberes: safeNum(resultados.totalHaberes) || (totalFijos + totalVars),
-        liquido: safeNum(resultados.liquido) || safeNum(resultados.alcanceLiquido),
-        totalVars: totalVars,
-        productividad: productividad,
-        apv: safeNum(descuentos['APV']),
-        iusc: safeNum(descuentos['IUSC']) || safeNum(descuentos['Impuesto Único']) || safeNum(descuentos['Impuesto Unico']),
-        descuentosLegales: safeNum(resultados.descuentosLegales) || sumObj(descuentos),
-        descuentosVarios: safeNum(resultados.descuentosVarios),
-        imponible: safeNum(resultados.imponible),
-        tributable: safeNum(resultados.tributable) || safeNum(resultados.rentaTributable),
-        _source: 'buildContext'
-      };
-    }
-
-    // Fallback defensivo antiguo si buildContext no está disponible.
-    try {
-      if(typeof snapshotActual === 'function'){
-        var s = snapshotActual();
-        return {
-          totalHaberes: safeNum(s.totalHaberes),
-          liquido: safeNum(s.liquido),
-          totalVars: safeNum(s.variables),
-          productividad: safeNum(s.productividad),
-          apv: safeNum(s.apv),
-          iusc: safeNum(s.iusc),
-          descuentosLegales: safeNum(s.descuentosLegales),
-          descuentosVarios: safeNum(s.descuentosVarios),
-          imponible: safeNum(s.imponible),
-          tributable: safeNum(s.tributable),
-          _source: 'snapshotActual'
-        };
-      }
-    } catch(e){}
-
-    return {
-      totalHaberes:0, liquido:0, totalVars:0, productividad:0,
-      apv:0, iusc:0, descuentosLegales:0, descuentosVarios:0,
-      imponible:0, tributable:0, _source:'empty'
-    };
-  }
-
-  window.getCalcSnapshotV201Final = snapshotFromBuildContextV201;
-  window.getCalcSnapshotV201 = snapshotFromBuildContextV201;
-
-  function isArchetypeQuery(q){
-    var s = nrm(q);
-    return s.includes('arquetipo') ||
-           s.includes('perfil financiero') ||
-           s.includes('tipo de liquidacion') ||
-           s.includes('que perfil tengo') ||
-           s.includes('cual es mi perfil') ||
-           s.includes('cual es mi arquetipo') ||
-           s.includes('que arquetipo tengo');
-  }
-
-  function isContextualQuery(q){
-    var s = nrm(q);
-    return s.includes('diagnostico contextual') ||
-           s.includes('recomendacion contextual') ||
-           s.includes('como ves mi liquidacion') ||
-           s.includes('que me recomiendas') ||
-           s.includes('profundiza') ||
-           s.includes('ver detalle') ||
-           s.includes('analisis completo') ||
-           s.includes('informe completo');
-  }
-
-  function renderArchetypeFallback(data){
-    var h = safeNum(data.totalHaberes);
-    var l = safeNum(data.liquido);
-    var v = safeNum(data.totalVars);
-    var p = safeNum(data.productividad);
-    var apv = safeNum(data.apv);
-    var iusc = safeNum(data.iusc);
-
-    var pctLiquido = h ? l / h * 100 : 0;
-    var pctVars = h ? v / h * 100 : 0;
-    var pctAPV = h ? apv / h * 100 : 0;
-    var pctIUSC = h ? iusc / h * 100 : 0;
-    var pctProdVars = v ? p / v * 100 : 0;
-
-    var name = 'Balanceado';
-    var icon = '🟢';
-    var summary = 'Existe una combinación razonable entre caja mensual, variables y ahorro previsional.';
-    var implication = 'La liquidación no muestra una concentración extrema en una sola dimensión.';
-    var action = 'Mantener monitoreo de productividad, APV e IUSC para evitar desbalances mensuales.';
-
-    if(pctVars >= 35){
-      name = 'Dependiente de variables';
-      icon = '🟠';
-      summary = 'Una parte relevante del ingreso depende de componentes variables del mes.';
-      implication = 'El líquido puede cambiar de forma importante si disminuye productividad, feriados, vacaciones u otros pagos variables.';
-      action = 'Presupuestar con productividad conservadora o cero, porque este ingreso depende de programación y horas de vuelo asignadas.';
-    }
-
-    if(pctIUSC >= 22 && pctVars < 35){
-      name = 'Alta carga tributaria';
-      icon = '🟠';
-      summary = 'El impuesto tiene peso relevante sobre la liquidación.';
-      implication = 'Cambios en renta tributable, productividad o APV pueden mover visiblemente el líquido mensual.';
-      action = 'Comparar escenarios de APV para medir eficiencia tributaria real y no sólo líquido mensual.';
-    }
-
-    if(pctAPV >= 8 && pctLiquido >= 55){
-      name = 'Acumulador previsional';
-      icon = '🟢';
-      summary = 'Existe una priorización clara de ahorro previsional y acumulación patrimonial.';
-      implication = 'El APV aporta disciplina de ahorro y puede mejorar eficiencia tributaria, pero reduce caja mensual disponible.';
-      action = 'Validar que el menor líquido mensual sea sostenible y comparar APV actual versus un monto menor si necesitas caja.';
-    }
-
-    if(pctAPV >= 3 && pctAPV < 8 && pctLiquido >= 60 && pctVars < 35){
-      name = 'Constructor patrimonial balanceado';
-      icon = '🟢';
-      summary = 'La liquidación combina ahorro previsional, liquidez mensual y exposición moderada a variables.';
-      implication = 'La estrategia APV parece compatible con la caja mensual disponible.';
-      action = 'Mantener estrategia actual y revisar sólo si cambia productividad, IUSC o necesidad de liquidez.';
-    }
-
-    if(apv <= 0 && pctLiquido >= 70){
-      name = 'Orientado a liquidez';
-      icon = '🟡';
-      summary = 'La estructura prioriza caja mensual disponible por sobre ahorro previsional voluntario.';
-      implication = 'Esto maximiza liquidez presente, pero no genera ahorro previsional voluntario dentro de esta simulación.';
-      action = 'Simular APV gradual con montos de $300.000, $500.000 o $700.000 para medir costo líquido versus ahorro acumulado.';
-    }
-
-    if(pctLiquido < 55 && h > 0){
-      name = 'Liquidez ajustada';
-      icon = '🔴';
-      summary = 'El líquido disponible es bajo respecto de los haberes del mes.';
-      implication = 'Aumentar APV o descuentos voluntarios podría tensionar la caja mensual.';
-      action = 'Priorizar liquidez antes de incrementar ahorro previsional o descuentos no obligatorios.';
-    }
-
-    if(pctVars >= 35 && pctAPV >= 8){
-      name = 'Patrimonial con exposición operacional';
-      icon = '🟠';
-      summary = 'Existe una estrategia patrimonial relevante, pero con alta dependencia de variables operacionales.';
-      implication = 'La combinación APV alto + productividad variable puede ser eficiente, pero sensible a meses bajos de vuelo.';
-      action = 'Mantener APV sólo si el líquido base sin productividad sigue siendo tolerable.';
-    }
-
-    return [
-      '🧬 Arquetipo financiero IA',
-      '',
-      icon + ' ' + name,
-      summary,
-      '',
-      'Lectura:',
-      '• Liquidez estimada: ' + (typeof pct === 'function' ? pct(pctLiquido) : Math.round(pctLiquido) + '%') + ' de los haberes.',
-      '• Variables: ' + (typeof pct === 'function' ? pct(pctVars) : Math.round(pctVars) + '%') + ' de los haberes.',
-      '• Productividad: ' + (v ? (typeof pct === 'function' ? pct(pctProdVars) : Math.round(pctProdVars) + '%') + ' de las variables.' : 'sin variables registradas.'),
-      '• APV: ' + (typeof CLP === 'function' ? CLP(apv) : '$' + Math.round(apv).toLocaleString('es-CL')) + ' (' + (typeof pct === 'function' ? pct(pctAPV) : Math.round(pctAPV) + '%') + ' de los haberes).',
-      '• IUSC: ' + (typeof CLP === 'function' ? CLP(iusc) : '$' + Math.round(iusc).toLocaleString('es-CL')) + ' (' + (typeof pct === 'function' ? pct(pctIUSC) : Math.round(pctIUSC) + '%') + ' de los haberes).',
-      '',
-      'Implicancia:',
-      implication,
-      '',
-      'Acción sugerida:',
-      action,
-      '',
-      'Nota operativa: la productividad no debe tratarse como ingreso garantizado; depende principalmente de programación, horas de vuelo asignadas y operación del mes.'
-    ].join('\n');
-  }
-
-  function renderArchetype(data){
-    try {
-      if(typeof renderFinancialArchetypeV201 === 'function'){
-        var txt = renderFinancialArchetypeV201(data);
-        // Si la función antigua devolvió el síntoma 100/0/0/0, reemplazar por fallback correcto.
-        if(txt && !txt.includes('Liquidez estimada: 100%') && !txt.includes('Variables: 0% de los haberes')){
-          return txt;
-        }
-      }
-    } catch(e){}
-    return renderArchetypeFallback(data);
-  }
-
-  function renderContextual(data){
-    try {
-      if(typeof generateContextualAIDiagnosisV4 === 'function'){
-        var txt = generateContextualAIDiagnosisV4(data);
-        if(txt) return txt;
-      }
-    } catch(e){}
-    return renderArchetypeFallback(data);
-  }
-
-  window.routeArchetypeOrContextualV201Final = function(q){
-    var data = snapshotFromBuildContextV201();
-    if(isArchetypeQuery(q)) return renderArchetype(data);
-    if(isContextualQuery(q)) return renderContextual(data);
-    return null;
-  };
-
-  // Mantener el router original, pero anteponer el nuevo snapshot correcto.
-  var previousAnswer = window.answerQuestion;
-  window.answerQuestion = function(q){
-    var routed = null;
-    try { routed = window.routeArchetypeOrContextualV201Final(q); } catch(e){ routed = null; }
-    if(routed){
-      window.__lastMicopilotQuestion = q;
-      return routed;
-    }
-    if(typeof previousAnswer === 'function'){
-      return previousAnswer.apply(this, arguments);
-    }
-    return 'Puedo ayudarte a entender tu liquidación, comparar escenarios, revisar APV, variables, descuentos e IUSC.';
-  };
-})();
-</script>
-
+<!-- RemuTool v2.0.1.f.w.t-stable-rebuild: motor único getFinancialMetricsV2 para arquetipo y diagnóstico contextual. -->
 </body>
 </html>
