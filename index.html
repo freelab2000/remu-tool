@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.1.f.w.t-stable-rebuild" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.1.f.w.t-stable-rebuild</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.2.f.w.t-apv-kb-router" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.2.f.w.t-apv-kb-router</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -9581,6 +9581,159 @@ function generateFinancialDiagnosticV2(){
   }
 
 
+
+  /* === RemuTool v2.0.2.f.w.t — APV KB router reforzado ===
+     Objetivo: separar definiciones APV A, APV B y comparación A/B.
+     Motivo: el router anterior respondía siempre con el bloque genérico APV.
+  */
+  function apvContextLineV3(){
+    try{
+      const data = getFinancialMetricsV2 ? getFinancialMetricsV2() : {};
+      const fmt = (typeof fmtCLP === 'function') ? fmtCLP : (n)=>'$' + Math.max(0, Math.floor(Number(n)||0)).toLocaleString('es-CL');
+      const p = (v)=> (Number(v)||0).toLocaleString('es-CL',{maximumFractionDigits:1}) + '%';
+      if(!data || !data.totalHaberes) return '';
+      const reg = String(data.regimenAPV || 'B').toUpperCase();
+      const apv = Number(data.apv || 0);
+      const iusc = Number(data.iusc || 0);
+      const hab = Number(data.totalHaberes || 0);
+      const pctApv = hab ? apv / hab * 100 : 0;
+      const pctIusc = hab ? iusc / hab * 100 : 0;
+      if(apv > 0){
+        return [
+          '',
+          'Contexto de tu simulación:',
+          '• APV actual: ' + fmt(apv) + ' en régimen ' + reg + ' (' + p(pctApv) + ' de los haberes).',
+          '• IUSC actual: ' + fmt(iusc) + ' (' + p(pctIusc) + ' de los haberes).',
+          reg === 'B'
+            ? '• En régimen B, este APV ayuda a rebajar la base tributable usada para calcular el IUSC, sujeto a topes legales.'
+            : '• En régimen A, este APV prioriza bonificación estatal; no rebaja directamente la base tributable mensual del IUSC.'
+        ].join('\n');
+      }
+      return [
+        '',
+        'Contexto de tu simulación:',
+        '• No hay APV registrado en esta simulación.',
+        '• Puedes simular APV A o B para comparar liquidez mensual versus beneficio tributario/previsional.'
+      ].join('\n');
+    }catch(e){
+      return '';
+    }
+  }
+
+  function answerAPVKnowledgeV3(q){
+    const n = norm(q || '');
+    if(!n.includes('apv') && !n.includes('ahorro previsional')) return null;
+
+    const asksA = (
+      n.includes('apv a') ||
+      n.includes('regimen a') ||
+      n.includes('régimen a') ||
+      n.includes('reg a') ||
+      n.includes('apv regimen a') ||
+      n.includes('apv régimen a')
+    );
+    const asksB = (
+      n.includes('apv b') ||
+      n.includes('regimen b') ||
+      n.includes('régimen b') ||
+      n.includes('reg b') ||
+      n.includes('apv regimen b') ||
+      n.includes('apv régimen b')
+    );
+    const asksDifference = (
+      n.includes('diferencia') ||
+      n.includes('diferencias') ||
+      n.includes('comparar') ||
+      n.includes('compara') ||
+      n.includes('versus') ||
+      n.includes(' vs ') ||
+      n.includes('conviene') ||
+      n.includes('cual es mejor') ||
+      n.includes('cuál es mejor')
+    );
+
+    if(asksDifference && (asksA || asksB || n.includes(' a y b') || n.includes(' a vs b'))){
+      return [
+        'APV A vs APV B — diferencia práctica',
+        '',
+        '🅰️ APV Régimen A',
+        '• No rebaja directamente la base tributable mensual para calcular el IUSC.',
+        '• Entrega una bonificación estatal sobre el ahorro, sujeta a topes legales.',
+        '• Suele ser más atractivo cuando la tasa marginal de impuesto es baja o media, o cuando se quiere privilegiar ahorro previsional sin depender tanto del beneficio tributario mensual.',
+        '',
+        '🅱️ APV Régimen B',
+        '• Rebaja la base tributable usada para calcular el Impuesto Único, dentro de los topes legales.',
+        '• El beneficio depende de tu tasa marginal: mientras más alto sea tu tramo de impuesto, mayor suele ser el ahorro tributario inmediato.',
+        '• Suele ser más atractivo en rentas altas o cuando el objetivo es optimizar carga impositiva actual.',
+        '',
+        'Diferencia clave en RemuTool:',
+        '• APV A: mejora ahorro previsional vía bonificación, pero no reduce directamente el IUSC mensual.',
+        '• APV B: reduce renta tributable y puede bajar el IUSC, pero también reduce el líquido porque el aporte se descuenta de la remuneración.',
+        '',
+        'Criterio de decisión:',
+        '• Si priorizas liquidez mensual, debes mirar cuánto baja el líquido al aumentar APV.',
+        '• Si priorizas eficiencia tributaria, debes comparar cuánto baja el IUSC frente al aporte realizado.',
+        '• Si estás en tramo alto de impuesto, normalmente APV B gana relevancia; si la tasa marginal es baja, APV A puede ser más competitivo.',
+        apvContextLineV3()
+      ].join('\n');
+    }
+
+    if(asksA && !asksB){
+      return [
+        'APV Régimen A — definición clara',
+        '',
+        'El APV A es una modalidad de Ahorro Previsional Voluntario orientada a obtener una bonificación estatal sobre el ahorro.',
+        '',
+        'Cómo funciona:',
+        '• El aporte aumenta tu ahorro previsional.',
+        '• El beneficio principal es una bonificación fiscal sobre el monto ahorrado, sujeta a topes legales.',
+        '• No rebaja directamente la base tributable mensual usada para calcular el IUSC.',
+        '',
+        'Efecto práctico en tu liquidación:',
+        '• Si el aporte se descuenta por planilla, reduce tu líquido por el monto aportado.',
+        '• Pero no genera la misma rebaja mensual de Impuesto Único que el régimen B.',
+        '',
+        'Cuándo puede convenir:',
+        '• Cuando tu tasa marginal de impuesto no es muy alta.',
+        '• Cuando quieres construir ahorro previsional sin basar la decisión en rebaja tributaria mensual.',
+        '• Cuando el aporte es moderado y la bonificación estatal resulta relevante.',
+        '',
+        'Precaución:',
+        '• Tiene topes y reglas de retiro. Si retiras anticipadamente, puede haber efectos tributarios y pérdida/devolución de beneficios según corresponda.',
+        apvContextLineV3()
+      ].join('\n');
+    }
+
+    if(asksB && !asksA){
+      return [
+        'APV Régimen B — definición clara',
+        '',
+        'El APV B es una modalidad de Ahorro Previsional Voluntario orientada a reducir la carga tributaria actual.',
+        '',
+        'Cómo funciona:',
+        '• El aporte aumenta tu ahorro previsional.',
+        '• El monto aportado puede rebajar la base tributable usada para calcular el Impuesto Único, dentro de los topes legales.',
+        '• El beneficio tributario depende de tu tasa marginal de impuesto.',
+        '',
+        'Efecto práctico en tu liquidación:',
+        '• Reduce tu líquido porque el aporte se descuenta de la remuneración.',
+        '• Pero al mismo tiempo puede reducir el IUSC, compensando parcialmente el sacrificio de caja.',
+        '',
+        'Cuándo puede convenir:',
+        '• Cuando estás en un tramo alto de Impuesto Único.',
+        '• Cuando buscas eficiencia tributaria y acumulación previsional.',
+        '• Cuando puedes sacrificar liquidez mensual sin tensionar tu caja.',
+        '',
+        'Precaución:',
+        '• No debe evaluarse sólo por “pago menos impuesto”. La decisión correcta compara aporte, menor IUSC, líquido final y objetivo patrimonial.',
+        apvContextLineV3()
+      ].join('\n');
+    }
+
+    return null;
+  }
+
+
   function answerQuestion(q){
     if(wantsFullFinancialAnalysisV2(q)){
       window.__lastMicopilotQuestion = q;
@@ -9597,6 +9750,9 @@ function generateFinancialDiagnosticV2(){
       window.__lastMicopilotQuestion = q;
       return generateContextualAIDiagnosisV4(getFinancialMetricsV2());
     }
+
+    const apvKnowledgeV3 = answerAPVKnowledgeV3(q);
+    if(apvKnowledgeV3) return apvKnowledgeV3;
 
     const contextual2 = contextualConceptV2(q);
     if(contextual2) return contextual2;
