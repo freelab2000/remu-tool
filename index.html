@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.7.f.w.t-tax-router-priority" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.7.f.w.t-tax-router-priority</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.1.0.f.w.t-financial-intelligence" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.1.0.f.w.t-financial-intelligence</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -11566,14 +11566,14 @@ function generateFinancialDiagnosticV2(){
 
 
 <script>
-/* === RemuTool v2.0.7.f.w.t — Router Tributario Determinístico Prioritario ===
+/* === RemuTool v2.1.0.f.w.t — Router Tributario Determinístico Prioritario ===
    Corrige el punto crítico detectado en pruebas:
    - El askAndClear original usaba un answerQuestion local, por lo que los hooks sobre window.answerQuestion no siempre corrían.
    - Este interceptor corre en fase capture sobre Consultar/Enter, responde primero preguntas tributarias/APV con datos reales de la simulación y bloquea la KB genérica.
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.2.0.7.f.w.t-tax-router-priority';
+  const VERSION = 'v.2.1.0.f.w.t-financial-intelligence';
 
   function norm(s){
     return String(s || '')
@@ -11933,6 +11933,418 @@ function generateFinancialDiagnosticV2(){
   }, true);
 
   window.RemuToolTaxRouterV207 = { version: VERSION, context, answer, taxAt };
+})();
+</script>
+
+
+<script>
+/* === RemuTool v2.1.0.f.w.t — Financial Intelligence Layer ===
+   Objetivo:
+   - Agregar una capa superior de análisis financiero antes del router tributario.
+   - Responder con interpretación y escenarios breves: impuesto alto, impacto descuentos, APV cero, aumento APV, resumen liquidación.
+   - No reemplaza buildTaxContext ni el router tributario; los reutiliza.
+*/
+(function(){
+  function fiNorm(s){
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function fiNum(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function fiMoney(n){
+    n = fiNum(n);
+    if(typeof CLP === 'function'){
+      try { return CLP(n); } catch(e){}
+    }
+    return '$' + Math.round(n).toLocaleString('es-CL');
+  }
+
+  function fiPct(n){
+    n = Number(n || 0);
+    return (n * 100).toFixed(n === 0 ? 0 : 1).replace('.', ',') + '%';
+  }
+
+  function fiGetTax(){
+    try {
+      if(typeof buildTaxContext === 'function') return buildTaxContext();
+    } catch(e){}
+    return null;
+  }
+
+  function fiRank(items){
+    return items
+      .filter(function(x){ return fiNum(x.value) > 0; })
+      .sort(function(a,b){ return fiNum(b.value) - fiNum(a.value); });
+  }
+
+  function fiCtx(){
+    var t = fiGetTax() || {};
+    var ingresos = t.ingresos || {};
+    var previsionales = t.previsionales || {};
+    var otros = t.otros || {};
+    var tax = t.tax || {};
+    var resultados = t.resultados || {};
+
+    var haberes = fiNum(ingresos.totalHaberes);
+    var liquido = fiNum(resultados.liquido);
+    var apv = fiNum(otros.apv);
+    var tasa = fiNum(tax.tasa);
+    var iusc = fiNum(tax.iuscFinal);
+    var rli = fiNum(tax.rli);
+    var tramo = tax.tramo || 0;
+    var productividad = fiNum(ingresos.productividad);
+    var variables = fiNum(ingresos.variables);
+
+    var descuentos = [
+      { name:'IUSC', value: iusc },
+      { name:'APV', value: apv },
+      { name:'AFP 10%', value: fiNum(previsionales.afp10) },
+      { name:'Salud 7%', value: fiNum(previsionales.salud7) },
+      { name:'Seguro Cesantía', value: fiNum(previsionales.cesantia) },
+      { name:'Trabajo Pesado', value: fiNum(previsionales.trabajoPesado) },
+      { name:'Comisión AFP', value: fiNum(otros.comisionAFP) },
+      { name:'Salud adicional', value: fiNum(otros.adicionalSalud) },
+      { name:'Sindicato', value: fiNum(otros.sindicato) }
+    ];
+
+    var ingresosRank = [
+      { name:'Sueldo base', value: fiNum(ingresos.sueldoBase) },
+      { name:'Gratificación', value: fiNum(ingresos.gratificacion) },
+      { name:'Antigüedad', value: fiNum(ingresos.antiguedad) },
+      { name:'Productividad', value: productividad },
+      { name:'Variables', value: variables }
+    ];
+
+    var beneficioAPV = apv * tasa;
+    var iuscSinAPV = iusc + beneficioAPV;
+    var liquidoSinAPV = liquido + apv - beneficioAPV;
+
+    return {
+      raw:t,
+      haberes:haberes,
+      liquido:liquido,
+      apv:apv,
+      tasa:tasa,
+      iusc:iusc,
+      rli:rli,
+      tramo:tramo,
+      productividad:productividad,
+      variables:variables,
+      rebaja:fiNum(tax.rebaja),
+      descuentosRank:fiRank(descuentos),
+      ingresosRank:fiRank(ingresosRank),
+      beneficioAPV:beneficioAPV,
+      iuscSinAPV:iuscSinAPV,
+      liquidoSinAPV:liquidoSinAPV
+    };
+  }
+
+  function fiExtractMoneyFromQuestion(q){
+    var s = String(q || '').replace(/\./g,'');
+    var matches = s.match(/\$?\s*(\d{5,9})/g);
+    if(!matches || !matches.length) return 0;
+    var nums = matches.map(function(m){ return fiNum(m); }).filter(function(n){ return n > 0; });
+    if(!nums.length) return 0;
+    return nums[0];
+  }
+
+  function fiIntent(q){
+    var s = fiNorm(q);
+
+    if(
+      s.includes('por que pago tanto impuesto') ||
+      s.includes('porque pago tanto impuesto') ||
+      s.includes('por que pago tanto iusc') ||
+      s.includes('porque pago tanto iusc') ||
+      s.includes('por que mi impuesto') ||
+      s.includes('impuesto tan alto') ||
+      s.includes('pago mucho impuesto')
+    ) return 'WHY_TAX';
+
+    if(
+      s.includes('que explica mi liquidacion') ||
+      s.includes('que explica mi sueldo') ||
+      s.includes('por que mi liquido') ||
+      s.includes('por que mi liquidacion') ||
+      s.includes('factores explican') ||
+      s.includes('explica mi liquidacion')
+    ) return 'EXPLAIN_PAYSLIP';
+
+    if(
+      s.includes('que descuento me impacta mas') ||
+      s.includes('que descuento me afecta mas') ||
+      s.includes('cual es mi mayor descuento') ||
+      s.includes('cual descuento pesa mas') ||
+      s.includes('que me descuenta mas') ||
+      s.includes('ranking de descuentos')
+    ) return 'BIGGEST_DEDUCTION';
+
+    if(
+      s.includes('sin apv') ||
+      s.includes('apv cero') ||
+      s.includes('sacar el apv') ||
+      s.includes('elimino el apv') ||
+      s.includes('eliminar apv') ||
+      s.includes('quito el apv') ||
+      s.includes('quitar apv') ||
+      s.includes('si no tuviera apv')
+    ) return 'REMOVE_APV';
+
+    if(
+      (s.includes('aumento') || s.includes('subo') || s.includes('subir') || s.includes('aumentar') || s.includes('si aportara') || s.includes('aportar mas')) &&
+      s.includes('apv')
+    ) return 'INCREASE_APV';
+
+    if(
+      s.includes('diagnostico financiero') ||
+      s.includes('diagnostico de mi liquidacion') ||
+      s.includes('como ves mi situacion') ||
+      s.includes('como ves mi liquidacion') ||
+      s.includes('recomendacion financiera') ||
+      s.includes('resumen ejecutivo')
+    ) return 'FINANCIAL_DIAGNOSIS';
+
+    return null;
+  }
+
+  function fiNeedData(c){
+    return !c || !c.haberes || c.haberes <= 0;
+  }
+
+  function fiAnswerWhyTax(){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '📈 Impuesto\n\nPara explicar por qué pagas IUSC necesito una simulación con haberes e impuesto calculado.';
+    }
+
+    var lines = [];
+    lines.push('📈 ¿Por qué pagas ese IUSC?');
+    lines.push('');
+    lines.push('Pagas ' + fiMoney(c.iusc) + ' principalmente porque tu RLI llega a ' + fiMoney(c.rli) + '.');
+    lines.push('Eso te ubica en el Tramo ' + c.tramo + ', con tasa marginal ' + fiPct(c.tasa) + '.');
+
+    if(c.ingresosRank.length){
+      lines.push('');
+      lines.push('Principales generadores de renta:');
+      c.ingresosRank.slice(0,3).forEach(function(x, i){
+        lines.push((i+1) + '. ' + x.name + ': ' + fiMoney(x.value));
+      });
+    }
+
+    if(c.productividad > 0){
+      lines.push('');
+      lines.push('La productividad suma ' + fiMoney(c.productividad) + ' y empuja la base tributable del mes.');
+    }
+
+    if(c.apv > 0){
+      lines.push('');
+      lines.push('Tu APV de ' + fiMoney(c.apv) + ' en Régimen B reduce el impuesto en aprox. ' + fiMoney(c.beneficioAPV) + '.');
+      lines.push('Sin ese APV, el IUSC sería cercano a ' + fiMoney(c.iuscSinAPV) + '.');
+    }
+
+    lines.push('');
+    lines.push('Lectura ejecutiva: el impuesto no está alto por error; está alto porque la renta tributable cae en un tramo relevante.');
+    return lines.join('\n');
+  }
+
+  function fiAnswerExplainPayslip(){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '📊 Liquidación\n\nPara explicar tu liquidación necesito que primero ingreses haberes, descuentos y resultado líquido.';
+    }
+
+    var lines = [];
+    lines.push('📊 Qué explica tu liquidación');
+    lines.push('');
+    lines.push('Haberes totales: ' + fiMoney(c.haberes));
+    if(c.liquido) lines.push('Líquido estimado: ' + fiMoney(c.liquido) + ' (' + fiPct(c.liquido / c.haberes) + ' de los haberes)');
+    lines.push('');
+
+    lines.push('Principales ingresos:');
+    c.ingresosRank.slice(0,4).forEach(function(x, i){
+      lines.push((i+1) + '. ' + x.name + ': ' + fiMoney(x.value));
+    });
+
+    lines.push('');
+    lines.push('Principales descuentos:');
+    c.descuentosRank.slice(0,4).forEach(function(x, i){
+      lines.push((i+1) + '. ' + x.name + ': ' + fiMoney(x.value));
+    });
+
+    lines.push('');
+    if(c.productividad > 0){
+      lines.push('Conclusión: este mes está influido por productividad y por una carga tributaria relevante.');
+    }else{
+      lines.push('Conclusión: el resultado depende principalmente de haberes fijos, IUSC y descuentos permanentes.');
+    }
+
+    if(c.apv > 0){
+      lines.push('El APV mejora ahorro previsional y reduce el IUSC si está en Régimen B, pero baja el líquido mensual.');
+    }
+
+    return lines.join('\n');
+  }
+
+  function fiAnswerBiggestDeduction(){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '🏆 Descuentos\n\nPara rankear descuentos necesito una simulación con descuentos calculados.';
+    }
+
+    var lines = [];
+    lines.push('🏆 Ranking de descuentos');
+    lines.push('');
+    c.descuentosRank.slice(0,7).forEach(function(x, i){
+      var pctHab = c.haberes ? ' (' + fiPct(x.value / c.haberes) + ' de haberes)' : '';
+      lines.push((i+1) + '. ' + x.name + ': ' + fiMoney(x.value) + pctHab);
+    });
+
+    if(c.descuentosRank.length){
+      lines.push('');
+      lines.push('Mayor impacto directo en tu líquido: ' + c.descuentosRank[0].name + '.');
+    }
+
+    if(c.apv > 0){
+      lines.push('');
+      lines.push('Nota: APV es un descuento voluntario. Si está en Régimen B, también reduce el IUSC en aprox. ' + fiMoney(c.beneficioAPV) + '.');
+    }
+
+    return lines.join('\n');
+  }
+
+  function fiAnswerRemoveAPV(){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '📉 Escenario sin APV\n\nPara simularlo necesito una liquidación con APV e IUSC calculados.';
+    }
+
+    if(!c.apv){
+      return [
+        '📉 Escenario sin APV',
+        '',
+        'Actualmente no tienes APV registrado en esta simulación.',
+        'Por lo tanto, no hay aporte APV que eliminar ni beneficio tributario asociado.'
+      ].join('\n');
+    }
+
+    return [
+      '📉 Escenario sin APV',
+      '',
+      'APV actual: ' + fiMoney(c.apv),
+      'Tasa marginal actual: ' + fiPct(c.tasa),
+      '',
+      'IUSC actual: ' + fiMoney(c.iusc),
+      'IUSC estimado sin APV: ' + fiMoney(c.iuscSinAPV),
+      'Aumento de impuesto estimado: +' + fiMoney(c.beneficioAPV),
+      '',
+      'Líquido actual: ' + fiMoney(c.liquido),
+      'Líquido estimado sin APV: ' + fiMoney(c.liquidoSinAPV),
+      '',
+      'Lectura: eliminar APV aumenta caja mensual, pero pierdes ahorro previsional y parte del beneficio tributario.'
+    ].join('\n');
+  }
+
+  function fiAnswerIncreaseAPV(q){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '📈 Escenario APV\n\nPara simular aumento de APV necesito una liquidación con APV e IUSC calculados.';
+    }
+
+    var proposed = fiExtractMoneyFromQuestion(q);
+    if(!proposed || proposed <= c.apv){
+      proposed = c.apv + 300000;
+    }
+
+    var delta = proposed - c.apv;
+    var extraTaxBenefit = delta * c.tasa;
+    var realCashCost = delta - extraTaxBenefit;
+    var annualBenefit = extraTaxBenefit * 12;
+
+    return [
+      '📈 Escenario aumento APV',
+      '',
+      'APV actual: ' + fiMoney(c.apv),
+      'APV propuesto: ' + fiMoney(proposed),
+      'Aumento: ' + fiMoney(delta),
+      '',
+      'Tasa marginal actual: ' + fiPct(c.tasa),
+      'Menor impuesto adicional estimado: ' + fiMoney(extraTaxBenefit) + ' mensual',
+      'Costo líquido real estimado: ' + fiMoney(realCashCost) + ' mensual',
+      '',
+      'Beneficio tributario anual estimado: ' + fiMoney(annualBenefit),
+      '',
+      'Lectura: aumentar APV tiene sentido si priorizas ahorro/previsión y puedes tolerar menor líquido mensual.'
+    ].join('\n');
+  }
+
+  function fiAnswerDiagnosis(){
+    var c = fiCtx();
+    if(fiNeedData(c)){
+      return '🧭 Diagnóstico financiero\n\nPara generar diagnóstico necesito una simulación completa.';
+    }
+
+    var lines = [];
+    lines.push('🧭 Diagnóstico financiero');
+    lines.push('');
+    lines.push('• Haberes: ' + fiMoney(c.haberes));
+    if(c.liquido) lines.push('• Líquido: ' + fiMoney(c.liquido) + ' (' + fiPct(c.liquido / c.haberes) + ' de haberes)');
+    lines.push('• IUSC: ' + fiMoney(c.iusc) + ' — Tramo ' + c.tramo + ' / tasa marginal ' + fiPct(c.tasa));
+    if(c.apv > 0) lines.push('• APV: ' + fiMoney(c.apv) + ' — beneficio tributario estimado ' + fiMoney(c.beneficioAPV));
+
+    lines.push('');
+    if(c.tasa >= 0.35){
+      lines.push('Lectura: estás en un tramo alto. El APV B tiene alto valor tributario.');
+    }else if(c.tasa >= 0.23){
+      lines.push('Lectura: estás en tramo medio-alto. Conviene comparar APV con liquidez disponible.');
+    }else{
+      lines.push('Lectura: la carga tributaria es más moderada; APV A podría competir mejor según objetivo.');
+    }
+
+    if(c.productividad > 0){
+      lines.push('La productividad aporta al resultado, pero no debe tratarse como ingreso garantizado.');
+    }
+
+    lines.push('');
+    lines.push('Recomendación: usar APV como herramienta de ahorro e impuesto, pero decidir monto según liquidez mensual objetivo.');
+    return lines.join('\n');
+  }
+
+  function fiAnswer(q){
+    var intent = fiIntent(q);
+    if(!intent) return null;
+    if(intent === 'WHY_TAX') return fiAnswerWhyTax();
+    if(intent === 'EXPLAIN_PAYSLIP') return fiAnswerExplainPayslip();
+    if(intent === 'BIGGEST_DEDUCTION') return fiAnswerBiggestDeduction();
+    if(intent === 'REMOVE_APV') return fiAnswerRemoveAPV();
+    if(intent === 'INCREASE_APV') return fiAnswerIncreaseAPV(q);
+    if(intent === 'FINANCIAL_DIAGNOSIS') return fiAnswerDiagnosis();
+    return null;
+  }
+
+  window.fiIntentV210 = fiIntent;
+  window.fiAnswerV210 = fiAnswer;
+
+  var previousAnswerQuestionV210 = window.answerQuestion;
+  window.answerQuestion = function(q){
+    try {
+      var fi = fiAnswer(q);
+      if(fi){
+        window.__lastMicopilotQuestion = q;
+        return fi;
+      }
+    } catch(e){}
+    if(typeof previousAnswerQuestionV210 === 'function'){
+      return previousAnswerQuestionV210.apply(this, arguments);
+    }
+    return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
+  };
 })();
 </script>
 
