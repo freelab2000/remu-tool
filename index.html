@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.4.f.w.t-apv-contextual" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.4.f.w.t-apv-contextual</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.6.f.w.t-tax-context-builder" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.6.f.w.t-tax-context-builder</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -10772,6 +10772,796 @@ function generateFinancialDiagnosticV2(){
 <!-- RemuTool v2.0.1.f.w.t-stable-rebuild: motor único getFinancialMetricsV2 para arquetipo y diagnóstico contextual. -->
 <!-- RemuTool v2.0.3.f.w.t: KB APV oficial corregida; Régimen A = bonificación 15%; Régimen B = rebaja base tributable/RLI; router APV granular para definiciones, diferencias, topes, tasa marginal, retiro y estrategia. -->
 
-<!-- RemuTool v2.0.4.f.w.t: Recomendación APV contextual incorporada antes del router de definiciones; responde “me conviene/cambiar/recomiendas” usando datos reales de la simulación. -->
+<!-- RemuTool v2.0.6.f.w.t: Recomendación APV contextual incorporada antes del router de definiciones; responde “me conviene/cambiar/recomiendas” usando datos reales de la simulación. -->
+
+<script>
+/* === RemuTool v2.0.6.f.w.t — MiCopilot IUSC Trace + Router Tributario ===
+   Objetivo:
+   - Exponer a MiCopilot el paso a paso del cálculo de IUSC.
+   - Responder consultas de impuesto, tramo, tasa marginal, RLI, rebaja y APV B.
+   - Mantener respuesta breve por defecto y detalle sólo si el usuario lo pide.
+*/
+(function(){
+  function rtNorm(s){
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function rtMoney(n){
+    n = Number(n || 0);
+    if(typeof CLP === 'function'){
+      try { return CLP(n); } catch(e){}
+    }
+    return '$' + Math.round(n).toLocaleString('es-CL');
+  }
+
+  function rtPct(n){
+    n = Number(n || 0);
+    return (n * 100).toFixed(2).replace('.', ',') + '%';
+  }
+
+  function rtNum(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function rtSum(obj){
+    if(!obj || typeof obj !== 'object') return 0;
+    return Object.values(obj).reduce(function(a,b){ return a + rtNum(b); }, 0);
+  }
+
+  function rtContext(){
+    var c = {};
+    try {
+      if(typeof buildContext === 'function') c = buildContext() || {};
+    } catch(e){ c = {}; }
+
+    var ingresos = c.ingresosFijos || {};
+    var vars = c.variables || {};
+    var desc = c.descuentos || {};
+    var res = c.resultados || {};
+
+    var sueldoBase = rtNum(ingresos['Sueldo Base'] || ingresos['Sueldo base']);
+    var gratificacion = rtNum(ingresos['Gratificación'] || ingresos['Gratificacion']);
+    var productividad = rtNum(vars['Bono Productividad'] || vars['Productividad'] || vars['Bono productividad']);
+    var antiguedad = rtNum(ingresos['Antigüedad'] || ingresos['Antiguedad']);
+    var totalHaberes = rtNum(res.totalHaberes) || rtSum(ingresos) + rtSum(vars);
+
+    var afp10 = rtNum(desc['AFP 10%'] || desc['AFP'] || res.afp10);
+    var salud7 = rtNum(desc['Salud 7%'] || desc['Salud'] || res.salud7);
+    var cesantia = rtNum(desc['Seguro Cesantía'] || desc['Seguro Cesantia'] || desc['Seguro Cesantía (0,6%)'] || res.cesantia);
+    var trabajoPesado = rtNum(desc['Trabajo Pesado'] || desc['Trabajo Pesado (1%)'] || res.trabajoPesado);
+
+    var comisionAfp = rtNum(desc['Comisión AFP'] || desc['Comision AFP']);
+    var adicionalSalud = rtNum(desc['Cot. adicional salud'] || desc['Adicional Salud'] || desc['Cotización adicional salud']);
+    var sindicato = rtNum(desc['Sindicato Pil UCCL'] || desc['Sindicato'] || desc['Cuota sindical']);
+    var apv = rtNum(desc['APV'] || res.apv);
+    var iusc = rtNum(desc['IUSC'] || desc['Impuesto Único'] || desc['Impuesto Unico'] || res.iusc || res.impuestoUnico);
+    var liquido = rtNum(res.liquido || res.alcanceLiquido);
+
+    var baseAfecta = rtNum(res.tributable || res.rentaTributable || res.rli || res.baseAfecta);
+    if(!baseAfecta){
+      baseAfecta = Math.max(0, totalHaberes - afp10 - salud7 - cesantia - trabajoPesado);
+      // Si la app está usando APV B dentro del cálculo, probablemente ya lo refleje en resultados.
+      // Si no hay dato explícito, se informa como base didáctica estimada.
+    }
+
+    var tramo = rtFindIUSCBracket(baseAfecta);
+    var impuestoAntesRebaja = baseAfecta * tramo.tasa;
+    var calculado = Math.max(0, impuestoAntesRebaja - tramo.rebaja);
+    var iuscFinal = iusc || calculado;
+
+    var apvRegimen = 'B';
+    try {
+      var el = document.querySelector('[name="apvRegimen"]:checked') ||
+               document.getElementById('apvRegimen') ||
+               document.getElementById('regimenAPV');
+      if(el){
+        apvRegimen = String(el.value || el.textContent || 'B').trim().toUpperCase();
+      }
+    } catch(e){}
+
+    return {
+      ingresos: {
+        sueldoBase:sueldoBase,
+        gratificacion:gratificacion,
+        productividad:productividad,
+        antiguedad:antiguedad,
+        totalHaberes:totalHaberes
+      },
+      previsionales: {
+        afp10:afp10,
+        salud7:salud7,
+        cesantia:cesantia,
+        trabajoPesado:trabajoPesado,
+        total: afp10 + salud7 + cesantia + trabajoPesado
+      },
+      otros: {
+        comisionAfp:comisionAfp,
+        adicionalSalud:adicionalSalud,
+        sindicato:sindicato,
+        apv:apv
+      },
+      impuesto: {
+        rli:baseAfecta,
+        tramo:tramo,
+        impuestoAntesRebaja:impuestoAntesRebaja,
+        iuscCalculado:calculado,
+        iuscFinal:iuscFinal,
+        formula: rtMoney(baseAfecta) + ' × ' + rtPct(tramo.tasa) + ' − ' + rtMoney(tramo.rebaja) + ' = ' + rtMoney(iuscFinal)
+      },
+      resultados: {
+        liquido:liquido,
+        apvRegimen:apvRegimen
+      }
+    };
+  }
+
+  function rtFindIUSCBracket(rli){
+    var rows = [
+      {n:1, desde:0, hasta:943501, tasa:0, rebaja:0},
+      {n:2, desde:943502, hasta:2096670, tasa:0.04, rebaja:37740},
+      {n:3, desde:2096671, hasta:3494450, tasa:0.08, rebaja:121607},
+      {n:4, desde:3494451, hasta:4892230, tasa:0.135, rebaja:313802},
+      {n:5, desde:4892231, hasta:6290010, tasa:0.23, rebaja:778563},
+      {n:6, desde:6290011, hasta:8386680, tasa:0.304, rebaja:1244024},
+      {n:7, desde:8386681, hasta:21665590, tasa:0.35, rebaja:1629811},
+      {n:8, desde:21665591, hasta:Infinity, tasa:0.40, rebaja:2713091}
+    ];
+    for(var i=0;i<rows.length;i++){
+      if(rli >= rows[i].desde && rli <= rows[i].hasta) return rows[i];
+    }
+    return rows[0];
+  }
+
+  function rtWantsTaxQuestion(q){
+    var s = rtNorm(q);
+    return (
+      s.includes('iusc') ||
+      s.includes('impuesto unico') ||
+      s.includes('impuesto a la renta') ||
+      s.includes('impuesto renta') ||
+      s.includes('como se calcula mi impuesto') ||
+      s.includes('como calcularon mi impuesto') ||
+      s.includes('calculo del impuesto') ||
+      s.includes('calculo iusc') ||
+      s.includes('tramo impositivo') ||
+      s.includes('tramo impuesto') ||
+      s.includes('tasa marginal') ||
+      s.includes('rli') ||
+      s.includes('renta liquida imponible') ||
+      s.includes('base tributable') ||
+      s.includes('rebaja') ||
+      s.includes('por que pago tanto impuesto') ||
+      s.includes('porque pago tanto impuesto')
+    );
+  }
+
+  function rtWantsTaxDetail(q){
+    var s = rtNorm(q);
+    return (
+      s.includes('paso a paso') ||
+      s.includes('detalle') ||
+      s.includes('detallado') ||
+      s.includes('explicame') ||
+      s.includes('explica') ||
+      s.includes('como se calcula') ||
+      s.includes('formula') ||
+      s.includes('tabla') ||
+      s.includes('tramo')
+    );
+  }
+
+  function buildIUSCShortAnswer(q){
+    var t = rtContext();
+    var imp = t.impuesto;
+    var tr = imp.tramo;
+    var ingresos = t.ingresos;
+    var prev = t.previsionales;
+    var otros = t.otros;
+
+    if(!ingresos.totalHaberes){
+      return [
+        '🧾 Cálculo IUSC',
+        '',
+        'Para calcular tu Impuesto Único necesito que primero ingreses una simulación con haberes.',
+        '',
+        'La lógica será:',
+        '1. Haberes imponibles.',
+        '2. Menos cotizaciones previsionales obligatorias.',
+        '3. Se obtiene la RLI.',
+        '4. Se aplica: RLI × tasa marginal − rebaja.'
+      ].join('\n');
+    }
+
+    var lines = [];
+    lines.push('🧾 Cálculo IUSC — resumen');
+    lines.push('');
+    lines.push('Tu impuesto se calculó sobre una RLI estimada de ' + rtMoney(imp.rli) + '.');
+    lines.push('Quedaste en el Tramo ' + tr.n + ', con tasa marginal ' + rtPct(tr.tasa) + ' y rebaja de ' + rtMoney(tr.rebaja) + '.');
+    lines.push('');
+    lines.push('Fórmula:');
+    lines.push(imp.formula);
+    lines.push('');
+    lines.push('Impuesto Único estimado: ' + rtMoney(imp.iuscFinal) + '.');
+
+    if(otros.apv > 0){
+      lines.push('');
+      if(String(t.resultados.apvRegimen || '').toUpperCase().includes('B')){
+        lines.push('Nota APV: si el APV está acogido a Régimen B, reduce la base tributable usada para el IUSC dentro de los topes legales.');
+      }else{
+        lines.push('Nota APV: si el APV está acogido a Régimen A, entrega bonificación estatal, pero no reduce directamente la RLI mensual del IUSC.');
+      }
+    }
+
+    lines.push('');
+    lines.push('Para ver el cálculo completo, pregunta: “explícame el IUSC paso a paso”.');
+
+    return lines.join('\n');
+  }
+
+  function buildIUSCDetailedAnswer(){
+    var t = rtContext();
+    var ing = t.ingresos;
+    var prev = t.previsionales;
+    var otros = t.otros;
+    var imp = t.impuesto;
+    var tr = imp.tramo;
+
+    var lines = [];
+    lines.push('🧾 IUSC paso a paso');
+    lines.push('');
+    lines.push('1) Determinar renta imponible / haberes');
+    lines.push('Se suman los haberes imponibles declarados este mes.');
+    lines.push('• Sueldo base: ' + rtMoney(ing.sueldoBase));
+    lines.push('• Gratificación: ' + rtMoney(ing.gratificacion));
+    lines.push('• Bono productividad: ' + rtMoney(ing.productividad));
+    lines.push('• Antigüedad: ' + rtMoney(ing.antiguedad));
+    lines.push('• Total haberes imponibles: ' + rtMoney(ing.totalHaberes));
+    lines.push('');
+    lines.push('2) Restar cotizaciones previsionales obligatorias');
+    lines.push('Estas cotizaciones reducen la base afecta al IUSC.');
+    lines.push('• AFP 10%: ' + rtMoney(prev.afp10));
+    lines.push('• Salud 7%: ' + rtMoney(prev.salud7));
+    lines.push('• Seguro Cesantía 0,6%: ' + rtMoney(prev.cesantia));
+    lines.push('• Trabajo Pesado 1%: ' + rtMoney(prev.trabajoPesado));
+    lines.push('• Total previsionales obligatorias: ' + rtMoney(prev.total));
+    lines.push('');
+    lines.push('3) Otros descuentos');
+    lines.push('Estos descuentos afectan tu líquido, pero no necesariamente reducen la base del IUSC.');
+    lines.push('• Comisión AFP: ' + rtMoney(otros.comisionAfp));
+    lines.push('• Cotización adicional salud: ' + rtMoney(otros.adicionalSalud));
+    lines.push('• Sindicato: ' + rtMoney(otros.sindicato));
+    lines.push('• APV: ' + rtMoney(otros.apv));
+    lines.push('');
+    lines.push('Regla importante: el APV sólo reduce la base tributable mensual si está acogido a Régimen B y dentro de los topes legales. En Régimen A, el beneficio principal es la bonificación estatal del 15%.');
+    lines.push('');
+    lines.push('4) Determinar tramo y aplicar fórmula SII');
+    lines.push('• RLI utilizada: ' + rtMoney(imp.rli));
+    lines.push('• Tramo mensual: Tramo ' + tr.n);
+    lines.push('• Tasa marginal: ' + rtPct(tr.tasa));
+    lines.push('• Rebaja: ' + rtMoney(tr.rebaja));
+    lines.push('');
+    lines.push('Fórmula:');
+    lines.push(imp.formula);
+    lines.push('');
+    lines.push('Impuesto Único retenido estimado: ' + rtMoney(imp.iuscFinal));
+    lines.push('');
+    lines.push('5) Lectura');
+    if(tr.tasa >= 0.35){
+      lines.push('Estás en un tramo alto. En este escenario, el APV B puede tener un efecto tributario relevante porque reduce la RLI antes de calcular el impuesto.');
+    }else if(tr.tasa >= 0.23){
+      lines.push('Estás en un tramo medio-alto. El APV B puede ser útil, pero conviene comparar contra APV A según tu objetivo de liquidez y ahorro.');
+    }else{
+      lines.push('Estás en un tramo bajo o medio. El beneficio del APV B puede ser menor, por lo que APV A podría competir mejor dependiendo del monto aportado.');
+    }
+
+    return lines.join('\n');
+  }
+
+  function buildAPVTaxImpactAnswer(){
+    var t = rtContext();
+    var apv = t.otros.apv;
+    var tasa = t.impuesto.tramo.tasa;
+    var beneficioTeorico = apv * tasa;
+
+    var lines = [];
+    lines.push('🅱️ APV B e impacto en IUSC');
+    lines.push('');
+
+    if(!apv){
+      lines.push('No tienes APV registrado en esta simulación.');
+      lines.push('Si simulas APV B, el beneficio mensual aproximado sería el aporte multiplicado por tu tasa marginal, siempre dentro de topes legales.');
+      lines.push('');
+      lines.push('Tu tasa marginal actual estimada es ' + rtPct(tasa) + '.');
+      return lines.join('\n');
+    }
+
+    lines.push('APV actual: ' + rtMoney(apv));
+    lines.push('Tasa marginal estimada: ' + rtPct(tasa));
+    lines.push('Beneficio tributario mensual teórico aproximado: ' + rtMoney(beneficioTeorico));
+    lines.push('');
+    lines.push('Lectura:');
+    lines.push('Si tu APV está en Régimen B, ese aporte reduce la RLI y el ahorro de impuesto se aproxima a APV × tasa marginal.');
+    lines.push('Si está en Régimen A, no reduce directamente este IUSC mensual; el beneficio viene por bonificación fiscal del 15% con tope anual.');
+    return lines.join('\n');
+  }
+
+  window.buildIUSCShortAnswerV205 = buildIUSCShortAnswer;
+  window.buildIUSCDetailedAnswerV205 = buildIUSCDetailedAnswer;
+  window.buildAPVTaxImpactAnswerV205 = buildAPVTaxImpactAnswer;
+
+  var previousAnswerQuestion = window.answerQuestion;
+  window.answerQuestion = function(q){
+    var s = rtNorm(q);
+
+    if((s.includes('apv') || s.includes('regimen b')) && 
+       (s.includes('afecta') || s.includes('impacta') || s.includes('baja') || s.includes('reduce')) &&
+       (s.includes('iusc') || s.includes('impuesto') || s.includes('rli') || s.includes('base'))){
+      return buildAPVTaxImpactAnswer();
+    }
+
+    if(rtWantsTaxQuestion(q)){
+      if(rtWantsTaxDetail(q)) return buildIUSCDetailedAnswer();
+      return buildIUSCShortAnswer(q);
+    }
+
+    if(typeof previousAnswerQuestion === 'function'){
+      return previousAnswerQuestion.apply(this, arguments);
+    }
+
+    return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
+  };
+})();
+</script>
+
+
+<script>
+/* === RemuTool v2.0.6.f.w.t — Tax Context Builder + Router Tributario Prioritario ===
+   Objetivo:
+   - El router tributario corre ANTES de la KB genérica y antes de APV definicional.
+   - MiCopilot responde tramo, tasa marginal, RLI, rebaja, fórmula e impacto APV B con datos reales.
+   - Respuestas breves por defecto; detalle sólo si el usuario lo pide.
+*/
+(function(){
+  function txNorm(s){
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function txNum(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function txMoney(n){
+    n = txNum(n);
+    if(typeof CLP === 'function'){
+      try { return CLP(n); } catch(e){}
+    }
+    return '$' + Math.round(n).toLocaleString('es-CL');
+  }
+
+  function txPct(decimal){
+    decimal = Number(decimal || 0);
+    return (decimal * 100).toFixed(decimal === 0 ? 0 : 1).replace('.', ',') + '%';
+  }
+
+  function txSum(obj){
+    if(!obj || typeof obj !== 'object') return 0;
+    return Object.values(obj).reduce(function(acc, val){ return acc + txNum(val); }, 0);
+  }
+
+  function txPick(obj, names){
+    if(!obj || typeof obj !== 'object') return 0;
+    for(var i=0;i<names.length;i++){
+      if(Object.prototype.hasOwnProperty.call(obj, names[i])){
+        return txNum(obj[names[i]]);
+      }
+    }
+    var keys = Object.keys(obj);
+    for(var j=0;j<names.length;j++){
+      var target = txNorm(names[j]);
+      var found = keys.find(function(k){ return txNorm(k) === target || txNorm(k).includes(target) || target.includes(txNorm(k)); });
+      if(found) return txNum(obj[found]);
+    }
+    return 0;
+  }
+
+  function txIUSCTable(){
+    return [
+      { tramo:1, desde:0, hasta:943501, tasa:0, rebaja:0 },
+      { tramo:2, desde:943502, hasta:2096670, tasa:0.04, rebaja:37740 },
+      { tramo:3, desde:2096671, hasta:3494450, tasa:0.08, rebaja:121607 },
+      { tramo:4, desde:3494451, hasta:4892230, tasa:0.135, rebaja:313802 },
+      { tramo:5, desde:4892231, hasta:6290010, tasa:0.23, rebaja:778563 },
+      { tramo:6, desde:6290011, hasta:8386680, tasa:0.304, rebaja:1244024 },
+      { tramo:7, desde:8386681, hasta:21665590, tasa:0.35, rebaja:1629811 },
+      { tramo:8, desde:21665591, hasta:Infinity, tasa:0.40, rebaja:2713091 }
+    ];
+  }
+
+  function txFindBracket(rli){
+    var table = txIUSCTable();
+    for(var i=0;i<table.length;i++){
+      if(rli >= table[i].desde && rli <= table[i].hasta) return table[i];
+    }
+    return table[0];
+  }
+
+  function txReadContext(){
+    var c = {};
+    try {
+      if(typeof buildContext === 'function') c = buildContext() || {};
+    } catch(e){ c = {}; }
+
+    var ingresos = c.ingresosFijos || c.ingresos || {};
+    var variables = c.variables || {};
+    var descuentos = c.descuentos || {};
+    var resultados = c.resultados || {};
+
+    var sueldoBase = txPick(ingresos, ['Sueldo Base','Sueldo base']);
+    var gratificacion = txPick(ingresos, ['Gratificación','Gratificacion']);
+    var antiguedad = txPick(ingresos, ['Antigüedad','Antiguedad']);
+    var productividad = txPick(variables, ['Bono Productividad','Productividad','Bono productividad']);
+    var totalVariables = txSum(variables);
+    var totalHaberes = txNum(resultados.totalHaberes || resultados.haberes || resultados.total_haberes) || txSum(ingresos) + totalVariables;
+
+    var afp10 = txPick(descuentos, ['AFP 10%','AFP','Cotización AFP']);
+    var salud7 = txPick(descuentos, ['Salud 7%','Salud','Cotización Salud']);
+    var cesantia = txPick(descuentos, ['Seguro Cesantía','Seguro Cesantia','Seguro Cesantía (0,6%)','Seguro Cesantia 0,6%']);
+    var trabajoPesado = txPick(descuentos, ['Trabajo Pesado','Trabajo Pesado (1%)']);
+
+    var comisionAFP = txPick(descuentos, ['Comisión AFP','Comision AFP']);
+    var adicionalSalud = txPick(descuentos, ['Cot. adicional salud','Cotización adicional salud','Cotizacion adicional salud','Adicional Salud']);
+    var sindicato = txPick(descuentos, ['Sindicato Pil UCCL','Sindicato','Cuota sindical']);
+    var apv = txPick(descuentos, ['APV']) || txNum(resultados.apv);
+    var iusc = txPick(descuentos, ['IUSC','Impuesto Único','Impuesto Unico']) || txNum(resultados.iusc || resultados.impuestoUnico);
+    var liquido = txNum(resultados.liquido || resultados.alcanceLiquido);
+
+    var rli =
+      txNum(resultados.rli) ||
+      txNum(resultados.RLI) ||
+      txNum(resultados.rentaTributable) ||
+      txNum(resultados.tributable) ||
+      txNum(resultados.baseAfecta) ||
+      0;
+
+    // Fallback didáctico si la app no expone RLI explícita.
+    if(!rli){
+      rli = Math.max(0, totalHaberes - afp10 - salud7 - cesantia - trabajoPesado);
+      // APV B puede ya estar incluido en el cálculo real de la app.
+      // Si no lo está expuesto, este fallback es una base afecta estimada.
+    }
+
+    var tramo = txFindBracket(rli);
+    var impuestoAntesRebaja = rli * tramo.tasa;
+    var iuscCalculado = Math.max(0, impuestoAntesRebaja - tramo.rebaja);
+    var iuscFinal = iusc || iuscCalculado;
+
+    var regimen = 'B';
+    try {
+      var el = document.querySelector('[name="apvRegimen"]:checked') ||
+               document.getElementById('apvRegimen') ||
+               document.getElementById('regimenAPV') ||
+               document.querySelector('[data-apv-regimen]');
+      if(el){
+        regimen = String(el.value || el.textContent || el.getAttribute('data-apv-regimen') || 'B').trim().toUpperCase();
+      }
+    } catch(e){}
+
+    return {
+      ingresos: {
+        sueldoBase: sueldoBase,
+        gratificacion: gratificacion,
+        antiguedad: antiguedad,
+        productividad: productividad,
+        variables: totalVariables,
+        totalHaberes: totalHaberes
+      },
+      previsionales: {
+        afp10: afp10,
+        salud7: salud7,
+        cesantia: cesantia,
+        trabajoPesado: trabajoPesado,
+        total: afp10 + salud7 + cesantia + trabajoPesado
+      },
+      otros: {
+        comisionAFP: comisionAFP,
+        adicionalSalud: adicionalSalud,
+        sindicato: sindicato,
+        apv: apv
+      },
+      tax: {
+        rli: rli,
+        tramo: tramo.tramo,
+        tasa: tramo.tasa,
+        rebaja: tramo.rebaja,
+        desde: tramo.desde,
+        hasta: tramo.hasta,
+        impuestoAntesRebaja: impuestoAntesRebaja,
+        iuscCalculado: iuscCalculado,
+        iuscFinal: iuscFinal,
+        formula: txMoney(rli) + ' × ' + txPct(tramo.tasa) + ' − ' + txMoney(tramo.rebaja) + ' = ' + txMoney(iuscFinal)
+      },
+      resultados: {
+        liquido: liquido,
+        apvRegimen: regimen
+      }
+    };
+  }
+
+  window.buildTaxContext = txReadContext;
+
+  function isTaxQuestionV206(q){
+    var s = txNorm(q);
+    var taxWords = (
+      s.includes('iusc') ||
+      s.includes('impuesto unico') ||
+      s.includes('impuesto a la renta') ||
+      s.includes('impuesto renta') ||
+      s.includes('impuesto') ||
+      s.includes('tramo') ||
+      s.includes('tasa marginal') ||
+      s.includes('rli') ||
+      s.includes('renta liquida') ||
+      s.includes('base tributable') ||
+      s.includes('rebaja')
+    );
+
+    var intentWords = (
+      s.includes('como se calcula') ||
+      s.includes('calculo') ||
+      s.includes('calcularon') ||
+      s.includes('que tramo') ||
+      s.includes('cual tramo') ||
+      s.includes('cual es mi tramo') ||
+      s.includes('tasa') ||
+      s.includes('marginal') ||
+      s.includes('por que pago') ||
+      s.includes('porque pago') ||
+      s.includes('pago tanto') ||
+      s.includes('paso a paso') ||
+      s.includes('detalle') ||
+      s.includes('formula') ||
+      s.includes('rebaja') ||
+      s.includes('rli') ||
+      s.includes('base tributable')
+    );
+
+    var apvTax = (
+      s.includes('apv') &&
+      (s.includes('impuesto') || s.includes('iusc') || s.includes('rli') || s.includes('base') || s.includes('tributaria') || s.includes('tributable') || s.includes('ahorro'))
+    );
+
+    return (taxWords && intentWords) || apvTax;
+  }
+
+  function wantsTaxDetailV206(q){
+    var s = txNorm(q);
+    return (
+      s.includes('paso a paso') ||
+      s.includes('detalle') ||
+      s.includes('detallado') ||
+      s.includes('explicame') ||
+      s.includes('explica') ||
+      s.includes('formula completa') ||
+      s.includes('tabla')
+    );
+  }
+
+  function wantsBracketOnlyV206(q){
+    var s = txNorm(q);
+    return (
+      s.includes('tramo') ||
+      s.includes('tasa marginal') ||
+      s.includes('rebaja') ||
+      s.includes('rli') ||
+      s.includes('base tributable')
+    ) && !s.includes('paso a paso');
+  }
+
+  function wantsWhyHighTaxV206(q){
+    var s = txNorm(q);
+    return s.includes('por que pago') || s.includes('porque pago') || s.includes('pago tanto') || s.includes('alto impuesto') || s.includes('mucho impuesto');
+  }
+
+  function wantsAPVTaxImpactV206(q){
+    var s = txNorm(q);
+    return s.includes('apv') && (s.includes('impuesto') || s.includes('iusc') || s.includes('ahorro') || s.includes('baja') || s.includes('reduce') || s.includes('rli') || s.includes('base'));
+  }
+
+  function answerTaxBracketV206(){
+    var t = txReadContext();
+    if(!t.ingresos.totalHaberes){
+      return '📊 Tramo tributario\n\nPara calcular tu tramo necesito que primero ingreses una simulación con haberes.';
+    }
+
+    return [
+      '📊 Tramo tributario actual',
+      '',
+      'RLI utilizada: ' + txMoney(t.tax.rli),
+      'Tramo: ' + t.tax.tramo,
+      'Tasa marginal: ' + txPct(t.tax.tasa),
+      'Rebaja aplicada: ' + txMoney(t.tax.rebaja),
+      '',
+      'Fórmula:',
+      t.tax.formula,
+      '',
+      'Para ver el detalle completo, pregunta: “explícame el IUSC paso a paso”.'
+    ].join('\n');
+  }
+
+  function answerTaxShortV206(){
+    var t = txReadContext();
+    if(!t.ingresos.totalHaberes){
+      return [
+        '🧾 Cálculo IUSC',
+        '',
+        'Primero ingresa una simulación con haberes.',
+        '',
+        'La lógica será:',
+        'haberes imponibles − cotizaciones obligatorias = RLI',
+        'Luego: RLI × tasa marginal − rebaja = IUSC.'
+      ].join('\n');
+    }
+
+    return [
+      '🧾 Cálculo IUSC — resumen',
+      '',
+      'Tu impuesto se calculó sobre una RLI de ' + txMoney(t.tax.rli) + '.',
+      'Estás en Tramo ' + t.tax.tramo + ', con tasa marginal ' + txPct(t.tax.tasa) + ' y rebaja de ' + txMoney(t.tax.rebaja) + '.',
+      '',
+      'Fórmula:',
+      t.tax.formula,
+      '',
+      'IUSC estimado: ' + txMoney(t.tax.iuscFinal) + '.',
+      '',
+      'Para ver el paso a paso, pregunta: “explícame el IUSC paso a paso”.'
+    ].join('\n');
+  }
+
+  function answerTaxDetailV206(){
+    var t = txReadContext();
+
+    return [
+      '🧾 IUSC paso a paso',
+      '',
+      '1) Determinar renta imponible / haberes',
+      'Se suman los haberes imponibles declarados este mes.',
+      '• Sueldo base: ' + txMoney(t.ingresos.sueldoBase),
+      '• Gratificación: ' + txMoney(t.ingresos.gratificacion),
+      '• Bono productividad: ' + txMoney(t.ingresos.productividad),
+      '• Antigüedad: ' + txMoney(t.ingresos.antiguedad),
+      '• Total haberes imponibles: ' + txMoney(t.ingresos.totalHaberes),
+      '',
+      '2) Restar cotizaciones previsionales obligatorias',
+      'Estas cotizaciones reducen la base afecta al IUSC.',
+      '• AFP 10%: ' + txMoney(t.previsionales.afp10),
+      '• Salud 7%: ' + txMoney(t.previsionales.salud7),
+      '• Seguro Cesantía 0,6%: ' + txMoney(t.previsionales.cesantia),
+      '• Trabajo Pesado 1%: ' + txMoney(t.previsionales.trabajoPesado),
+      '• Total previsionales obligatorias: ' + txMoney(t.previsionales.total),
+      '',
+      '3) Otros descuentos',
+      'Estos afectan tu líquido, pero no todos reducen la base del IUSC.',
+      '• Comisión AFP: ' + txMoney(t.otros.comisionAFP),
+      '• Cotización adicional salud: ' + txMoney(t.otros.adicionalSalud),
+      '• Sindicato: ' + txMoney(t.otros.sindicato),
+      '• APV: ' + txMoney(t.otros.apv),
+      '',
+      'Regla clave: APV B reduce la RLI mensual dentro de topes legales. APV A entrega bonificación fiscal, pero no reduce directamente la RLI mensual.',
+      '',
+      '4) Determinar tramo y aplicar fórmula SII',
+      '• RLI utilizada: ' + txMoney(t.tax.rli),
+      '• Tramo mensual: Tramo ' + t.tax.tramo,
+      '• Tasa marginal: ' + txPct(t.tax.tasa),
+      '• Rebaja: ' + txMoney(t.tax.rebaja),
+      '',
+      'Fórmula:',
+      t.tax.formula,
+      '',
+      'Impuesto Único retenido estimado: ' + txMoney(t.tax.iuscFinal)
+    ].join('\n');
+  }
+
+  function answerWhyHighTaxV206(){
+    var t = txReadContext();
+    var pctIuscHab = t.ingresos.totalHaberes ? t.tax.iuscFinal / t.ingresos.totalHaberes : 0;
+    var pctProdHab = t.ingresos.totalHaberes ? t.ingresos.productividad / t.ingresos.totalHaberes : 0;
+
+    var lines = [];
+    lines.push('📈 ¿Por qué pagas ese IUSC?');
+    lines.push('');
+    lines.push('La causa principal es la RLI: ' + txMoney(t.tax.rli) + '.');
+    lines.push('Eso te ubica en Tramo ' + t.tax.tramo + ', con tasa marginal ' + txPct(t.tax.tasa) + '.');
+    lines.push('');
+    lines.push('IUSC estimado: ' + txMoney(t.tax.iuscFinal) + ' (' + txPct(pctIuscHab) + ' de tus haberes).');
+
+    if(t.ingresos.productividad > 0){
+      lines.push('');
+      lines.push('La productividad aporta ' + txMoney(t.ingresos.productividad) + ', equivalente a ' + txPct(pctProdHab) + ' de los haberes. Si baja en otros meses, también puede bajar la RLI y el IUSC.');
+    }
+
+    if(t.otros.apv > 0){
+      lines.push('');
+      lines.push('Tu APV actual es ' + txMoney(t.otros.apv) + '. Si está en Régimen B, ayuda a reducir la RLI y compensa parte del sacrificio de líquido vía menor impuesto.');
+    }
+
+    lines.push('');
+    lines.push('Lectura ejecutiva: el impuesto no es alto por “mal cálculo”; es alto porque la renta tributable cae en un tramo marginal relevante.');
+    return lines.join('\n');
+  }
+
+  function answerAPVTaxImpactV206(){
+    var t = txReadContext();
+    var apv = t.otros.apv;
+    var tasa = t.tax.tasa;
+    var beneficio = apv * tasa;
+
+    if(!apv){
+      return [
+        '🅱️ APV e impacto tributario',
+        '',
+        'No tienes APV registrado en esta simulación.',
+        'Tu tasa marginal estimada es ' + txPct(tasa) + '.',
+        '',
+        'Si simulas APV B, el beneficio tributario mensual aproximado sería:',
+        'APV × tasa marginal.',
+        '',
+        'Ejemplo: cada $100.000 de APV B podrían reducir el IUSC en aprox. ' + txMoney(100000 * tasa) + ', dentro de topes legales.'
+      ].join('\n');
+    }
+
+    return [
+      '🅱️ APV B e impacto en IUSC',
+      '',
+      'APV actual: ' + txMoney(apv),
+      'Tasa marginal estimada: ' + txPct(tasa),
+      'Menor impuesto teórico aproximado: ' + txMoney(beneficio),
+      '',
+      'Lectura:',
+      'Si el APV está en Régimen B, reduce la RLI mensual. No significa que “ganes” ' + txMoney(beneficio) + '; significa que parte del aporte se compensa con menor IUSC.',
+      '',
+      'Si está en Régimen A, no reduce directamente este IUSC mensual; el beneficio viene por bonificación fiscal del 15% con tope anual.'
+    ].join('\n');
+  }
+
+  function answerTaxQuestionV206(q){
+    if(wantsAPVTaxImpactV206(q)) return answerAPVTaxImpactV206();
+    if(wantsWhyHighTaxV206(q)) return answerWhyHighTaxV206();
+    if(wantsTaxDetailV206(q)) return answerTaxDetailV206();
+    if(wantsBracketOnlyV206(q)) return answerTaxBracketV206();
+    return answerTaxShortV206();
+  }
+
+  window.isTaxQuestionV206 = isTaxQuestionV206;
+  window.answerTaxQuestionV206 = answerTaxQuestionV206;
+  window.answerTaxBracketV206 = answerTaxBracketV206;
+  window.answerTaxDetailV206 = answerTaxDetailV206;
+
+  // Hook prioritario: debe correr antes de routers genéricos existentes.
+  var previousAnswerQuestionV206 = window.answerQuestion;
+  window.answerQuestion = function(q){
+    try {
+      if(isTaxQuestionV206(q)){
+        window.__lastMicopilotQuestion = q;
+        return answerTaxQuestionV206(q);
+      }
+    } catch(e){}
+    if(typeof previousAnswerQuestionV206 === 'function'){
+      return previousAnswerQuestionV206.apply(this, arguments);
+    }
+    return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
+  };
+})();
+</script>
+
 </body>
 </html>
