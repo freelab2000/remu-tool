@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.3.f.w.t-apv-kb-router" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.3.f.w.t-apv-kb-router</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.4.f.w.t-apv-contextual" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.4.f.w.t-apv-contextual</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -5030,8 +5030,8 @@ const REMUTOOL_KB_V2 = {
       "apv regimen b",
       "apv régimen b"
     ],
-    "definitionText": "APV — Ahorro Previsional Voluntario (Chile)\nQué es:\nAhorro extra para reforzar tu pensión. Además del ahorro, el Estado entrega beneficios tributarios.\nRégimen A:\nEntrega una bonificación fiscal del 15% del aporte acogido, con tope anual de 6 UTM. La bonificación se deposita en la cuenta APV. No rebaja directamente la base tributable mensual para calcular el IUSC.\nRégimen B:\nRebaja la base tributable mensual o RLI usada para calcular el Impuesto Único. El beneficio depende de tu tasa marginal de impuesto y puede ser relevante en tramos altos.\nTopes referenciales:\nAPV A: bonificación con tope de 6 UTM anuales. APV B: beneficio hasta 600 UF anuales.\nNo confundir con Depósitos Convenidos ni APV Colectivo.",
-    "definitionHtml": "\n<h2>APV — Ahorro Previsional Voluntario (Chile)</h2>\n<p><b>Qué es:</b> ahorro extra para reforzar tu pensión. Además del ahorro, el Estado entrega beneficios tributarios.</p>\n<ul>\n<li><b>Régimen A:</b> entrega una bonificación fiscal del 15% del aporte acogido, con tope anual de 6 UTM. No rebaja directamente la base tributable mensual para calcular el IUSC.</li>\n<li><b>Régimen B:</b> rebaja la base tributable mensual o RLI usada para calcular el Impuesto Único. El beneficio depende de tu tasa marginal de impuesto.</li>\n<li><b>Topes referenciales:</b> APV A tiene bonificación con tope de 6 UTM anuales; APV B tiene beneficio hasta 600 UF anuales.</li>\n<li>No confundir con Depósitos Convenidos ni APV Colectivo.</li>\n</ul>\n",
+    "definitionText": "APV — Ahorro Previsional Voluntario (Chile)\nBase legal:\nDL 3.500; normativa de la Superintendencia de Pensiones y del SII.\nQué es:\nAporte voluntario para incrementar el ahorro previsional.\nRégimen A:\nRebaja inmediata de la base imponible afecta a IUSC/IGC. En el retiro, el total (capital + rentabilidad) tributa como renta.\nTopes:\n50 UF mensuales / 600 UF anuales.\nRégimen B:\nNo reduce la base imponible; otorga diferimiento. Los rescates tributan aplicando crédito por impuesto retenido.\nTopes:\n50 UF mensuales / 600 UF anuales.\nNo confundir con Depósitos Convenidos ni APV Colectivo.",
+    "definitionHtml": "\n<h2>APV — Ahorro Previsional Voluntario (Chile)</h2>\n<p><b>Base legal:</b> DL 3.500; normativa de la Superintendencia de Pensiones y del SII.</p>\n<ul>\n<li><b>Qué es:</b> Aporte voluntario para incrementar el ahorro previsional.</li>\n<li><b>Régimen A:</b> Rebaja inmediata de la base imponible afecta a IUSC/IGC. En el retiro, el total (capital + rentabilidad) tributa como renta. <b>Topes:</b> 50 UF mensuales / 600 UF anuales.</li>\n<li><b>Régimen B:</b> No reduce la base imponible; otorga diferimiento. Los rescates tributan aplicando crédito por impuesto retenido. <b>Topes:</b> 50 UF mensuales / 600 UF anuales.</li>\n<li>No confundir con Depósitos Convenidos ni APV Colectivo.</li>\n</ul>\n",
     "related": [],
     "contextual": {
       "enabled": true,
@@ -9908,6 +9908,191 @@ function generateFinancialDiagnosticV2(){
   }
 
 
+  function isAPVRecommendationQuestion(q){
+    const text = norm(q || '')
+      .replace(/[-_\/]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const mentionsAPV =
+      text.includes('apv') ||
+      text.includes('regimen a') ||
+      text.includes('regimen b') ||
+      text.includes('régimen a') ||
+      text.includes('régimen b') ||
+      text.includes('apv a') ||
+      text.includes('apv b') ||
+      text.includes('ahorro previsional');
+
+    const asksRecommendation =
+      text.includes('me conviene') ||
+      text.includes('conviene') ||
+      text.includes('recomiendas') ||
+      text.includes('recomendar') ||
+      text.includes('recomendacion') ||
+      text.includes('recomendación') ||
+      text.includes('deberia') ||
+      text.includes('debería') ||
+      text.includes('cambiar') ||
+      text.includes('cambio') ||
+      text.includes('cual es mejor') ||
+      text.includes('cuál es mejor') ||
+      text.includes('que regimen usar') ||
+      text.includes('qué régimen usar') ||
+      text.includes('que regimen me conviene') ||
+      text.includes('qué régimen me conviene') ||
+      text.includes('a o b') ||
+      text.includes('apv a o apv b') ||
+      text.includes('apv b o apv a') ||
+      text.includes('optimizar impuesto') ||
+      text.includes('optimizar impuestos') ||
+      text.includes('optimizar iusc') ||
+      text.includes('priorizo liquidez') ||
+      text.includes('priorizar liquidez') ||
+      text.includes('priorizo ahorro') ||
+      text.includes('priorizar ahorro');
+
+    return mentionsAPV && asksRecommendation;
+  }
+
+  function buildAPVContextualRecommendation(){
+    const d = (typeof getFinancialMetricsV2 === 'function') ? getFinancialMetricsV2() : {};
+
+    const haberes = Number(d.totalHaberes || 0);
+    const liquido = Number(d.liquido || d.alcanceLiquido || 0);
+    const iusc = Number(d.iusc || 0);
+    const apv = Number(d.apv || 0);
+    const regimen = String(d.regimenAPV || 'B').trim().toUpperCase();
+    const productividad = Number(d.productividad || 0);
+    const totalVars = Number(d.totalVars || 0);
+
+    if(!haberes || haberes <= 0){
+      return [
+        '🎯 Recomendación APV contextual',
+        '',
+        'Para recomendar entre APV A y APV B necesito que primero ingreses una liquidación o simulación con haberes, descuentos, APV e Impuesto Único.',
+        '',
+        'Mientras no existan datos suficientes, sólo puedo explicar la diferencia general:',
+        '',
+        '🅰️ APV A:',
+        'Entrega una bonificación estatal del 15% sobre aportes acogidos, con tope anual de 6 UTM. Suele ser atractivo para aportes pequeños o medios y tramos bajos/medios de impuesto.',
+        '',
+        '🅱️ APV B:',
+        'Reduce la base tributable usada para calcular el Impuesto Único. Suele ser más potente cuando existe renta alta y tasa marginal relevante.',
+        '',
+        'Conclusión preliminar:',
+        'Sin datos de renta, APV, líquido e impuesto, no conviene recomendar cambio de régimen.'
+      ].join('\n');
+    }
+
+    const pctLiquido = liquido / haberes * 100;
+    const pctIuscHab = iusc / haberes * 100;
+    const pctApvHab = apv / haberes * 100;
+    const pctProdHab = productividad / haberes * 100;
+    const pctProdVars = totalVars ? productividad / totalVars * 100 : 0;
+
+    let perfil = '';
+    let lectura = '';
+    let recomendacion = '';
+    let liquidez = '';
+
+    if(pctIuscHab >= 15 && apv > 0 && regimen.includes('B')){
+      perfil = 'Carga tributaria relevante con APV B activo';
+      lectura = 'Tu IUSC representa una parte relevante de los haberes y ya tienes APV en régimen B. Esa combinación normalmente es coherente si tu objetivo es eficiencia tributaria y acumulación previsional.';
+      recomendacion = 'Mantendría el APV B como estrategia base, pero validaría si el monto actual no tensiona demasiado tu caja mensual. No lo evaluaría sólo por “pagar menos impuesto”, sino por la relación entre aporte, menor IUSC, líquido final y objetivo patrimonial.';
+    }else if(pctIuscHab >= 15 && apv > 0 && regimen.includes('A')){
+      perfil = 'Carga tributaria relevante con APV A activo';
+      lectura = 'Tienes carga tributaria relevante y usas APV A, que entrega bonificación estatal pero no rebaja directamente la base tributable mensual del IUSC.';
+      recomendacion = 'Simularía el mismo monto en APV B. Si la tasa marginal es alta, APV B podría generar mayor eficiencia tributaria mensual que APV A. La decisión final depende de cuánto baja el IUSC versus cuánto cae el líquido.';
+    }else if(pctIuscHab >= 15 && apv <= 0){
+      perfil = 'Carga tributaria relevante sin APV';
+      lectura = 'Existe IUSC relevante y no hay APV registrado. Eso sugiere espacio para evaluar eficiencia tributaria mediante APV, especialmente régimen B.';
+      recomendacion = 'No partiría con un monto alto de inmediato. Probaría escenarios graduales: $300.000, $500.000, $700.000 y $1.000.000, observando cuánto baja el IUSC y cuánto líquido sacrificas.';
+    }else if(pctIuscHab < 8 && apv > 0 && regimen.includes('B')){
+      perfil = 'Carga tributaria baja/moderada con APV B';
+      lectura = 'El beneficio del APV B depende de tu tasa marginal. Si el IUSC pesa poco, la rebaja tributaria puede ser limitada frente al sacrificio de liquidez.';
+      recomendacion = 'Compararía APV B contra APV A. En tramos bajos o medios, APV A puede competir mejor por la bonificación estatal del 15%, especialmente si el objetivo es ahorro previsional más que rebaja mensual de impuesto.';
+    }else if(pctIuscHab < 8 && apv <= 0){
+      perfil = 'Carga tributaria baja/moderada sin APV';
+      lectura = 'La prioridad no parece ser optimización tributaria, porque el IUSC no domina la liquidación.';
+      recomendacion = 'Si quieres iniciar ahorro previsional, evaluaría APV A o un APV B pequeño. La decisión debe mirar constancia, comisiones, horizonte y liquidez, no sólo impuesto mensual.';
+    }else{
+      perfil = 'Carga tributaria intermedia';
+      lectura = 'No hay una señal única. APV A y APV B pueden competir dependiendo de tasa marginal, monto aportado y necesidad de caja mensual.';
+      recomendacion = 'Compararía el mismo monto en APV A y B. Si priorizas liquidez, evita subir APV sin revisar líquido final. Si priorizas eficiencia tributaria, observa cuánto baja el IUSC por cada peso aportado.';
+    }
+
+    if(pctLiquido < 55){
+      liquidez = 'Tu líquido queda ajustado frente a los haberes. Antes de aumentar APV, priorizaría caja mensual y sostenibilidad.';
+    }else if(pctLiquido <= 70){
+      liquidez = 'Tu líquido se mantiene razonable. Hay margen para APV, pero cualquier aumento debe compararse contra necesidades reales de caja mensual.';
+    }else{
+      liquidez = 'Tu liquidez se ve holgada. Hay más margen para transformar parte de esa caja en ahorro previsional si ese es el objetivo.';
+    }
+
+    const notaProductividad = productividad > 0
+      ? 'La productividad representa ' + pct(pctProdHab) + ' de los haberes y ' + pct(pctProdVars) + ' de las variables. No debe tratarse como ingreso garantizado, porque depende de programación, horas de vuelo asignadas y operación del mes.'
+      : 'No hay productividad registrada en esta simulación. Si en otros meses aparece, puede subir la renta tributable, mover el IUSC y cambiar la conveniencia relativa del APV.';
+
+    let decision = '';
+    if(apv > 0 && regimen.includes('B') && pctIuscHab >= 15 && pctLiquido >= 55){
+      decision = 'Recomendación concreta: mantener APV B como base y revisar sólo si cambia tu caja mensual, productividad o tramo de IUSC.';
+    }else if(apv > 0 && regimen.includes('A') && pctIuscHab >= 15){
+      decision = 'Recomendación concreta: simular mismo monto en APV B antes de mantener APV A, porque la carga tributaria parece suficientemente relevante para que B pueda competir fuerte.';
+    }else if(apv <= 0 && pctIuscHab >= 15){
+      decision = 'Recomendación concreta: simular APV B gradual. El objetivo sería medir cuánto IUSC reduce por cada peso de líquido sacrificado.';
+    }else if(pctIuscHab < 8){
+      decision = 'Recomendación concreta: no sobredimensionar APV B por impuesto. Evaluar APV A o aportes moderados, priorizando ahorro de largo plazo y liquidez.';
+    }else{
+      decision = 'Recomendación concreta: comparar APV A versus APV B con el mismo monto antes de decidir. No hay señal suficiente para cambiar sólo por definición.';
+    }
+
+    return [
+      '🎯 Recomendación APV contextual',
+      '',
+      'Perfil detectado: ' + perfil,
+      '',
+      '📌 Datos de esta simulación:',
+      '• Haberes totales: ' + CLP(haberes),
+      '• Líquido estimado: ' + CLP(liquido) + ' (' + pct(pctLiquido) + ' de los haberes)',
+      '• IUSC estimado: ' + CLP(iusc) + ' (' + pct(pctIuscHab) + ' de los haberes)',
+      '• APV actual: ' + CLP(apv) + ' (' + pct(pctApvHab) + ' de los haberes)',
+      '• Régimen APV actual: ' + (regimen || 'B'),
+      '',
+      '🧠 Lectura:',
+      lectura,
+      '',
+      '💧 Liquidez:',
+      liquidez,
+      '',
+      '🅰️ APV A conviene más cuando:',
+      '• Buscas bonificación estatal simple del 15%.',
+      '• Estás en tramo bajo o medio de impuesto.',
+      '• Aportas montos pequeños o moderados.',
+      '• No buscas reducir fuertemente el IUSC mensual.',
+      '',
+      '🅱️ APV B conviene más cuando:',
+      '• Estás en tramo alto de Impuesto Único.',
+      '• Buscas reducir base tributable/RLI.',
+      '• Puedes sostener menor líquido mensual.',
+      '• Tu objetivo es eficiencia tributaria y acumulación previsional.',
+      '',
+      '⚠️ Productividad:',
+      notaProductividad,
+      '',
+      '📌 ' + decision,
+      '',
+      'Prueba recomendada en RemuTool:',
+      '1. Mantener APV actual.',
+      '2. Simular mismo monto en APV A.',
+      '3. Simular mismo monto en APV B.',
+      '4. Comparar IUSC, líquido final y ahorro previsional.',
+      '',
+      'La decisión correcta no es “pagar menos impuesto” solamente; es optimizar entre líquido mensual, beneficio tributario y objetivo patrimonial.'
+    ].join('\n');
+  }
+
+
   function answerQuestion(q){
     if(wantsFullFinancialAnalysisV2(q)){
       window.__lastMicopilotQuestion = q;
@@ -9923,6 +10108,11 @@ function generateFinancialDiagnosticV2(){
     if(qn.includes('diagnostico contextual') || qn.includes('diagnóstico contextual') || qn.includes('recomendacion contextual') || qn.includes('recomendación contextual') || qn.includes('que me recomiendas') || qn.includes('qué me recomiendas')){
       window.__lastMicopilotQuestion = q;
       return generateContextualAIDiagnosisV4(getFinancialMetricsV2());
+    }
+
+    if(isAPVRecommendationQuestion(q)){
+      window.__lastMicopilotQuestion = q;
+      return buildAPVContextualRecommendation();
     }
 
     const apvKnowledgeV3 = answerAPVKnowledgeV3(q);
@@ -10581,5 +10771,7 @@ function generateFinancialDiagnosticV2(){
 
 <!-- RemuTool v2.0.1.f.w.t-stable-rebuild: motor único getFinancialMetricsV2 para arquetipo y diagnóstico contextual. -->
 <!-- RemuTool v2.0.3.f.w.t: KB APV oficial corregida; Régimen A = bonificación 15%; Régimen B = rebaja base tributable/RLI; router APV granular para definiciones, diferencias, topes, tasa marginal, retiro y estrategia. -->
+
+<!-- RemuTool v2.0.4.f.w.t: Recomendación APV contextual incorporada antes del router de definiciones; responde “me conviene/cambiar/recomiendas” usando datos reales de la simulación. -->
 </body>
 </html>
