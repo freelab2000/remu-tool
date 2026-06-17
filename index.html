@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.6.f.w.t-tax-context-builder" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.0.6.f.w.t-tax-context-builder</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.0.7.f.w.t-tax-router-priority" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.0.7.f.w.t-tax-router-priority</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -11560,6 +11560,379 @@ function generateFinancialDiagnosticV2(){
     }
     return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
   };
+})();
+</script>
+
+
+
+<script>
+/* === RemuTool v2.0.7.f.w.t — Router Tributario Determinístico Prioritario ===
+   Corrige el punto crítico detectado en pruebas:
+   - El askAndClear original usaba un answerQuestion local, por lo que los hooks sobre window.answerQuestion no siempre corrían.
+   - Este interceptor corre en fase capture sobre Consultar/Enter, responde primero preguntas tributarias/APV con datos reales de la simulación y bloquea la KB genérica.
+   - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
+*/
+(function(){
+  const VERSION = 'v.2.0.7.f.w.t-tax-router-priority';
+
+  function norm(s){
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[¿?¡!.,;:()\[\]"']/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function readInput(key){
+    const el = document.querySelector('[data-key="'+key+'"]');
+    if(!el) return 0;
+    return parseMoney(el.value || el.textContent || '0');
+  }
+
+  function parseMoney(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    const raw = String(v || '').trim().toLowerCase();
+    if(!raw) return 0;
+    let mult = 1;
+    let t = raw;
+    if(t.includes('millon') || t.includes('millón')) mult = 1000000;
+    t = t.replace(/\$/g,'').replace(/clp/g,'').replace(/pesos/g,'').replace(/millones?/g,'').replace(/mill[oó]n/g,'');
+    t = t.replace(/\./g,'').replace(/,/g,'.').replace(/[^0-9.-]/g,'');
+    const n = Number(t);
+    return isFinite(n) ? n * mult : 0;
+  }
+
+  function money(n){
+    n = Math.round(Number(n) || 0);
+    return '$' + n.toLocaleString('es-CL');
+  }
+
+  function pctDecimal(d, digits=1){
+    d = Number(d) || 0;
+    return (d * 100).toFixed(d === 0 ? 0 : digits).replace('.', ',') + '%';
+  }
+
+  function pctNumber(v, digits=1){
+    v = Number(v) || 0;
+    return v.toFixed(v === 0 ? 0 : digits).replace('.', ',') + '%';
+  }
+
+  function table(){
+    return [
+      {n:1, desde:0, hasta:943501, tasa:0, rebaja:0},
+      {n:2, desde:943502, hasta:2096670, tasa:0.04, rebaja:37740},
+      {n:3, desde:2096671, hasta:3494450, tasa:0.08, rebaja:121607},
+      {n:4, desde:3494451, hasta:4892230, tasa:0.135, rebaja:313802},
+      {n:5, desde:4892231, hasta:6290010, tasa:0.23, rebaja:778563},
+      {n:6, desde:6290011, hasta:8386680, tasa:0.304, rebaja:1244024},
+      {n:7, desde:8386681, hasta:21665590, tasa:0.35, rebaja:1629811},
+      {n:8, desde:21665591, hasta:Infinity, tasa:0.40, rebaja:2713091}
+    ];
+  }
+
+  function bracket(rli){
+    rli = Math.max(0, Number(rli)||0);
+    return table().find(x => rli >= x.desde && rli <= x.hasta) || table()[0];
+  }
+
+  function taxAt(rli){
+    const b = bracket(rli);
+    const impuesto = Math.max(0, Math.round(rli * b.tasa - b.rebaja));
+    return { rli: Math.max(0, Math.round(rli)), tramo:b.n, tasa:b.tasa, rebaja:b.rebaja, desde:b.desde, hasta:b.hasta, impuesto };
+  }
+
+  function apvRegimen(){
+    const el = document.getElementById('apvReg') || document.getElementById('apvRegimen') || document.querySelector('[name="apvRegimen"]');
+    return String((el && (el.value || el.textContent)) || 'B').trim().toUpperCase().startsWith('A') ? 'A' : 'B';
+  }
+
+  function context(){
+    const sueldo = readInput('haber.sueldo_base');
+    const grat = readInput('haber.gratificacion');
+    const anti = readInput('haber.antiguedad');
+    const prod = readInput('haber.bono_prod');
+    const vac = readInput('haber.bono_vacaciones');
+    const fer = readInput('haber.feriados');
+    const sec = readInput('haber.secuencia_9_10');
+    const totalHaberes = sueldo + grat + anti + prod + vac + fer + sec;
+
+    const afp = readInput('desc.afp10');
+    const salud = readInput('desc.salud7');
+    const ces = readInput('desc.cesantia');
+    const trab = readInput('desc.trab_pesado');
+    const mandatory = afp + salud + ces + trab;
+
+    const comAfp = readInput('desc.com_afp');
+    const cotAd = readInput('desc.cot_adicional');
+    const sind = readInput('desc.sind_uccl');
+    const apv = readInput('desc.apv');
+    const iuscPantalla = readInput('desc.iusc_ret');
+    const reg = apvRegimen();
+
+    const rliSinApv = Math.max(0, totalHaberes - mandatory);
+    const rli = Math.max(0, rliSinApv - (reg === 'B' ? apv : 0));
+    const tx = taxAt(rli);
+    const iusc = iuscPantalla || tx.impuesto;
+    const totalDescuentos = mandatory + comAfp + cotAd + sind + apv + iusc;
+    const liquido = Math.max(0, totalHaberes - totalDescuentos);
+    const noApvTax = taxAt(rliSinApv).impuesto;
+    const apvTaxSaving = reg === 'B' ? Math.max(0, noApvTax - tx.impuesto) : 0;
+
+    return {
+      sueldo, grat, anti, prod, vac, fer, sec,
+      totalHaberes,
+      afp, salud, ces, trab, mandatory,
+      comAfp, cotAd, sind, apv, reg,
+      rliSinApv, rli, tx, iusc, iuscPantalla, liquido,
+      noApvTax, apvTaxSaving
+    };
+  }
+
+  function hasData(c){ return c && c.totalHaberes > 0; }
+
+  function amountFromQuestion(q){
+    const s = norm(q);
+    const mMillion = s.match(/(\d+(?:[\.,]\d+)?)\s*(millon|millones)/);
+    if(mMillion) return Number(mMillion[1].replace(',','.')) * 1000000;
+    const m = s.match(/\$?\s*(\d{1,3}(?:\.\d{3})+|\d{5,9}|\d+(?:,\d+)?)/);
+    if(m) return parseMoney(m[1]);
+    return 0;
+  }
+
+  function wantsTax(q){
+    const s = norm(q);
+    if(/\b(tramo|tramos|tasa marginal|tasa efectiva|rli|base tributable|rebaja)\b/.test(s)) return true;
+    if(s.includes('iusc') || s.includes('impuesto unico') || s.includes('impuesto a la renta')) return true;
+    if((s.includes('impuesto') || s.includes('pago tanto')) && (s.includes('como') || s.includes('por que') || s.includes('porque') || s.includes('calcula') || s.includes('calculo') || s.includes('tanto'))) return true;
+    if(s.includes('apv') && (s.includes('impuesto') || s.includes('iusc') || s.includes('ahorro') || s.includes('rebaja') || s.includes('base') || s.includes('rli') || s.includes('subir') || s.includes('aumentar'))) return true;
+    return false;
+  }
+
+  function wantsDetail(q){
+    const s = norm(q);
+    return s.includes('paso a paso') || s.includes('detalle') || s.includes('detall') || s.includes('formula') || s.includes('explicame') || s.includes('tabla');
+  }
+
+  function wantsBracket(q){
+    const s = norm(q);
+    return s.includes('tramo') || s.includes('tramos') || s.includes('tasa marginal') || s.includes('tasa efectiva') || s.includes('rebaja') || s.includes('rli') || s.includes('base tributable');
+  }
+
+  function wantsWhy(q){
+    const s = norm(q);
+    return s.includes('por que pago') || s.includes('porque pago') || s.includes('pago tanto') || s.includes('mucho impuesto') || s.includes('impuesto alto');
+  }
+
+  function wantsAPVImpact(q){
+    const s = norm(q);
+    return s.includes('apv') && (s.includes('impuesto') || s.includes('iusc') || s.includes('ahorro') || s.includes('rebaja') || s.includes('base') || s.includes('rli') || s.includes('subir') || s.includes('aumentar'));
+  }
+
+  function answerBracket(){
+    const c = context();
+    if(!hasData(c)) return '📊 Tramo tributario\n\nPrimero ingresa haberes para calcular RLI, tramo y tasa marginal.';
+    const tasaEfectiva = c.rli ? c.iusc / c.rli : 0;
+    return [
+      '📊 Tramo tributario actual',
+      '',
+      'RLI usada: ' + money(c.rli),
+      'Tramo mensual: Tramo ' + c.tx.tramo,
+      'Tasa marginal: ' + pctDecimal(c.tx.tasa),
+      'Tasa efectiva sobre RLI: ' + pctDecimal(tasaEfectiva),
+      'Rebaja aplicada: ' + money(c.tx.rebaja),
+      'IUSC calculado: ' + money(c.iusc),
+      '',
+      'Fórmula: ' + money(c.rli) + ' × ' + pctDecimal(c.tx.tasa) + ' − ' + money(c.tx.rebaja) + ' = ' + money(c.tx.impuesto)
+    ].join('\n');
+  }
+
+  function answerShortTax(){
+    const c = context();
+    if(!hasData(c)) return '🧾 IUSC\n\nPrimero ingresa una simulación. La lógica es: haberes imponibles − cotizaciones obligatorias − APV B = RLI. Luego: RLI × tasa marginal − rebaja = IUSC.';
+    return [
+      '🧾 Cálculo IUSC — resumen',
+      '',
+      'Tu RLI usada es ' + money(c.rli) + '.',
+      'Tramo ' + c.tx.tramo + ' | tasa marginal ' + pctDecimal(c.tx.tasa) + ' | rebaja ' + money(c.tx.rebaja) + '.',
+      'IUSC calculado: ' + money(c.iusc) + '.',
+      '',
+      'Fórmula: ' + money(c.rli) + ' × ' + pctDecimal(c.tx.tasa) + ' − ' + money(c.tx.rebaja) + ' = ' + money(c.tx.impuesto),
+      '',
+      'Para más detalle: “explícame el IUSC paso a paso”.'
+    ].join('\n');
+  }
+
+  function answerDetailTax(){
+    const c = context();
+    return [
+      '🧾 IUSC paso a paso',
+      '',
+      '1) Haberes imponibles',
+      '• Sueldo base: ' + money(c.sueldo),
+      '• Gratificación: ' + money(c.grat),
+      '• Antigüedad: ' + money(c.anti),
+      '• Productividad: ' + money(c.prod),
+      '• Vacaciones/Feriados/Secuencia: ' + money(c.vac + c.fer + c.sec),
+      '• Total haberes: ' + money(c.totalHaberes),
+      '',
+      '2) Cotizaciones obligatorias que reducen base',
+      '• AFP 10%: ' + money(c.afp),
+      '• Salud 7%: ' + money(c.salud),
+      '• Seguro cesantía 0,6%: ' + money(c.ces),
+      '• Trabajo pesado: ' + money(c.trab),
+      '• Total obligatorias: ' + money(c.mandatory),
+      '',
+      '3) APV y otros descuentos',
+      '• APV: ' + money(c.apv) + ' | Régimen: ' + c.reg,
+      '• Comisión AFP: ' + money(c.comAfp),
+      '• Cotización adicional salud: ' + money(c.cotAd),
+      '• Sindicato: ' + money(c.sind),
+      '',
+      'Regla: APV B reduce RLI mensual; APV A no rebaja directamente el IUSC mensual, porque su beneficio es bonificación fiscal.',
+      '',
+      '4) RLI y tramo',
+      '• RLI antes de APV B: ' + money(c.rliSinApv),
+      '• RLI usada: ' + money(c.rli),
+      '• Tramo: ' + c.tx.tramo,
+      '• Tasa marginal: ' + pctDecimal(c.tx.tasa),
+      '• Rebaja: ' + money(c.tx.rebaja),
+      '',
+      '5) Fórmula',
+      money(c.rli) + ' × ' + pctDecimal(c.tx.tasa) + ' − ' + money(c.tx.rebaja) + ' = ' + money(c.tx.impuesto),
+      '',
+      'IUSC retenido/calculado: ' + money(c.iusc)
+    ].join('\n');
+  }
+
+  function answerWhyTax(){
+    const c = context();
+    if(!hasData(c)) return answerShortTax();
+    const pctHab = c.totalHaberes ? c.iusc / c.totalHaberes : 0;
+    const pctProd = c.totalHaberes ? c.prod / c.totalHaberes : 0;
+    const lines = [
+      '📈 Por qué pagas ese impuesto',
+      '',
+      'La causa principal es tu RLI: ' + money(c.rli) + '.',
+      'Esa RLI cae en Tramo ' + c.tx.tramo + ', con tasa marginal ' + pctDecimal(c.tx.tasa) + '.',
+      'IUSC calculado: ' + money(c.iusc) + ' (' + pctDecimal(pctHab) + ' de los haberes).'
+    ];
+    if(c.prod > 0) lines.push('', 'Productividad: ' + money(c.prod) + ' (' + pctDecimal(pctProd) + ' de los haberes). Aumenta la RLI y puede empujar el IUSC.');
+    if(c.apv > 0 && c.reg === 'B') lines.push('', 'APV B: ' + money(c.apv) + '. Ayuda a reducir la RLI; sin ese APV, el IUSC estimado sería ' + money(c.noApvTax) + '.');
+    lines.push('', 'Lectura: no parece un problema de cálculo; el impuesto responde al tramo marginal y a la renta tributable del mes.');
+    return lines.join('\n');
+  }
+
+  function answerAPVImpact(q){
+    const c = context();
+    const proposed = amountFromQuestion(q);
+    const s = norm(q);
+    if(!hasData(c)) return '🅱️ APV e impuesto\n\nPrimero ingresa una simulación. Con datos cargados puedo calcular APV actual, tasa marginal, ahorro estimado de IUSC y efecto sobre líquido.';
+
+    if(proposed && (s.includes('subir') || s.includes('aumentar') || s.includes('simular') || s.includes('a '))){
+      const proposedRli = Math.max(0, c.rliSinApv - (c.reg === 'B' ? proposed : 0));
+      const proposedTax = taxAt(proposedRli).impuesto;
+      const deltaApv = proposed - c.apv;
+      const deltaTax = c.iusc - proposedTax;
+      const deltaLiquido = -deltaApv + deltaTax;
+      return [
+        '🧮 Simulación APV',
+        '',
+        'APV actual: ' + money(c.apv),
+        'APV propuesto: ' + money(proposed),
+        'Régimen actual: ' + c.reg,
+        '',
+        'IUSC actual: ' + money(c.iusc),
+        'IUSC estimado con APV propuesto: ' + money(proposedTax),
+        'Ahorro tributario incremental: ' + money(Math.max(0, deltaTax)),
+        'Efecto neto aproximado en líquido: ' + (deltaLiquido >= 0 ? '+' : '') + money(deltaLiquido),
+        '',
+        'Lectura: subir APV mejora ahorro previsional, pero sólo una parte se compensa vía menor impuesto. El resto es sacrificio de caja mensual.'
+      ].join('\n');
+    }
+
+    if(c.apv <= 0){
+      return [
+        '🅱️ APV e impuesto',
+        '',
+        'No tienes APV registrado.',
+        'Tasa marginal actual: ' + pctDecimal(c.tx.tasa),
+        'Referencia: cada $100.000 de APV B podrían reducir el IUSC en aprox. ' + money(100000 * c.tx.tasa) + ', dentro de topes legales.'
+      ].join('\n');
+    }
+
+    return [
+      '🅱️ APV e impacto tributario',
+      '',
+      'APV actual: ' + money(c.apv) + ' | Régimen: ' + c.reg,
+      'Tasa marginal actual: ' + pctDecimal(c.tx.tasa),
+      'IUSC actual: ' + money(c.iusc),
+      '',
+      c.reg === 'B'
+        ? 'Ahorro mensual estimado por APV B: ' + money(c.apvTaxSaving) + '.'
+        : 'En APV A no hay rebaja directa del IUSC mensual; el beneficio principal es bonificación fiscal del 15% con tope anual.',
+      '',
+      'Lectura: el beneficio tributario no es todo el aporte. Es la parte del impuesto que baja gracias a reducir la RLI.'
+    ].join('\n');
+  }
+
+  function answer(q){
+    if(!wantsTax(q)) return null;
+    if(wantsAPVImpact(q)) return answerAPVImpact(q);
+    if(wantsWhy(q)) return answerWhyTax();
+    if(wantsDetail(q)) return answerDetailTax();
+    if(wantsBracket(q)) return answerBracket();
+    return answerShortTax();
+  }
+
+  function esc(s){
+    return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;');
+  }
+
+  function addChat(role, text){
+    const box = document.getElementById('aiResponseBox');
+    if(!box) return false;
+    box.classList.add('ai-history');
+    const head = role === 'user' ? 'Tú' : 'MiCopilot';
+    const cls = role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant';
+    const div = document.createElement('div');
+    div.className = 'ai-msg ' + cls;
+    div.innerHTML = '<span class="ai-msg-head">'+head+'</span><div class="ai-msg-body">'+esc(text).replace(/\n/g,'<br>')+'</div>';
+    const empty = box.querySelector('.ai-response-empty');
+    if(empty) box.innerHTML = '';
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return true;
+  }
+
+  function handleQuestionFromInput(ev){
+    const input = document.getElementById('aiUserQuestion');
+    if(!input) return false;
+    const q = String(input.value || '').trim();
+    const a = answer(q);
+    if(!a) return false;
+    if(ev){ ev.preventDefault(); ev.stopPropagation(); if(ev.stopImmediatePropagation) ev.stopImmediatePropagation(); }
+    window.__lastMicopilotQuestion = q;
+    addChat('user', q);
+    addChat('assistant', a);
+    input.value = '';
+    input.placeholder = 'Pregunta algo sobre tu liquidación...';
+    setTimeout(() => input.focus(), 30);
+    return true;
+  }
+
+  document.addEventListener('click', function(ev){
+    const t = ev.target;
+    if(t && t.closest && t.closest('#aiAskBtn')) handleQuestionFromInput(ev);
+  }, true);
+
+  document.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter' && document.activeElement && document.activeElement.id === 'aiUserQuestion'){
+      handleQuestionFromInput(ev);
+    }
+  }, true);
+
+  window.RemuToolTaxRouterV207 = { version: VERSION, context, answer, taxAt };
 })();
 </script>
 
