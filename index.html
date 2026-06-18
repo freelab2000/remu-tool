@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.1.0.f.w.t-financial-intelligence" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.1.0.f.w.t-financial-intelligence</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.2.0.f.w.t-financial-scenario-engine" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.2.0.f.w.t-financial-scenario-engine</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -11573,7 +11573,7 @@ function generateFinancialDiagnosticV2(){
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.2.1.0.f.w.t-financial-intelligence';
+  const VERSION = 'v.2.2.0.f.w.t-financial-scenario-engine';
 
   function norm(s){
     return String(s || '')
@@ -12343,6 +12343,292 @@ function generateFinancialDiagnosticV2(){
     if(typeof previousAnswerQuestionV210 === 'function'){
       return previousAnswerQuestionV210.apply(this, arguments);
     }
+    return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
+  };
+})();
+</script>
+
+
+
+<script>
+/* === RemuTool v2.2.0.f.w.t — Financial Scenario Engine ===
+   Objetivo:
+   - Simular escenarios concretos de APV y productividad antes de caer en KB definicional.
+   - Responder preguntas del tipo: subir/bajar/eliminar APV, APV a $X, productividad cero/baja/a $X.
+   - Mantener respuestas breves por defecto y usar el cálculo tributario disponible cuando existe.
+*/
+(function(){
+  var VERSION = 'v.2.2.0.f.w.t-financial-scenario-engine';
+
+  function seNorm(s){
+    return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  }
+
+  function seNum(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function seMoney(n){
+    n = Math.round(seNum(n));
+    if(typeof CLP === 'function'){
+      try { return CLP(n); } catch(e){}
+    }
+    return '$' + n.toLocaleString('es-CL');
+  }
+
+  function sePct(n){
+    n = Number(n || 0);
+    if(n > 1) n = n / 100;
+    return (n * 100).toFixed(n === 0 ? 0 : 1).replace('.', ',') + '%';
+  }
+
+  function seSignedMoney(n){
+    n = Math.round(seNum(n));
+    if(n === 0) return '$0';
+    return (n > 0 ? '+' : '-') + seMoney(Math.abs(n));
+  }
+
+  function seGetTax(){
+    try { if(typeof buildTaxContext === 'function') return buildTaxContext(); } catch(e){}
+    return null;
+  }
+
+  function seCtx(){
+    var t = seGetTax() || {};
+    var ingresos = t.ingresos || {};
+    var previsionales = t.previsionales || {};
+    var otros = t.otros || {};
+    var tax = t.tax || {};
+    var resultados = t.resultados || {};
+
+    var haberes = seNum(ingresos.totalHaberes);
+    var liquido = seNum(resultados.liquido);
+    var apv = seNum(otros.apv);
+    var productividad = seNum(ingresos.productividad);
+    var variables = seNum(ingresos.variables);
+    var iusc = seNum(tax.iuscFinal);
+    var rli = seNum(tax.rli);
+    var rliAntesAPV = seNum(tax.rliAntesAPV || tax.rliPreAPV || (rli + apv));
+    var tasa = seNum(tax.tasa);
+    var tramo = tax.tramo || 0;
+    var rebaja = seNum(tax.rebaja);
+    var regimen = String(otros.regimenAPV || t.regimenAPV || 'B').trim().toUpperCase();
+
+    return {
+      raw:t,
+      haberes:haberes,
+      liquido:liquido,
+      apv:apv,
+      productividad:productividad,
+      variables:variables,
+      iusc:iusc,
+      rli:rli,
+      rliAntesAPV:rliAntesAPV,
+      tasa:tasa,
+      tramo:tramo,
+      rebaja:rebaja,
+      regimen:regimen,
+      sueldoBase:seNum(ingresos.sueldoBase),
+      gratificacion:seNum(ingresos.gratificacion),
+      antiguedad:seNum(ingresos.antiguedad),
+      obligatorios: seNum(previsionales.totalObligatorios)
+    };
+  }
+
+  function seTaxAtRLI(rli, fallbackRate, fallbackRebate){
+    rli = Math.max(0, Math.round(seNum(rli)));
+    try {
+      if(typeof taxAt === 'function'){
+        var tx = taxAt(rli);
+        if(tx && typeof tx === 'object'){
+          return {
+            iusc: seNum(tx.iusc || tx.tax || tx.impuesto || 0),
+            tramo: tx.tramo || tx.bracket || 0,
+            tasa: seNum(tx.tasa || tx.rate || fallbackRate),
+            rebaja: seNum(tx.rebaja || tx.deduction || fallbackRebate)
+          };
+        }
+      }
+    } catch(e){}
+    var tasa = seNum(fallbackRate);
+    var rebaja = seNum(fallbackRebate);
+    return { iusc: Math.max(0, Math.round(rli * tasa - rebaja)), tramo: 0, tasa:tasa, rebaja:rebaja };
+  }
+
+  function seExtractAmounts(q){
+    var s = String(q || '').replace(/\./g,'').replace(/,/g,'.');
+    var out = [];
+    var re = /(?:\$\s*)?(\d+(?:\.\d+)?)(?:\s*(millones|millon|mm|m|k|mil))?/gi;
+    var m;
+    while((m = re.exec(s))){
+      var n = Number(m[1]);
+      if(!isFinite(n)) continue;
+      var unit = seNorm(m[2] || '');
+      if(unit === 'millones' || unit === 'millon' || unit === 'mm' || unit === 'm') n *= 1000000;
+      if(unit === 'k' || unit === 'mil') n *= 1000;
+      if(n >= 10000) out.push(Math.round(n));
+    }
+    return out;
+  }
+
+  function seHasData(c){ return c && c.haberes > 0 && (c.liquido > 0 || c.iusc >= 0); }
+
+  function seClassify(q){
+    var s = seNorm(q);
+    var hasAPV = s.includes('apv');
+    var hasProd = s.includes('productividad') || s.includes('bono productividad') || s.includes('variable') || s.includes('vuelo') || s.includes('horas');
+    var hasWhatIf = s.includes('que pasa si') || s.includes('qué pasa si') || s.includes('simula') || s.includes('simular') || s.includes('escenario') || s.includes('compara') || s.includes('comparar') || s.includes('impacto');
+
+    if(hasAPV && (
+      s.includes('elimino') || s.includes('eliminar') || s.includes('quito') || s.includes('quitar') ||
+      s.includes('sin apv') || s.includes('apv cero') || s.includes('no tuviera apv') || s.includes('saco el apv')
+    )) return 'APV_REMOVE';
+
+    if(hasAPV && (
+      s.includes('aumento') || s.includes('aumentar') || s.includes('subo') || s.includes('subir') ||
+      s.includes('bajo') || s.includes('bajar') || s.includes('reduzco') || s.includes('reducir') ||
+      s.includes('cambio') || s.includes('cambiar') || s.includes('duplico') || s.includes('duplicar') ||
+      s.includes('a ') || hasWhatIf
+    ) && seExtractAmounts(q).length) return 'APV_SET';
+
+    if(hasAPV && (s.includes('duplico') || s.includes('duplicar'))) return 'APV_DOUBLE';
+    if(hasAPV && (s.includes('subir') || s.includes('aumentar') || s.includes('aportar mas'))) return 'APV_INCREASE_DEFAULT';
+    if(hasAPV && (s.includes('bajar') || s.includes('reducir') || s.includes('menos apv'))) return 'APV_DECREASE_DEFAULT';
+
+    if(hasProd && (
+      s.includes('cero') || s.includes('sin productividad') || s.includes('pierdo') || s.includes('perder') ||
+      s.includes('baja a 0') || s.includes('bajo a 0') || s.includes('mes bajo') || s.includes('productividad baja')
+    )) return 'PRODUCTIVITY_ZERO';
+
+    if(hasProd && seExtractAmounts(q).length && (
+      s.includes('a ') || s.includes('baja') || s.includes('bajo') || s.includes('sube') || s.includes('subo') || hasWhatIf
+    )) return 'PRODUCTIVITY_SET';
+
+    if(hasProd && hasWhatIf) return 'PRODUCTIVITY_DEFAULT';
+
+    return null;
+  }
+
+  function seEstimate(c, opts){
+    opts = opts || {};
+    var nextAPV = opts.hasOwnProperty('apv') ? Math.max(0, seNum(opts.apv)) : c.apv;
+    var nextProd = opts.hasOwnProperty('productividad') ? Math.max(0, seNum(opts.productividad)) : c.productividad;
+    var deltaAPV = nextAPV - c.apv;
+    var deltaProd = nextProd - c.productividad;
+
+    // APV B rebaja RLI; APV A no rebaja el IUSC mensual.
+    var apvAffectsRLI = String(c.regimen || 'B').includes('B');
+    var nextRLI = Math.max(0, c.rli + deltaProd - (apvAffectsRLI ? deltaAPV : 0));
+    var tx = seTaxAtRLI(nextRLI, c.tasa, c.rebaja);
+    var nextIUSC = Math.max(0, Math.round(tx.iusc || 0));
+    var deltaIUSC = nextIUSC - c.iusc;
+
+    // Fórmula caja: líquido cambia por variación de haberes productivos, aporte APV y diferencia de impuesto.
+    var nextLiquido = Math.max(0, Math.round(c.liquido + deltaProd - deltaAPV - deltaIUSC));
+
+    return {
+      nextAPV:nextAPV,
+      nextProd:nextProd,
+      deltaAPV:deltaAPV,
+      deltaProd:deltaProd,
+      nextRLI:nextRLI,
+      nextIUSC:nextIUSC,
+      deltaIUSC:deltaIUSC,
+      nextLiquido:nextLiquido,
+      deltaLiquido:nextLiquido - c.liquido,
+      tramo: tx.tramo || c.tramo,
+      tasa: tx.tasa || c.tasa,
+      rebaja: tx.rebaja || c.rebaja
+    };
+  }
+
+  function seScenarioBlock(title, c, r, lectura){
+    return [
+      title,
+      '',
+      'Actual → escenario:',
+      '• APV: ' + seMoney(c.apv) + ' → ' + seMoney(r.nextAPV) + ' (' + seSignedMoney(r.deltaAPV) + ')',
+      '• Productividad: ' + seMoney(c.productividad) + ' → ' + seMoney(r.nextProd) + ' (' + seSignedMoney(r.deltaProd) + ')',
+      '• RLI: ' + seMoney(c.rli) + ' → ' + seMoney(r.nextRLI),
+      '• IUSC: ' + seMoney(c.iusc) + ' → ' + seMoney(r.nextIUSC) + ' (' + seSignedMoney(r.deltaIUSC) + ')',
+      '• Líquido: ' + seMoney(c.liquido) + ' → ' + seMoney(r.nextLiquido) + ' (' + seSignedMoney(r.deltaLiquido) + ')',
+      '',
+      lectura
+    ].join('\n');
+  }
+
+  function seAnswerAPV(q, mode){
+    var c = seCtx();
+    if(!seHasData(c)) return '📊 Escenario APV\n\nNecesito una simulación con haberes, APV e IUSC calculado para estimar el impacto.';
+
+    var amounts = seExtractAmounts(q);
+    var target = c.apv;
+    if(mode === 'APV_REMOVE') target = 0;
+    else if(mode === 'APV_DOUBLE') target = c.apv * 2;
+    else if(mode === 'APV_SET') target = amounts[0];
+    else if(mode === 'APV_INCREASE_DEFAULT') target = c.apv > 0 ? c.apv + 300000 : 300000;
+    else if(mode === 'APV_DECREASE_DEFAULT') target = Math.max(0, c.apv - 300000);
+
+    var r = seEstimate(c, { apv: target });
+    var title = '📊 Escenario APV';
+    var lectura;
+
+    if(target > c.apv){
+      lectura = 'Lectura: aumentar APV mejora acumulación previsional y, si está en Régimen B, reduce el IUSC. El costo real no es todo el aumento: se compensa parcialmente con menor impuesto.';
+    }else if(target < c.apv){
+      lectura = 'Lectura: bajar o eliminar APV mejora caja mensual, pero reduce ahorro previsional y puede subir el IUSC si el aporte estaba en Régimen B.';
+    }else{
+      lectura = 'Lectura: el APV queda igual; no hay cambio estimado sobre impuesto ni líquido.';
+    }
+
+    var out = seScenarioBlock(title, c, r, lectura);
+    out += '\n\nCriterio usado: escenario aproximado con tabla IUSC vigente de la app. No reemplaza la liquidación real ni la Operación Renta.';
+    return out;
+  }
+
+  function seAnswerProductivity(q, mode){
+    var c = seCtx();
+    if(!seHasData(c)) return '📊 Escenario productividad\n\nNecesito una simulación con haberes, productividad e IUSC calculado para estimar el impacto.';
+
+    var amounts = seExtractAmounts(q);
+    var target = c.productividad;
+    if(mode === 'PRODUCTIVITY_ZERO') target = 0;
+    else if(mode === 'PRODUCTIVITY_SET') target = amounts[0];
+    else if(mode === 'PRODUCTIVITY_DEFAULT') target = 0;
+
+    var r = seEstimate(c, { productividad: target });
+    var lectura = target < c.productividad
+      ? 'Lectura: una baja de productividad reduce líquido y también puede bajar el IUSC. Es el escenario conservador clave para presupuesto mensual.'
+      : 'Lectura: más productividad aumenta el líquido, pero también eleva la RLI y puede empujar el IUSC según el tramo.';
+
+    var out = seScenarioBlock('📊 Escenario productividad', c, r, lectura);
+    out += '\n\nClave operativa: productividad depende de programación, horas de vuelo y operación del mes; no debe tratarse como ingreso garantizado.';
+    return out;
+  }
+
+  function seAnswer(q){
+    var mode = seClassify(q);
+    if(!mode) return null;
+    if(mode.indexOf('APV_') === 0) return seAnswerAPV(q, mode);
+    if(mode.indexOf('PRODUCTIVITY_') === 0) return seAnswerProductivity(q, mode);
+    return null;
+  }
+
+  window.RemuToolScenarioEngineV220 = { version: VERSION, context: seCtx, classify: seClassify, estimate: seEstimate, answer: seAnswer };
+
+  var previousAnswerQuestionV220 = window.answerQuestion;
+  window.answerQuestion = function(q){
+    try {
+      var ans = seAnswer(q);
+      if(ans){
+        window.__lastMicopilotQuestion = q;
+        return ans;
+      }
+    } catch(e){}
+    if(typeof previousAnswerQuestionV220 === 'function') return previousAnswerQuestionV220.apply(this, arguments);
     return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
   };
 })();
