@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.2.0.f.w.t-financial-scenario-engine" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.2.0.f.w.t-financial-scenario-engine</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.2.1.f.w.t-scenario-router-fix" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.2.1.f.w.t-scenario-router-fix</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -11573,7 +11573,7 @@ function generateFinancialDiagnosticV2(){
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.2.2.0.f.w.t-financial-scenario-engine';
+  const VERSION = 'v.2.2.1.f.w.t-scenario-router-fix';
 
   function norm(s){
     return String(s || '')
@@ -12358,7 +12358,7 @@ function generateFinancialDiagnosticV2(){
    - Mantener respuestas breves por defecto y usar el cálculo tributario disponible cuando existe.
 */
 (function(){
-  var VERSION = 'v.2.2.0.f.w.t-financial-scenario-engine';
+  var VERSION = 'v.2.2.1.f.w.t-scenario-router-fix';
 
   function seNorm(s){
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -12633,6 +12633,269 @@ function generateFinancialDiagnosticV2(){
   };
 })();
 </script>
+
+
+
+<script>
+/* === RemuTool v2.2.1.f.w.t — Scenario Router Fix ===
+   Objetivo:
+   - Priorizar escenarios APV/productividad antes de routers APV/KB/Tax previos.
+   - Intercepta en window capture para correr antes del listener document capture v2.1/v2.0.
+   - No altera cálculos base; usa RemuToolScenarioEngineV220.context/estimate cuando están disponibles.
+*/
+(function(){
+  var VERSION = 'v.2.2.1.f.w.t-scenario-router-fix';
+
+  function norm(s){
+    return String(s || '')
+      .toLowerCase()
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .replace(/[¿?¡!.,;:()\[\]"']/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function num(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var n = Number(String(v).replace(/\$/g,'').replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.-]/g,''));
+    return isFinite(n) ? n : 0;
+  }
+
+  function money(n){
+    n = Math.round(num(n));
+    if(typeof CLP === 'function'){
+      try { return CLP(n); } catch(e){}
+    }
+    return '$' + n.toLocaleString('es-CL');
+  }
+
+  function signedMoney(n){
+    n = Math.round(num(n));
+    if(n === 0) return '$0';
+    return (n > 0 ? '+' : '-') + money(Math.abs(n));
+  }
+
+  function pct(n){
+    n = Number(n || 0);
+    if(n > 1) n = n / 100;
+    return (n * 100).toFixed(n === 0 ? 0 : 1).replace('.', ',') + '%';
+  }
+
+  function esc(s){
+    return String(s || '')
+      .replace(/&/g,'&amp;')
+      .replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;')
+      .replace(/'/g,'&#039;');
+  }
+
+  function extractAmounts(q){
+    var s = String(q || '').toLowerCase().replace(/\./g,'').replace(/,/g,'.');
+    var out = [];
+    var re = /(?:\$\s*)?(\d+(?:\.\d+)?)(?:\s*(millones|millon|millón|mm|m|k|mil))?/gi;
+    var m;
+    while((m = re.exec(s))){
+      var n = Number(m[1]);
+      if(!isFinite(n)) continue;
+      var unit = norm(m[2] || '');
+      if(unit === 'millones' || unit === 'millon' || unit === 'mm' || unit === 'm') n *= 1000000;
+      if(unit === 'k' || unit === 'mil') n *= 1000;
+      if(n >= 10000) out.push(Math.round(n));
+    }
+    return out;
+  }
+
+  function getCtx(){
+    if(window.RemuToolScenarioEngineV220 && typeof window.RemuToolScenarioEngineV220.context === 'function'){
+      try { return window.RemuToolScenarioEngineV220.context(); } catch(e){}
+    }
+    return null;
+  }
+
+  function estimate(c, opts){
+    if(window.RemuToolScenarioEngineV220 && typeof window.RemuToolScenarioEngineV220.estimate === 'function'){
+      try { return window.RemuToolScenarioEngineV220.estimate(c, opts); } catch(e){}
+    }
+    return null;
+  }
+
+  function hasData(c){
+    return c && c.haberes > 0 && (c.liquido > 0 || c.iusc >= 0);
+  }
+
+  function classifyScenario(q){
+    var s = norm(q);
+    var hasAPV = s.includes('apv');
+    var hasProd = s.includes('productividad') || s.includes('bono productividad') || s.includes('variable') || s.includes('variables') || s.includes('horas') || s.includes('vuelo');
+    var amounts = extractAmounts(q);
+
+    var scenarioWords = [
+      'que pasa si','si subo','si bajo','si aumento','si reduzco','si elimino','si quito','si duplico',
+      'subo mi','bajo mi','aumento mi','reduzco mi','elimino el','quito el','sin ',
+      'compara','comparar','versus','vs','simula','simular','escenario','impacto'
+    ];
+    var isScenario = scenarioWords.some(function(w){ return s.includes(norm(w)); });
+
+    if(hasAPV){
+      if(s.includes('elimino') || s.includes('eliminar') || s.includes('quito') || s.includes('quitar') || s.includes('sin apv') || s.includes('apv cero') || s.includes('saco el apv') || s.includes('no tuviera apv')) return {type:'APV', mode:'REMOVE'};
+      if(s.includes('duplico') || s.includes('duplicar')) return {type:'APV', mode:'DOUBLE'};
+      if(amounts.length && (isScenario || s.includes('apv a') || s.includes('apv de') || s.includes('apv en'))) return {type:'APV', mode:'SET', amount:amounts[0]};
+      if((s.includes('subo') || s.includes('subir') || s.includes('aumento') || s.includes('aumentar') || s.includes('aporte mas') || s.includes('aportar mas')) && isScenario) return {type:'APV', mode:'INCREASE_DEFAULT'};
+      if((s.includes('bajo') || s.includes('bajar') || s.includes('reduzco') || s.includes('reducir') || s.includes('menos apv')) && isScenario) return {type:'APV', mode:'DECREASE_DEFAULT'};
+    }
+
+    if(hasProd){
+      if(s.includes('elimino') || s.includes('eliminar') || s.includes('quito') || s.includes('quitar') || s.includes('sin productividad') || s.includes('productividad cero') || s.includes('productividad a cero') || s.includes('baja a 0') || s.includes('bajo a 0') || s.includes('mes bajo')) return {type:'PRODUCTIVITY', mode:'ZERO'};
+      if(s.includes('duplico') || s.includes('duplicar')) return {type:'PRODUCTIVITY', mode:'DOUBLE'};
+      if(amounts.length && isScenario) return {type:'PRODUCTIVITY', mode:'SET', amount:amounts[0]};
+      if(isScenario) return {type:'PRODUCTIVITY', mode:'ZERO'};
+    }
+
+    return null;
+  }
+
+  function scenarioBlock(title, c, r, lectura){
+    return [
+      title,
+      '',
+      'Actual → escenario:',
+      '• APV: ' + money(c.apv) + ' → ' + money(r.nextAPV) + ' (' + signedMoney(r.deltaAPV) + ')',
+      '• Productividad: ' + money(c.productividad) + ' → ' + money(r.nextProd) + ' (' + signedMoney(r.deltaProd) + ')',
+      '• RLI: ' + money(c.rli) + ' → ' + money(r.nextRLI),
+      '• IUSC: ' + money(c.iusc) + ' → ' + money(r.nextIUSC) + ' (' + signedMoney(r.deltaIUSC) + ')',
+      '• Líquido: ' + money(c.liquido) + ' → ' + money(r.nextLiquido) + ' (' + signedMoney(r.deltaLiquido) + ')',
+      '',
+      lectura
+    ].join('\n');
+  }
+
+  function answerScenario(q){
+    var intent = classifyScenario(q);
+    if(!intent) return null;
+
+    var c = getCtx();
+    if(!hasData(c)){
+      return '📊 Escenario financiero\n\nNecesito una simulación con haberes, descuentos e IUSC calculado para estimar el impacto.';
+    }
+
+    var target, r, lectura;
+
+    if(intent.type === 'APV'){
+      target = c.apv;
+      if(intent.mode === 'REMOVE') target = 0;
+      if(intent.mode === 'DOUBLE') target = c.apv * 2;
+      if(intent.mode === 'SET') target = intent.amount;
+      if(intent.mode === 'INCREASE_DEFAULT') target = c.apv > 0 ? c.apv + 300000 : 300000;
+      if(intent.mode === 'DECREASE_DEFAULT') target = Math.max(0, c.apv - 300000);
+
+      r = estimate(c, { apv: target });
+      if(!r) return null;
+
+      if(target > c.apv){
+        lectura = 'Lectura: subir APV aumenta ahorro previsional y, en régimen B, reduce el IUSC. El costo de caja no es todo el aumento, porque parte se compensa con menor impuesto.';
+      }else if(target < c.apv){
+        lectura = 'Lectura: bajar o eliminar APV mejora el líquido mensual, pero reduce ahorro previsional y puede subir el IUSC si el aporte estaba en régimen B.';
+      }else{
+        lectura = 'Lectura: el APV queda igual; no hay cambio estimado en impuesto ni líquido.';
+      }
+
+      return scenarioBlock('📊 Escenario APV', c, r, lectura) + '\n\nCriterio: estimación con la tabla IUSC de la app. Sirve para comparar escenarios, no reemplaza la liquidación real.';
+    }
+
+    if(intent.type === 'PRODUCTIVITY'){
+      target = c.productividad;
+      if(intent.mode === 'ZERO') target = 0;
+      if(intent.mode === 'DOUBLE') target = c.productividad * 2;
+      if(intent.mode === 'SET') target = intent.amount;
+
+      r = estimate(c, { productividad: target });
+      if(!r) return null;
+
+      if(target > c.productividad){
+        lectura = 'Lectura: mayor productividad sube los haberes y el líquido, pero también eleva la RLI y puede aumentar el IUSC según el tramo.';
+      }else if(target < c.productividad){
+        lectura = 'Lectura: menor productividad baja el líquido y normalmente también reduce el IUSC. Úsalo como escenario conservador de caja.';
+      }else{
+        lectura = 'Lectura: la productividad queda igual; no hay cambio estimado.';
+      }
+
+      return scenarioBlock('📊 Escenario productividad', c, r, lectura) + '\n\nClave operativa: productividad depende de programación, horas de vuelo y operación del mes; no debe tratarse como ingreso garantizado.';
+    }
+
+    return null;
+  }
+
+  function addChat(role, text){
+    var box = document.getElementById('aiResponseBox');
+    if(!box) return false;
+    box.classList.add('ai-history');
+    var div = document.createElement('div');
+    div.className = 'ai-msg ' + (role === 'user' ? 'ai-msg-user' : 'ai-msg-assistant');
+    div.innerHTML = '<span class="ai-msg-head">' + (role === 'user' ? 'Tú' : 'MiCopilot') + '</span><div class="ai-msg-body">' + esc(text).replace(/\n/g,'<br>') + '</div>';
+    var empty = box.querySelector('.ai-response-empty');
+    if(empty) box.innerHTML = '';
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return true;
+  }
+
+  function handleFromInput(ev){
+    var input = document.getElementById('aiUserQuestion');
+    if(!input) return false;
+    var q = String(input.value || '').trim();
+    if(!q) return false;
+    var a = answerScenario(q);
+    if(!a) return false;
+    if(ev){
+      ev.preventDefault();
+      ev.stopPropagation();
+      if(ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+    }
+    window.__lastMicopilotQuestion = q;
+    addChat('user', q);
+    addChat('assistant', a);
+    input.value = '';
+    input.placeholder = 'Pregunta algo sobre tu liquidación...';
+    setTimeout(function(){ try { input.focus(); } catch(e){} }, 30);
+    return true;
+  }
+
+  // Captura en window: corre antes que document capture de versiones previas.
+  window.addEventListener('click', function(ev){
+    var t = ev.target;
+    if(t && t.closest && t.closest('#aiAskBtn')) handleFromInput(ev);
+  }, true);
+
+  window.addEventListener('keydown', function(ev){
+    if(ev.key === 'Enter' && document.activeElement && document.activeElement.id === 'aiUserQuestion'){
+      handleFromInput(ev);
+    }
+  }, true);
+
+  var previousAnswerQuestionV221 = window.answerQuestion;
+  window.answerQuestion = function(q){
+    try {
+      var a = answerScenario(q);
+      if(a){
+        window.__lastMicopilotQuestion = q;
+        return a;
+      }
+    } catch(e){}
+    if(typeof previousAnswerQuestionV221 === 'function') return previousAnswerQuestionV221.apply(this, arguments);
+    return 'Puedo ayudarte a entender tu liquidación, APV, IUSC, descuentos, variables y líquido final.';
+  };
+
+  window.RemuToolScenarioRouterFixV221 = {
+    version: VERSION,
+    classify: classifyScenario,
+    answer: answerScenario
+  };
+})();
+</script>
+
+<!-- RemuTool v2.2.1.f.w.t: Scenario Router Fix — escenarios APV/productividad priorizados antes de KB/definiciones. -->
 
 </body>
 </html>
