@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.2.2.f.w.t-scenario-context-bridge" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.2.2.2.f.w.t-scenario-context-bridge</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.2.2.3.f.w.t-apv-context-source-fix" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.2.2.3.f.w.t-apv-context-source-fix</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -11573,7 +11573,7 @@ function generateFinancialDiagnosticV2(){
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.2.2.2.f.w.t-scenario-context-bridge';
+  const VERSION = 'v.2.2.3.f.w.t-apv-context-source-fix';
 
   function norm(s){
     return String(s || '')
@@ -12358,7 +12358,7 @@ function generateFinancialDiagnosticV2(){
    - Mantener respuestas breves por defecto y usar el cálculo tributario disponible cuando existe.
 */
 (function(){
-  var VERSION = 'v.2.2.2.f.w.t-scenario-context-bridge';
+  var VERSION = 'v.2.2.3.f.w.t-apv-context-source-fix';
 
   function seNorm(s){
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -12644,7 +12644,7 @@ function generateFinancialDiagnosticV2(){
    - No altera cálculos base; usa RemuToolScenarioEngineV220.context/estimate cuando están disponibles.
 */
 (function(){
-  var VERSION = 'v.2.2.2.f.w.t-scenario-context-bridge';
+  var VERSION = 'v.2.2.3.f.w.t-apv-context-source-fix';
 
   function norm(s){
     return String(s || '')
@@ -12906,7 +12906,7 @@ function generateFinancialDiagnosticV2(){
    - No altera los cálculos base ni los routers tributarios ya validados.
 */
 (function(){
-  var VERSION = 'v.2.2.2.f.w.t-scenario-context-bridge';
+  var VERSION = 'v.2.2.3.f.w.t-apv-context-source-fix';
 
   function cxNorm(s){
     return String(s || '')
@@ -13273,6 +13273,265 @@ function generateFinancialDiagnosticV2(){
 </script>
 
 <!-- RemuTool v2.2.2.f.w.t: Scenario Context Bridge — MiCopilot reconoce datos calculados reales para escenarios APV/productividad. -->
+
+
+<script>
+/* === RemuTool v2.2.3.f.w.t — APV Context Source Fix ===
+   Objetivo:
+   - Corregir lectura de APV en MiCopilot/escenarios.
+   - Fuente prioritaria: input real data-key="desc.apv".
+   - Evita que el contexto DOM tome por error el primer input de la tarjeta de descuentos
+     (por ejemplo Seguro de Cesantía) cuando busca la palabra APV en un contenedor amplio.
+   - No altera cálculos base ni respuestas tributarias ya validadas.
+*/
+(function(){
+  var VERSION = 'v.2.2.3.f.w.t-apv-context-source-fix';
+
+  function n(v){
+    if(typeof v === 'number' && isFinite(v)) return v;
+    if(v === null || v === undefined) return 0;
+    var x = Number(String(v)
+      .replace(/\$/g,'')
+      .replace(/\s/g,'')
+      .replace(/\./g,'')
+      .replace(/,/g,'.')
+      .replace(/[^\d.-]/g,''));
+    return isFinite(x) ? x : 0;
+  }
+
+  function money(v){
+    v = Math.round(n(v));
+    if(typeof CLP === 'function'){
+      try { return CLP(v); } catch(e){}
+    }
+    return '$' + v.toLocaleString('es-CL');
+  }
+
+  function byKey(key){
+    var el = document.querySelector('[data-key="' + key + '"]');
+    return el ? n(el.value || el.textContent) : 0;
+  }
+
+  function textNum(sel){
+    var el = document.querySelector(sel);
+    return el ? n(el.value || el.textContent || '') : 0;
+  }
+
+  function getRegimen(){
+    try{
+      var el = document.getElementById('apvReg') ||
+               document.getElementById('apvRegimen') ||
+               document.getElementById('regimenAPV') ||
+               document.querySelector('[name="apvRegimen"]:checked') ||
+               document.querySelector('[data-apv-regimen]');
+      var v = el ? String(el.value || el.textContent || el.getAttribute('data-apv-regimen') || 'B').toUpperCase() : 'B';
+      return v.indexOf('A') >= 0 ? 'A' : 'B';
+    }catch(e){
+      return 'B';
+    }
+  }
+
+  function table(){
+    return [
+      { tramo:1, desde:0, hasta:943501, tasa:0, rebaja:0 },
+      { tramo:2, desde:943502, hasta:2096670, tasa:0.04, rebaja:37740 },
+      { tramo:3, desde:2096671, hasta:3494450, tasa:0.08, rebaja:121607 },
+      { tramo:4, desde:3494451, hasta:4892230, tasa:0.135, rebaja:313802 },
+      { tramo:5, desde:4892231, hasta:6290010, tasa:0.23, rebaja:778563 },
+      { tramo:6, desde:6290011, hasta:8386680, tasa:0.304, rebaja:1244024 },
+      { tramo:7, desde:8386681, hasta:21665590, tasa:0.35, rebaja:1629811 },
+      { tramo:8, desde:21665591, hasta:Infinity, tasa:0.40, rebaja:2713091 }
+    ];
+  }
+
+  function taxAtRLI(rli){
+    rli = Math.max(0, Math.round(n(rli)));
+    var rows = table();
+    var b = rows[0];
+    for(var i=0;i<rows.length;i++){
+      if(rli >= rows[i].desde && rli <= rows[i].hasta){
+        b = rows[i];
+        break;
+      }
+    }
+    return {
+      iusc: Math.max(0, Math.round(rli * b.tasa - b.rebaja)),
+      tramo: b.tramo,
+      tasa: b.tasa,
+      rebaja: b.rebaja
+    };
+  }
+
+  function safeBuildContext(){
+    try {
+      if(typeof buildContext === 'function') return buildContext() || {};
+    } catch(e){}
+    return {};
+  }
+
+  function getContext(){
+    var bc = safeBuildContext();
+    var res = bc.resultados || {};
+    var bases = bc.bases || {};
+
+    var sueldoBase = byKey('haber.sueldo_base');
+    var gratificacion = byKey('haber.gratificacion');
+    var antiguedad = byKey('haber.antiguedad');
+    var productividad = byKey('haber.bono_prod');
+    var vacaciones = byKey('haber.bono_vacaciones');
+    var feriados = byKey('haber.feriados');
+    var secuencia = byKey('haber.secuencia_9_10');
+
+    var haberes = textNum('#kpiHaberes') ||
+                  n(res.totalHaberes || res.haberes || res.total_haberes) ||
+                  (sueldoBase + gratificacion + antiguedad + productividad + vacaciones + feriados + secuencia);
+
+    var afp10 = byKey('desc.afp10');
+    var salud7 = byKey('desc.salud7');
+    var cesantia = byKey('desc.cesantia');
+    var trabajoPesado = byKey('desc.trab_pesado');
+    var obligatorios = afp10 + salud7 + cesantia + trabajoPesado;
+
+    // Fuente de verdad para APV: fila real data-key="desc.apv".
+    // No usar búsqueda por texto "APV" en tarjetas completas, porque puede capturar otro descuento.
+    var apv = byKey('desc.apv');
+
+    var regimen = getRegimen();
+    var rli = textNum('#outTributable') ||
+              n(res.tributable || res.rli || res.RLI || res.rentaTributable || res.baseAfecta);
+
+    if(!rli){
+      rli = Math.max(0, haberes - obligatorios - (regimen === 'B' ? apv : 0));
+    }
+
+    var tx = taxAtRLI(rli);
+    var iusc = byKey('desc.iusc_ret') ||
+               n(res.iusc || res.impuestoUnico || res.iuscFinal) ||
+               tx.iusc;
+
+    var liquido = textNum('#kpiLiquido') ||
+                  textNum('#kpiAlcance') ||
+                  n(res.liquido || res.alcanceLiquido);
+
+    if(!liquido && haberes){
+      var comAFP = byKey('desc.com_afp');
+      var cotAdicional = byKey('desc.cot_adicional');
+      var sindicato = byKey('desc.sind_uccl');
+      liquido = Math.max(0, haberes - obligatorios - comAFP - cotAdicional - sindicato - apv - iusc);
+    }
+
+    return {
+      raw: { source:'v2.2.3-data-key', buildContext:bc },
+      haberes: haberes,
+      liquido: liquido,
+      apv: apv,
+      productividad: productividad,
+      variables: productividad + vacaciones + feriados + secuencia,
+      iusc: iusc,
+      rli: rli,
+      rliAntesAPV: rli + (regimen === 'B' ? apv : 0),
+      tasa: tx.tasa,
+      tramo: tx.tramo,
+      rebaja: tx.rebaja,
+      regimen: regimen,
+      sueldoBase: sueldoBase,
+      gratificacion: gratificacion,
+      antiguedad: antiguedad,
+      obligatorios: obligatorios,
+      afp10: afp10,
+      salud7: salud7,
+      cesantia: cesantia,
+      trabajoPesado: trabajoPesado,
+      comisionAFP: byKey('desc.com_afp'),
+      adicionalSalud: byKey('desc.cot_adicional'),
+      sindicato: byKey('desc.sind_uccl'),
+      contextVersion: VERSION
+    };
+  }
+
+  function estimate(c, opts){
+    c = c || getContext();
+    opts = opts || {};
+    var nextAPV = Object.prototype.hasOwnProperty.call(opts, 'apv') ? Math.max(0, n(opts.apv)) : c.apv;
+    var nextProd = Object.prototype.hasOwnProperty.call(opts, 'productividad') ? Math.max(0, n(opts.productividad)) : c.productividad;
+    var deltaAPV = nextAPV - c.apv;
+    var deltaProd = nextProd - c.productividad;
+    var apvAffectsRLI = String(c.regimen || 'B').toUpperCase().indexOf('B') >= 0;
+
+    var nextRLI = Math.max(0, Math.round(c.rli + deltaProd - (apvAffectsRLI ? deltaAPV : 0)));
+    var tx = taxAtRLI(nextRLI);
+    var nextIUSC = tx.iusc;
+    var deltaIUSC = nextIUSC - c.iusc;
+    var nextLiquido = Math.max(0, Math.round(c.liquido + deltaProd - deltaAPV - deltaIUSC));
+
+    return {
+      nextAPV: nextAPV,
+      nextProd: nextProd,
+      deltaAPV: deltaAPV,
+      deltaProd: deltaProd,
+      nextRLI: nextRLI,
+      nextIUSC: nextIUSC,
+      deltaIUSC: deltaIUSC,
+      nextLiquido: nextLiquido,
+      deltaLiquido: nextLiquido - c.liquido,
+      tramo: tx.tramo,
+      tasa: tx.tasa,
+      rebaja: tx.rebaja
+    };
+  }
+
+  function hasData(c){
+    c = c || getContext();
+    return !!(c && c.haberes > 0 && c.rli > 0);
+  }
+
+  // Sobrescribe fuentes globales de contexto usadas por MiCopilot.
+  window.getFinancialContext = getContext;
+  window.getFinancialContextV222 = getContext;
+  window.getFinancialContextV223 = getContext;
+  window.estimateFinancialScenarioV222 = estimate;
+  window.estimateFinancialScenarioV223 = estimate;
+
+  if(window.RemuToolScenarioEngineV220){
+    window.RemuToolScenarioEngineV220.context = getContext;
+    window.RemuToolScenarioEngineV220.estimate = estimate;
+  }else{
+    window.RemuToolScenarioEngineV220 = { version: VERSION, context:getContext, estimate:estimate };
+  }
+
+  if(window.RemuToolScenarioContextBridgeV222){
+    window.RemuToolScenarioContextBridgeV222.context = getContext;
+    window.RemuToolScenarioContextBridgeV222.hasData = hasData;
+    window.RemuToolScenarioContextBridgeV222.estimate = estimate;
+    window.RemuToolScenarioContextBridgeV222.taxAtRLI = taxAtRLI;
+    window.RemuToolScenarioContextBridgeV222.money = money;
+  }
+
+  window.RemuToolScenarioContextFixV223 = {
+    version: VERSION,
+    context: getContext,
+    estimate: estimate,
+    taxAtRLI: taxAtRLI,
+    money: money,
+    inspect: function(){
+      var c = getContext();
+      console.table({
+        APV_real_data_key: c.apv,
+        Seguro_Cesantia: c.cesantia,
+        RLI: c.rli,
+        IUSC: c.iusc,
+        Liquido: c.liquido,
+        Haberes: c.haberes,
+        Regimen_APV: c.regimen,
+        Fuente: c.raw.source
+      });
+      return c;
+    }
+  };
+})();
+</script>
+
+<!-- RemuTool v2.2.3.f.w.t: APV Context Source Fix — APV se lee desde data-key="desc.apv", no desde búsqueda DOM amplia. -->
 
 </body>
 </html>
