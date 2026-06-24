@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.3.0.2-alpha.f.w.t-ios-file-input-fix" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.3.0.2-alpha.f.w.t-ios-file-input-fix</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.3.0.3-alpha.f.w.t-native-file-input" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.3.0.3-alpha.f.w.t-native-file-input</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -1553,7 +1553,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 
 
 <style>
-/* === RemuTool v3.0.2-alpha — PDF Upload + Text Extract === */
+/* === RemuTool v3.0.3-alpha — PDF Upload + Text Extract === */
 .pdf-ingest-card{margin:0 auto var(--gap);max-width:960px;border:1px solid rgba(90,169,255,.28);border-radius:18px;background:linear-gradient(180deg,rgba(90,169,255,.10),rgba(15,27,51,.82));padding:16px}
 .pdf-ingest-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
 .pdf-ingest-head h2{margin:0 0 4px;font:900 18px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;color:#e7f0ff}
@@ -1581,7 +1581,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 
 
 <style>
-/* === RemuTool v3.0.2-alpha — iOS/Safari real file input fix === */
+/* === RemuTool v3.0.3-alpha — iOS/Safari real file input fix === */
 .pdf-file-picker{
   position:relative;
   display:inline-flex;
@@ -1601,6 +1601,47 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
   cursor:pointer;
   z-index:5;
   font-size:40px;
+}
+</style>
+
+
+<style>
+/* === RemuTool v3.0.3-alpha — Native file input for iOS/Safari validation === */
+.pdf-native-picker{
+  display:grid;
+  gap:8px;
+  width:100%;
+  max-width:520px;
+}
+.pdf-native-label{
+  color:#dbeafe;
+  font-weight:900;
+  font-size:14px;
+}
+.pdf-native-input{
+  display:block !important;
+  position:static !important;
+  opacity:1 !important;
+  width:100% !important;
+  height:auto !important;
+  min-height:46px;
+  padding:10px;
+  border:1px solid rgba(90,169,255,.45);
+  border-radius:14px;
+  background:#0b1526;
+  color:#e7f0ff;
+  font-weight:800;
+  cursor:pointer;
+}
+.pdf-native-input::file-selector-button{
+  border:1px solid rgba(90,169,255,.55);
+  border-radius:999px;
+  background:rgba(90,169,255,.18);
+  color:#e7f0ff;
+  padding:9px 14px;
+  font-weight:900;
+  margin-right:12px;
+  cursor:pointer;
 }
 </style>
 
@@ -1630,14 +1671,14 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
       <h2>📄 Analizar liquidación PDF</h2>
       <p>Fase inicial: subir PDF, extraer texto y validar que la liquidación sea legible.</p>
     </div>
-    <span class="badge">v3.0.2-alpha</span>
+    <span class="badge">v3.0.3-alpha</span>
   </div>
   <div class="pdf-upload-zone">
     <div class="pdf-upload-actions">
-      <span class="pdf-file-picker">
-        <span class="pdf-upload-btn pdf-upload-fake">📎 Seleccionar liquidación PDF</span>
-        <input id="payrollPdfInput" class="pdf-file-input-real" type="file" accept="application/pdf,.pdf"/>
-      </span>
+      <div class="pdf-native-picker">
+        <label class="pdf-native-label" for="payrollPdfInput">Seleccionar liquidación PDF:</label>
+        <input id="payrollPdfInput" class="pdf-native-input" type="file" accept="application/pdf,.pdf"/>
+      </div>
       <button class="pdf-upload-secondary" id="btnClearPdfText" type="button">Limpiar extracción</button>
       <button class="pdf-upload-secondary" id="btnCopyPdfText" type="button">Copiar texto</button>
     </div>
@@ -11664,7 +11705,7 @@ function generateFinancialDiagnosticV2(){
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.3.0.2-alpha.f.w.t-ios-file-input-fix';
+  const VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
 
   function norm(s){
     return String(s || '')
@@ -12449,7 +12490,7 @@ function generateFinancialDiagnosticV2(){
    - Mantener respuestas breves por defecto y usar el cálculo tributario disponible cuando existe.
 */
 (function(){
-  var VERSION = 'v.3.0.2-alpha.f.w.t-ios-file-input-fix';
+  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
 
   function seNorm(s){
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -12735,7 +12776,7 @@ function generateFinancialDiagnosticV2(){
    - No altera cálculos base; usa RemuToolScenarioEngineV220.context/estimate cuando están disponibles.
 */
 (function(){
-  var VERSION = 'v.3.0.2-alpha.f.w.t-ios-file-input-fix';
+  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
 
   function norm(s){
     return String(s || '')
@@ -12990,14 +13031,14 @@ function generateFinancialDiagnosticV2(){
 
 
 <script>
-/* === RemuTool v3.0.2-alpha.f.w.t — Scenario Context Bridge Fix ===
+/* === RemuTool v3.0.3-alpha.f.w.t — Scenario Context Bridge Fix ===
    Objetivo:
    - Hacer que MiCopilot reconozca siempre los datos reales ya calculados.
    - Centralizar contexto financiero para escenarios APV/productividad.
    - No altera los cálculos base ni los routers tributarios ya validados.
 */
 (function(){
-  var VERSION = 'v.3.0.2-alpha.f.w.t-ios-file-input-fix';
+  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
 
   function cxNorm(s){
     return String(s || '')
@@ -13363,11 +13404,11 @@ function generateFinancialDiagnosticV2(){
 })();
 </script>
 
-<!-- RemuTool v3.0.2-alpha.f.w.t: Scenario Context Bridge — MiCopilot reconoce datos calculados reales para escenarios APV/productividad. -->
+<!-- RemuTool v3.0.3-alpha.f.w.t: Scenario Context Bridge — MiCopilot reconoce datos calculados reales para escenarios APV/productividad. -->
 
 
 <script>
-/* === RemuTool v3.0.2-alpha.f.w.t — APV Context Source Fix ===
+/* === RemuTool v3.0.3-alpha.f.w.t — APV Context Source Fix ===
    Objetivo:
    - Corregir lectura de APV en MiCopilot/escenarios.
    - Fuente prioritaria: input real data-key="desc.apv".
@@ -13376,7 +13417,7 @@ function generateFinancialDiagnosticV2(){
    - No altera cálculos base ni respuestas tributarias ya validadas.
 */
 (function(){
-  var VERSION = 'v.3.0.2-alpha.f.w.t-ios-file-input-fix';
+  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
 
   function n(v){
     if(typeof v === 'number' && isFinite(v)) return v;
@@ -13512,7 +13553,7 @@ function generateFinancialDiagnosticV2(){
     }
 
     return {
-      raw: { source:'v3.0.2-alpha-data-key', buildContext:bc },
+      raw: { source:'v3.0.3-alpha-data-key', buildContext:bc },
       haberes: haberes,
       liquido: liquido,
       apv: apv,
@@ -13622,14 +13663,14 @@ function generateFinancialDiagnosticV2(){
 })();
 </script>
 
-<!-- RemuTool v3.0.2-alpha.f.w.t: APV Context Source Fix — APV se lee desde data-key="desc.apv", no desde búsqueda DOM amplia. -->
+<!-- RemuTool v3.0.3-alpha.f.w.t: APV Context Source Fix — APV se lee desde data-key="desc.apv", no desde búsqueda DOM amplia. -->
 
 
 
 
 
 <script>
-/* === RemuTool v3.0.2-alpha — PDF Selector Fix === */
+/* === RemuTool v3.0.3-alpha — PDF Selector Fix === */
 (function(){
   var PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
   var PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -13807,7 +13848,7 @@ function generateFinancialDiagnosticV2(){
 
   function setupPdfIngest(){
     var input = byId("payrollPdfInput");
-    var btn = null; /* v3.0.2: real input overlay; no programmatic click needed */
+    var btn = null; /* v3.0.3: native file input */
     if(!input){
       setStatus("Error interno: no se encontró el input PDF.", "err");
       return;
@@ -13816,7 +13857,7 @@ function generateFinancialDiagnosticV2(){
     if(btn){
       btn.addEventListener("click", function(ev){
         ev.preventDefault();
-        setStatus("Selector abierto. Elige una liquidación PDF.", "warn");
+        setStatus("Usa el selector nativo para elegir una liquidación PDF.", "warn");
         input.click();
       });
     }
@@ -13858,7 +13899,7 @@ function generateFinancialDiagnosticV2(){
       });
     }
 
-    setStatus("Módulo PDF listo. Presiona el botón y selecciona una liquidación PDF.", "ok");
+    setStatus("Módulo PDF listo. Usa el selector nativo para elegir una liquidación PDF.", "ok");
   }
 
   if(document.readyState === "loading"){
