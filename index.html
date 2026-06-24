@@ -3,8 +3,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"/>
-<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.3.0.3-alpha.f.w.t-native-file-input" name="application-version"/>
-<title>Simulador Liquidación de Sueldo — v.3.0.3-alpha.f.w.t-native-file-input</title>
+<meta content="width=device-width,initial-scale=1" name="viewport"/><meta content="v.3.0.4-alpha.f.w.t-native-onchange-fix" name="application-version"/>
+<title>Simulador Liquidación de Sueldo — v.3.0.4-alpha.f.w.t-native-onchange-fix</title>
 <style>
 :root{
   --bg:#0a1220; --fg:#dbe7ff; --muted:#9fb3d1; --accent:#5aa9ff; --panel:#0f1b33;
@@ -1553,7 +1553,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 
 
 <style>
-/* === RemuTool v3.0.3-alpha — PDF Upload + Text Extract === */
+/* === RemuTool v3.0.4-alpha — PDF Upload + Text Extract === */
 .pdf-ingest-card{margin:0 auto var(--gap);max-width:960px;border:1px solid rgba(90,169,255,.28);border-radius:18px;background:linear-gradient(180deg,rgba(90,169,255,.10),rgba(15,27,51,.82));padding:16px}
 .pdf-ingest-head{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:12px}
 .pdf-ingest-head h2{margin:0 0 4px;font:900 18px/1.2 system-ui,-apple-system,Segoe UI,Roboto,Inter,Helvetica,Arial;color:#e7f0ff}
@@ -1564,7 +1564,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 .pdf-upload-btn:hover{background:rgba(90,169,255,.23);border-color:rgba(90,169,255,.65)}
 .pdf-upload-secondary{border:1px solid var(--border);background:#0b1526;color:#e7f0ff;border-radius:999px;padding:10px 14px;font-weight:800;cursor:pointer}
 .pdf-upload-secondary:hover{background:#102036}
-#payrollPdfInput{display:none}
+#payrollPdfInput{display:block !important}
 .pdf-status{min-height:20px;color:var(--muted);font-size:13px}
 .pdf-status.ok{color:#bbf7d0}.pdf-status.warn{color:#fde68a}.pdf-status.err{color:#fca5a5}
 .pdf-preview{display:none;margin-top:12px;border:1px solid rgba(255,255,255,.10);border-radius:16px;background:#07101f;overflow:hidden}
@@ -1581,7 +1581,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 
 
 <style>
-/* === RemuTool v3.0.3-alpha — iOS/Safari real file input fix === */
+/* === RemuTool v3.0.4-alpha — iOS/Safari real file input fix === */
 .pdf-file-picker{
   position:relative;
   display:inline-flex;
@@ -1606,7 +1606,7 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
 
 
 <style>
-/* === RemuTool v3.0.3-alpha — Native file input for iOS/Safari validation === */
+/* === RemuTool v3.0.4-alpha — Native file input for iOS/Safari validation === */
 .pdf-native-picker{
   display:grid;
   gap:8px;
@@ -1671,13 +1671,13 @@ body.mode-guided #btnPasoIUSC{display:none !important;}
       <h2>📄 Analizar liquidación PDF</h2>
       <p>Fase inicial: subir PDF, extraer texto y validar que la liquidación sea legible.</p>
     </div>
-    <span class="badge">v3.0.3-alpha</span>
+    <span class="badge">v3.0.4-alpha</span>
   </div>
   <div class="pdf-upload-zone">
     <div class="pdf-upload-actions">
       <div class="pdf-native-picker">
         <label class="pdf-native-label" for="payrollPdfInput">Seleccionar liquidación PDF:</label>
-        <input id="payrollPdfInput" class="pdf-native-input" type="file" accept="application/pdf,.pdf"/>
+        <input id="payrollPdfInput" class="pdf-native-input" type="file" accept="application/pdf,.pdf" onchange="window.remuToolHandlePdfNativeFile && window.remuToolHandlePdfNativeFile(this.files && this.files[0]);"/>
       </div>
       <button class="pdf-upload-secondary" id="btnClearPdfText" type="button">Limpiar extracción</button>
       <button class="pdf-upload-secondary" id="btnCopyPdfText" type="button">Copiar texto</button>
@@ -11705,7 +11705,7 @@ function generateFinancialDiagnosticV2(){
    - Respuestas breves por defecto; detalle sólo cuando el usuario lo pide.
 */
 (function(){
-  const VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
+  const VERSION = 'v.3.0.4-alpha.f.w.t-native-onchange-fix';
 
   function norm(s){
     return String(s || '')
@@ -12490,7 +12490,7 @@ function generateFinancialDiagnosticV2(){
    - Mantener respuestas breves por defecto y usar el cálculo tributario disponible cuando existe.
 */
 (function(){
-  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
+  var VERSION = 'v.3.0.4-alpha.f.w.t-native-onchange-fix';
 
   function seNorm(s){
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
@@ -12776,7 +12776,7 @@ function generateFinancialDiagnosticV2(){
    - No altera cálculos base; usa RemuToolScenarioEngineV220.context/estimate cuando están disponibles.
 */
 (function(){
-  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
+  var VERSION = 'v.3.0.4-alpha.f.w.t-native-onchange-fix';
 
   function norm(s){
     return String(s || '')
@@ -13031,14 +13031,14 @@ function generateFinancialDiagnosticV2(){
 
 
 <script>
-/* === RemuTool v3.0.3-alpha.f.w.t — Scenario Context Bridge Fix ===
+/* === RemuTool v3.0.4-alpha.f.w.t — Scenario Context Bridge Fix ===
    Objetivo:
    - Hacer que MiCopilot reconozca siempre los datos reales ya calculados.
    - Centralizar contexto financiero para escenarios APV/productividad.
    - No altera los cálculos base ni los routers tributarios ya validados.
 */
 (function(){
-  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
+  var VERSION = 'v.3.0.4-alpha.f.w.t-native-onchange-fix';
 
   function cxNorm(s){
     return String(s || '')
@@ -13404,11 +13404,11 @@ function generateFinancialDiagnosticV2(){
 })();
 </script>
 
-<!-- RemuTool v3.0.3-alpha.f.w.t: Scenario Context Bridge — MiCopilot reconoce datos calculados reales para escenarios APV/productividad. -->
+<!-- RemuTool v3.0.4-alpha.f.w.t: Scenario Context Bridge — MiCopilot reconoce datos calculados reales para escenarios APV/productividad. -->
 
 
 <script>
-/* === RemuTool v3.0.3-alpha.f.w.t — APV Context Source Fix ===
+/* === RemuTool v3.0.4-alpha.f.w.t — APV Context Source Fix ===
    Objetivo:
    - Corregir lectura de APV en MiCopilot/escenarios.
    - Fuente prioritaria: input real data-key="desc.apv".
@@ -13417,7 +13417,7 @@ function generateFinancialDiagnosticV2(){
    - No altera cálculos base ni respuestas tributarias ya validadas.
 */
 (function(){
-  var VERSION = 'v.3.0.3-alpha.f.w.t-native-file-input';
+  var VERSION = 'v.3.0.4-alpha.f.w.t-native-onchange-fix';
 
   function n(v){
     if(typeof v === 'number' && isFinite(v)) return v;
@@ -13553,7 +13553,7 @@ function generateFinancialDiagnosticV2(){
     }
 
     return {
-      raw: { source:'v3.0.3-alpha-data-key', buildContext:bc },
+      raw: { source:'v3.0.4-alpha-data-key', buildContext:bc },
       haberes: haberes,
       liquido: liquido,
       apv: apv,
@@ -13663,14 +13663,14 @@ function generateFinancialDiagnosticV2(){
 })();
 </script>
 
-<!-- RemuTool v3.0.3-alpha.f.w.t: APV Context Source Fix — APV se lee desde data-key="desc.apv", no desde búsqueda DOM amplia. -->
+<!-- RemuTool v3.0.4-alpha.f.w.t: APV Context Source Fix — APV se lee desde data-key="desc.apv", no desde búsqueda DOM amplia. -->
 
 
 
 
 
 <script>
-/* === RemuTool v3.0.3-alpha — PDF Selector Fix === */
+/* === RemuTool v3.0.4-alpha — PDF Selector Fix === */
 (function(){
   var PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
   var PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
@@ -13907,3 +13907,164 @@ function generateFinancialDiagnosticV2(){
   }else{
     setupPdfIngest();
   }
+})();
+</script>
+
+
+<script>
+/* === RemuTool v3.0.4-alpha — Native onchange PDF extraction fix === */
+(function(){
+  const PDFJS_CDN = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js";
+  const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+
+  function $(id){ return document.getElementById(id); }
+
+  function setPdfStatus(msg, kind){
+    const el = $("pdfStatus");
+    if(!el) return;
+    el.textContent = msg;
+    el.className = "pdf-status" + (kind ? " " + kind : "");
+  }
+
+  function loadPdfJsHard(){
+    return new Promise((resolve, reject)=>{
+      if(window.pdfjsLib){
+        try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; }catch(e){}
+        resolve(window.pdfjsLib);
+        return;
+      }
+
+      const existing = document.querySelector('script[src*="pdf.min.js"]');
+      if(existing){
+        existing.addEventListener("load", ()=>{
+          if(window.pdfjsLib){
+            try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; }catch(e){}
+            resolve(window.pdfjsLib);
+          }else{
+            reject(new Error("PDF.js no quedó disponible."));
+          }
+        });
+        existing.addEventListener("error", ()=>reject(new Error("No se pudo cargar PDF.js.")));
+        return;
+      }
+
+      const s = document.createElement("script");
+      s.src = PDFJS_CDN;
+      s.async = true;
+      s.onload = ()=>{
+        if(!window.pdfjsLib){
+          reject(new Error("PDF.js no quedó disponible."));
+          return;
+        }
+        try{ window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; }catch(e){}
+        resolve(window.pdfjsLib);
+      };
+      s.onerror = ()=>reject(new Error("No se pudo cargar PDF.js desde CDN."));
+      document.head.appendChild(s);
+    });
+  }
+
+  async function extractTextFromPdfFile(file){
+    const pdfjsLib = await loadPdfJsHard();
+    const buffer = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data: buffer}).promise;
+    const pages = [];
+
+    for(let p = 1; p <= pdf.numPages; p++){
+      const page = await pdf.getPage(p);
+      const content = await page.getTextContent();
+      const items = (content.items || []).slice();
+
+      items.sort((a,b)=>{
+        const ay = a.transform ? a.transform[5] : 0;
+        const by = b.transform ? b.transform[5] : 0;
+        const ax = a.transform ? a.transform[4] : 0;
+        const bx = b.transform ? b.transform[4] : 0;
+        if(Math.abs(by - ay) > 3) return by - ay;
+        return ax - bx;
+      });
+
+      const lines = [];
+      let y = null;
+      let line = [];
+
+      for(const item of items){
+        const iy = item.transform ? item.transform[5] : 0;
+        const str = item.str || "";
+        if(y === null || Math.abs(iy - y) <= 3){
+          line.push(str);
+          if(y === null) y = iy;
+        }else{
+          lines.push(line.join(" ").replace(/\s+/g," ").trim());
+          line = [str];
+          y = iy;
+        }
+      }
+      if(line.length) lines.push(line.join(" ").replace(/\s+/g," ").trim());
+      pages.push("===== PÁGINA " + p + " =====\n" + lines.filter(Boolean).join("\n"));
+    }
+
+    return {
+      pages: pdf.numPages,
+      text: pages.join("\n\n").replace(/\r/g,"\n").replace(/[ \t]+/g," ").replace(/\n{3,}/g,"\n\n").trim()
+    };
+  }
+
+  window.remuToolHandlePdfNativeFile = async function(file){
+    if(!file){
+      setPdfStatus("No se seleccionó archivo.", "warn");
+      return;
+    }
+
+    setPdfStatus("Archivo seleccionado: " + file.name + ". Extrayendo texto...", "warn");
+
+    try{
+      const result = await extractTextFromPdfFile(file);
+
+      const txt = $("pdfExtractedText");
+      if(txt) txt.value = result.text || "";
+
+      const fileName = $("pdfFileName");
+      if(fileName) fileName.textContent = file.name || "liquidación.pdf";
+
+      const pageCount = $("pdfPageCount");
+      if(pageCount) pageCount.textContent = String(result.pages || "—");
+
+      const charCount = $("pdfCharCount");
+      if(charCount) charCount.textContent = String(result.text || "").length.toLocaleString("es-CL");
+
+      const miniGrid = $("pdfMiniGrid");
+      if(miniGrid) miniGrid.style.display = "grid";
+
+      const preview = $("pdfPreview");
+      if(preview) preview.classList.add("open");
+
+      const quality = $("pdfExtractQuality");
+      if(quality){
+        const moneyCount = ((result.text || "").match(/\$?\s?\d{1,3}(\.\d{3})+/g) || []).length;
+        quality.textContent = moneyCount >= 8 ? "Buena legibilidad" : (moneyCount >= 3 ? "Legibilidad parcial" : "Revisar estructura");
+      }
+
+      window.__remutoolLastPdfExtraction = {
+        fileName: file.name,
+        pages: result.pages,
+        text: result.text,
+        extractedAt: new Date().toISOString()
+      };
+
+      setPdfStatus("PDF leído correctamente. Texto extraído: " + String(result.text || "").length.toLocaleString("es-CL") + " caracteres.", "ok");
+    }catch(err){
+      console.error("[RemuTool PDF v3.0.4]", err);
+      setPdfStatus("Archivo seleccionado, pero falló la extracción: " + (err && err.message ? err.message : err), "err");
+    }
+  };
+
+  document.addEventListener("DOMContentLoaded", ()=>{
+    const input = $("payrollPdfInput");
+    if(input){
+      input.addEventListener("change", function(){
+        window.remuToolHandlePdfNativeFile(this.files && this.files[0]);
+      });
+      setPdfStatus("Módulo PDF listo. Selecciona una liquidación PDF.", "ok");
+    }
+  });
